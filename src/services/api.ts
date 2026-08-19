@@ -3,6 +3,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyNsRr6X3lMVZKFQ7i37
 export interface SyncRequest {
   tipo: "diagnostico" | "monitoreo";
   uuid: string;
+  estado?: "Activo" | "Inactivo";
   fechaRegistro: string;
   nombreIpress: string;
   codigoRenipress: string;

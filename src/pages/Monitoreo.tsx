@@ -15,6 +15,7 @@ export const Monitoreo = () => {
 
   const [formData, setFormData] = useState<Partial<SyncRequest>>({
     tipo: 'monitoreo',
+    estado: 'Activo',
     unidadEjecutora: UNIDADES_EJECUTORAS[0],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);

@@ -22,6 +22,7 @@ export const Diagnostico = () => {
   
   const [formData, setFormData] = useState<Partial<SyncRequest>>({
     tipo: 'diagnostico',
+    estado: 'Activo',
     aguaPropio: 'No',
     bombasAgua: 'No',
     bombasOperativas: 'No',

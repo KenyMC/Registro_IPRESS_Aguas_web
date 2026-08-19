@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
-import { getRecords, deleteRecord, LocalRecord } from '../services/storage';
+import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
+import { syncEntry } from '../services/api';
 
 export const MonitoreoList = () => {
   const [records, setRecords] = useState<LocalRecord[]>([]);
@@ -12,15 +13,20 @@ export const MonitoreoList = () => {
   }, []);
 
   const loadRecords = () => {
-    const allRecords = getRecords().filter(r => r.tipo === 'monitoreo');
+    const allRecords = getRecords().filter(r => r.tipo === 'monitoreo' && r.estado !== 'Inactivo');
     allRecords.sort((a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime());
     setRecords(allRecords);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('¿Está seguro de eliminar este registro local?')) {
-      deleteRecord(id);
-      loadRecords();
+  const handleDelete = async (id: string) => {
+    if (window.confirm('¿Está seguro de eliminar este registro?')) {
+      const record = getRecordById(id);
+      if (record) {
+        const updatedRecord: LocalRecord = { ...record, estado: 'Inactivo' };
+        saveRecord(updatedRecord);
+        loadRecords();
+        await syncEntry(updatedRecord);
+      }
     }
   };
 
