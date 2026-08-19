@@ -3,12 +3,54 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { syncEntry, SyncRequest } from '../services/api';
 import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { getCachedIpressList, IpressRecord } from '../services/ipressData';
-import { Save, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Save, RefreshCw, ArrowLeft, AlertTriangle } from 'lucide-react';
 
 const UNIDADES_EJECUTORAS = [
   "Red Cusco Norte", "Red Cusco Sur", "Red Cusco VRAEM", 
   "Red CCE", "Red Chumbivilcas", "Red La Convencion", "Hospital", "Otro"
 ];
+
+const validateParameter = (name: string, value: string) => {
+  if (!value) return null;
+  const num = parseFloat(value);
+  if (isNaN(num)) return null;
+
+  switch (name) {
+    case 'cloro':
+      if (num < 0.5 || num > 2.0) return 'Incumple';
+      break;
+    case 'turbiedad':
+      if (num > 5.0) return 'Incumple';
+      break;
+    case 'ph':
+      if (num < 6.5 || num > 8.5) return 'Incumple';
+      break;
+    case 'conductividad':
+      if (num > 1500) return 'Incumple';
+      break;
+  }
+  return null;
+};
+
+const WarningBadge = ({ show }: { show: boolean }) => {
+  if (!show) return null;
+  return (
+    <span style={{ 
+      marginLeft: '8px', 
+      backgroundColor: '#fee2e2', 
+      color: '#ef4444', 
+      padding: '2px 8px', 
+      borderRadius: '12px', 
+      fontSize: '0.75rem', 
+      fontWeight: 'bold',
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px'
+    }}>
+      <AlertTriangle size={12} /> Incumple
+    </span>
+  );
+};
 
 export const Monitoreo = () => {
   const { id } = useParams<{ id: string }>();
@@ -160,7 +202,10 @@ export const Monitoreo = () => {
           <h3 className="section-heading">Datos Técnicos de Monitoreo</h3>
           
           <div className="form-group">
-            <label className="form-label">Cloro Residual (mg/L)</label>
+            <label className="form-label">
+              Cloro Residual (mg/L)
+              <WarningBadge show={validateParameter('cloro', formData.cloro || '') !== null} />
+            </label>
             <input type="text" name="cloro" className="form-control" value={formData.cloro || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
@@ -168,15 +213,24 @@ export const Monitoreo = () => {
             <input type="text" name="temperatura" className="form-control" value={formData.temperatura || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label className="form-label">pH</label>
+            <label className="form-label">
+              pH
+              <WarningBadge show={validateParameter('ph', formData.ph || '') !== null} />
+            </label>
             <input type="text" name="ph" className="form-control" value={formData.ph || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label className="form-label">Turbiedad (NTU)</label>
+            <label className="form-label">
+              Turbiedad (NTU)
+              <WarningBadge show={validateParameter('turbiedad', formData.turbiedad || '') !== null} />
+            </label>
             <input type="text" name="turbiedad" className="form-control" value={formData.turbiedad || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label className="form-label">Conductividad (µS/cm)</label>
+            <label className="form-label">
+              Conductividad (µS/cm)
+              <WarningBadge show={validateParameter('conductividad', formData.conductividad || '') !== null} />
+            </label>
             <input type="text" name="conductividad" className="form-control" value={formData.conductividad || ''} onChange={handleChange} />
           </div>
         </div>
