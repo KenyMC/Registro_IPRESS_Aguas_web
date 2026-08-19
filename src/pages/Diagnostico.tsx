@@ -257,52 +257,68 @@ export const Diagnostico = () => {
             <input type="text" name="ubigeo" className="form-control" value={formData.ubigeo || ''} onChange={handleChange} />
           </div>
 
-          <div style={{ marginTop: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <label className="form-label" style={{ margin: 0, fontSize: '1.1rem' }}>Georeferencia de La IPRESS</label>
-              <button type="button" className="btn btn-secondary btn-sm" onClick={handleGetLocation}>
-                <MapPin size={16} /> Obtener Ubicación
-              </button>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-              <div>
-                <div className="form-group">
-                  <label className="form-label" style={{ color: 'var(--text-muted)' }}>latitud (x.y °)</label>
-                  <input type="text" readOnly name="latitud" className="form-control" value={formData.latitud || ''} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ color: 'var(--text-muted)' }}>longitud (x.y °)</label>
-                  <input type="text" readOnly name="longitud" className="form-control" value={formData.longitud || ''} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" style={{ color: 'var(--text-muted)' }}>altitud (m)</label>
-                  <input type="text" readOnly name="altitud" className="form-control" value={formData.altitud || ''} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ color: 'var(--text-muted)' }}>precisión (m)</label>
-                  <input type="text" readOnly name="precision" className="form-control" value={formData.precision || ''} />
-                </div>
-              </div>
+        </div>
 
-              <div style={{ minHeight: '300px', backgroundColor: '#e2e8f0', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
-                {formData.latitud && formData.longitud ? (
-                  <MapContainer 
-                    center={[parseFloat(formData.latitud), parseFloat(formData.longitud)]} 
-                    zoom={15} 
-                    style={{ height: '100%', width: '100%' }}
-                  >
-                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                    <Marker position={[parseFloat(formData.latitud), parseFloat(formData.longitud)]} />
-                    <RecenterMap lat={parseFloat(formData.latitud)} lng={parseFloat(formData.longitud)} />
-                  </MapContainer>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                    <MapPin size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                    <p style={{ textAlign: 'center', padding: '0 2rem' }}>Haga clic en "Obtener Ubicación" para ver el punto en el mapa</p>
-                  </div>
-                )}
+        {/* SECCIÓN 1.5: GEOREFERENCIA */}
+        <div className="form-section">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <h3 className="section-heading" style={{ margin: 0 }}>Georeferencia de La IPRESS</h3>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleGetLocation}>
+              <MapPin size={16} /> Obtener Ubicación
+            </button>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            <div>
+              <div className="form-group">
+                <label className="form-label" style={{ color: 'var(--text-muted)' }}>latitud (x.y °)</label>
+                <input type="text" name="latitud" className="form-control" value={formData.latitud || ''} onChange={handleChange} />
               </div>
+              <div className="form-group">
+                <label className="form-label" style={{ color: 'var(--text-muted)' }}>longitud (x.y °)</label>
+                <input type="text" name="longitud" className="form-control" value={formData.longitud || ''} onChange={handleChange} />
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={{ color: 'var(--text-muted)' }}>altitud (m)</label>
+                <input type="text" name="altitud" className="form-control" value={formData.altitud || ''} onChange={handleChange} />
+              </div>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ color: 'var(--text-muted)' }}>precisión (m)</label>
+                <input type="text" name="precision" className="form-control" value={formData.precision || ''} onChange={handleChange} />
+              </div>
+            </div>
+
+            <div style={{ minHeight: '300px', backgroundColor: '#e2e8f0', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
+              {formData.latitud && formData.longitud ? (
+                <MapContainer 
+                  center={[parseFloat(formData.latitud) || 0, parseFloat(formData.longitud) || 0]} 
+                  zoom={15} 
+                  style={{ height: '100%', width: '100%' }}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <Marker 
+                    draggable={true}
+                    eventHandlers={{
+                      dragend: (e) => {
+                        const marker = e.target;
+                        const position = marker.getLatLng();
+                        setFormData(prev => ({
+                          ...prev,
+                          latitud: position.lat.toFixed(6),
+                          longitud: position.lng.toFixed(6)
+                        }));
+                      }
+                    }}
+                    position={[parseFloat(formData.latitud) || 0, parseFloat(formData.longitud) || 0]} 
+                  />
+                  <RecenterMap lat={parseFloat(formData.latitud) || 0} lng={parseFloat(formData.longitud) || 0} />
+                </MapContainer>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                  <MapPin size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                  <p style={{ textAlign: 'center', padding: '0 2rem' }}>Haga clic en "Obtener Ubicación" o escriba las coordenadas para ver el punto en el mapa</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
