@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import { syncEntry, SyncRequest } from '../services/api';
+import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { getCachedIpressList, IpressRecord } from '../services/ipressData';
 import { MapPin, Save, RefreshCw, ArrowLeft } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
