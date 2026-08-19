@@ -1,12 +1,18 @@
 import { Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Header } from './components/Header';
 import { Home } from './pages/Home';
 import { Diagnostico } from './pages/Diagnostico';
 import { Monitoreo } from './pages/Monitoreo';
 import { DiagnosticoList } from './pages/DiagnosticoList';
 import { MonitoreoList } from './pages/MonitoreoList';
+import { fetchAndCacheIpressList } from './services/ipressData';
 
 function App() {
+  useEffect(() => {
+    fetchAndCacheIpressList();
+  }, []);
+
   return (
     <>
       <Header />

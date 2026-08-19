@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { syncEntry, SyncRequest } from '../services/api';
 import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
+import { getCachedIpressList, IpressRecord } from '../services/ipressData';
 import { Save, RefreshCw, ArrowLeft } from 'lucide-react';
 
 const UNIDADES_EJECUTORAS = [
   "Red Cusco Norte", "Red Cusco Sur", "Red Cusco VRAEM", 
-  "Red CCE", "Red Chumbivilcas", "Red La Convencion", "Hospital"
+  "Red CCE", "Red Chumbivilcas", "Red La Convencion", "Hospital", "Otro"
 ];
 
 export const Monitoreo = () => {
@@ -21,15 +22,55 @@ export const Monitoreo = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
+  const [isOtroUnidad, setIsOtroUnidad] = useState(false);
+
+  useEffect(() => {
+    const list = getCachedIpressList();
+    setIpressList(list);
+  }, []);
+
   useEffect(() => {
     if (id) {
       const existing = getRecordById(id);
-      if (existing) setFormData(existing);
+      if (existing) {
+        setFormData(existing);
+        if (existing.unidadEjecutora === 'Otro') {
+          setIsOtroUnidad(true);
+        }
+      }
+    } else {
+      setIsOtroUnidad(UNIDADES_EJECUTORAS[0] === 'Otro');
     }
   }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'unidadEjecutora') {
+      const isOtro = value === 'Otro' || value === '';
+      setIsOtroUnidad(isOtro);
+      setFormData(prev => ({ 
+        ...prev, 
+        unidadEjecutora: value,
+        nombreIpress: '',
+        codigoRenipress: ''
+      }));
+      return;
+    }
+
+    if (name === 'nombreIpress' && !isOtroUnidad) {
+      const selected = ipressList.find(i => i.nombre === value && i.red === formData.unidadEjecutora);
+      if (selected) {
+        setFormData(prev => ({
+          ...prev,
+          nombreIpress: value,
+          codigoRenipress: selected.codigo
+        }));
+        return;
+      }
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -86,14 +127,6 @@ export const Monitoreo = () => {
           <h3 className="section-heading">Datos de Identificación</h3>
           
           <div className="form-group">
-            <label className="form-label">Nombre de la IPRESS</label>
-            <input required type="text" name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Código RENIPRESS</label>
-            <input required type="text" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} />
-          </div>
-          <div className="form-group">
             <label className="form-label">Unidad Ejecutora</label>
             <select required name="unidadEjecutora" className="form-control" value={formData.unidadEjecutora || ''} onChange={handleChange}>
               <option value="">Seleccione...</option>
@@ -101,6 +134,24 @@ export const Monitoreo = () => {
                 <option key={ue} value={ue}>{ue}</option>
               ))}
             </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Nombre de la IPRESS</label>
+            {!isOtroUnidad ? (
+              <select required name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange}>
+                <option value="">Seleccione IPRESS...</option>
+                {ipressList.filter(i => i.red === formData.unidadEjecutora).map((ipress, idx) => (
+                  <option key={idx} value={ipress.nombre}>{ipress.nombre}</option>
+                ))}
+              </select>
+            ) : (
+              <input required type="text" name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange} />
+            )}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Código RENIPRESS</label>
+            <input required type="text" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
           </div>
         </div>
 
