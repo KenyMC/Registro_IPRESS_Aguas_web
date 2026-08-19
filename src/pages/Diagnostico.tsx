@@ -40,7 +40,11 @@ export const Diagnostico = () => {
       const existing = getRecordById(id);
       if (existing) {
         setFormData(existing);
-        // We can't easily load Base64 back into SignatureCanvas, but we keep it in state
+        if (existing.firma) {
+          setTimeout(() => {
+            sigCanvas.current?.fromDataURL(existing.firma!);
+          }, 100);
+        }
       }
     }
   }, [id]);
@@ -288,7 +292,6 @@ export const Diagnostico = () => {
               Limpiar Firma
             </button>
           </label>
-          {formData.firma && !id && <p style={{fontSize: '0.875rem', color: 'var(--success)'}}>Firma actual cargada.</p>}
           <div className="signature-container">
             <SignatureCanvas ref={sigCanvas} penColor="black" canvasProps={{ className: 'sigCanvas' }} />
           </div>

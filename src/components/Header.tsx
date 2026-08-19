@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Droplet, Droplets, ClipboardList, Activity } from 'lucide-react';
+import { Droplet, Droplets, ClipboardList } from 'lucide-react';
 
 export const Header = () => {
   return (
