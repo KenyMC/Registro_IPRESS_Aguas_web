@@ -2,9 +2,32 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import { syncEntry, SyncRequest } from '../services/api';
-import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { getCachedIpressList, IpressRecord } from '../services/ipressData';
 import { MapPin, Save, RefreshCw, ArrowLeft } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet's default marker icon in Vite
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconUrl: markerIcon,
+  iconRetinaUrl: markerIcon2x,
+  shadowUrl: markerShadow,
+});
+
+// Component to recenter map when location changes
+const RecenterMap = ({ lat, lng }: { lat: number, lng: number }) => {
+  const map = useMap();
+  useEffect(() => {
+    map.setView([lat, lng], 15);
+  }, [lat, lng, map]);
+  return null;
+};
 
 const UNIDADES_EJECUTORAS = [
   "Red Cusco Norte", "Red Cusco Sur", "Red Cusco VRAEM", 
@@ -235,26 +258,50 @@ export const Diagnostico = () => {
 
           <div style={{ marginTop: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <label className="form-label" style={{ margin: 0 }}>Georeferencia de La IPRESS</label>
+              <label className="form-label" style={{ margin: 0, fontSize: '1.1rem' }}>Georeferencia de La IPRESS</label>
               <button type="button" className="btn btn-secondary btn-sm" onClick={handleGetLocation}>
                 <MapPin size={16} /> Obtener Ubicación
               </button>
             </div>
-            <div className="form-group">
-              <label className="form-label" style={{ color: 'var(--text-muted)' }}>latitud (x.y °)</label>
-              <input type="text" readOnly name="latitud" className="form-control" value={formData.latitud || ''} />
-            </div>
-            <div className="form-group">
-              <label className="form-label" style={{ color: 'var(--text-muted)' }}>longitud (x.y °)</label>
-              <input type="text" readOnly name="longitud" className="form-control" value={formData.longitud || ''} />
-            </div>
-            <div className="form-group">
-              <label className="form-label" style={{ color: 'var(--text-muted)' }}>altitud (m)</label>
-              <input type="text" readOnly name="altitud" className="form-control" value={formData.altitud || ''} />
-            </div>
-            <div className="form-group">
-              <label className="form-label" style={{ color: 'var(--text-muted)' }}>precisión (m)</label>
-              <input type="text" readOnly name="precision" className="form-control" value={formData.precision || ''} />
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              <div>
+                <div className="form-group">
+                  <label className="form-label" style={{ color: 'var(--text-muted)' }}>latitud (x.y °)</label>
+                  <input type="text" readOnly name="latitud" className="form-control" value={formData.latitud || ''} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ color: 'var(--text-muted)' }}>longitud (x.y °)</label>
+                  <input type="text" readOnly name="longitud" className="form-control" value={formData.longitud || ''} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ color: 'var(--text-muted)' }}>altitud (m)</label>
+                  <input type="text" readOnly name="altitud" className="form-control" value={formData.altitud || ''} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ color: 'var(--text-muted)' }}>precisión (m)</label>
+                  <input type="text" readOnly name="precision" className="form-control" value={formData.precision || ''} />
+                </div>
+              </div>
+
+              <div style={{ minHeight: '300px', backgroundColor: '#e2e8f0', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
+                {formData.latitud && formData.longitud ? (
+                  <MapContainer 
+                    center={[parseFloat(formData.latitud), parseFloat(formData.longitud)]} 
+                    zoom={15} 
+                    style={{ height: '100%', width: '100%' }}
+                  >
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <Marker position={[parseFloat(formData.latitud), parseFloat(formData.longitud)]} />
+                    <RecenterMap lat={parseFloat(formData.latitud)} lng={parseFloat(formData.longitud)} />
+                  </MapContainer>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                    <MapPin size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                    <p style={{ textAlign: 'center', padding: '0 2rem' }}>Haga clic en "Obtener Ubicación" para ver el punto en el mapa</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
