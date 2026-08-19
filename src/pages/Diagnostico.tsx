@@ -11,7 +11,7 @@ const UNIDADES_EJECUTORAS = [
 ];
 
 const FUENTES_AGUA = [
-  "Red Publica", "Manante", "Riachuelo", "Pozo", 
+  "La Red Publica", "Manante", "Riachuelo", "Pozo", 
   "Camion Cisterna", "Agua de lluvia"
 ];
 
@@ -28,6 +28,8 @@ export const Diagnostico = () => {
     reservorio: 'No',
     reservorioElevado: 'No',
     reservorioOperativo: 'No',
+    cisterna: 'No',
+    cisternaOperativa: 'No',
     tratamientoAgua: 'No',
     unidadEjecutora: UNIDADES_EJECUTORAS[0],
     fuenteAgua: FUENTES_AGUA[0],
@@ -112,7 +114,6 @@ export const Diagnostico = () => {
     setIsSubmitting(false);
 
     if (!isSynced) {
-      // Si falla, avisamos pero igual guardamos y salimos
       alert('Se guardó localmente, pero hubo un error al sincronizar con el servidor.');
     }
     
@@ -126,7 +127,7 @@ export const Diagnostico = () => {
           <ArrowLeft size={16} /> Volver
         </button>
         <h2 className="section-title" style={{ margin: 0, border: 'none' }}>
-          {id ? 'Actualizar Diagnóstico' : 'Nuevo Diagnóstico'}
+          {id ? 'Actualizar Diagnóstico' : 'Nuevo Registro Diagnóstico de la IPRESS'}
         </h2>
       </div>
 
@@ -139,14 +140,13 @@ export const Diagnostico = () => {
       <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '2rem' }}>
         
         {/* IDENTIFICACIÓN */}
-        <h3 style={{ marginBottom: '1rem', color: 'var(--primary-dark)' }}>Identificación</h3>
         <div className="grid-2">
           <div className="form-group">
             <label className="form-label">Nombre de la IPRESS</label>
             <input required type="text" name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label className="form-label">Código RENIPRESS</label>
+            <label className="form-label">Codigo RENIPRESS</label>
             <input required type="text" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} />
           </div>
           <div className="form-group" style={{ gridColumn: '1 / -1' }}>
@@ -161,7 +161,6 @@ export const Diagnostico = () => {
         </div>
 
         {/* UBICACIÓN */}
-        <h3 style={{ margin: '2rem 0 1rem', color: 'var(--primary-dark)' }}>Ubicación</h3>
         <div className="grid-2">
           <div className="form-group">
             <label className="form-label">Provincia</label>
@@ -172,51 +171,50 @@ export const Diagnostico = () => {
             <input type="text" name="distrito" className="form-control" value={formData.distrito || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label className="form-label">Centro Poblado</label>
+            <label className="form-label">Centro Poblado donde esta ubicado la IPRESS</label>
             <input type="text" name="centroPoblado" className="form-control" value={formData.centroPoblado || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
-            <label className="form-label">Ubigeo CCPP</label>
+            <label className="form-label">Ubigeo del CCPP</label>
             <input type="text" name="ubigeo" className="form-control" value={formData.ubigeo || ''} onChange={handleChange} />
           </div>
         </div>
 
         {/* GEOREFERENCIA */}
-        <h3 style={{ margin: '2rem 0 1rem', color: 'var(--primary-dark)' }}>Georeferencia</h3>
+        <h3 style={{ margin: '2rem 0 1rem', color: 'var(--primary-dark)' }}>Georeferencia de La IPRESS</h3>
         <button type="button" className="btn btn-secondary btn-sm" onClick={handleGetLocation} style={{ marginBottom: '1rem' }}>
           <MapPin size={18} /> Obtener Ubicación Actual
         </button>
         <div className="grid-2">
           <div className="form-group">
-            <label className="form-label">Latitud</label>
+            <label className="form-label">latitud (x.y °)</label>
             <input type="text" readOnly name="latitud" className="form-control" value={formData.latitud || ''} />
           </div>
           <div className="form-group">
-            <label className="form-label">Longitud</label>
+            <label className="form-label">longitud (x.y °)</label>
             <input type="text" readOnly name="longitud" className="form-control" value={formData.longitud || ''} />
           </div>
           <div className="form-group">
-            <label className="form-label">Altitud</label>
+            <label className="form-label">altitud (m)</label>
             <input type="text" readOnly name="altitud" className="form-control" value={formData.altitud || ''} />
           </div>
           <div className="form-group">
-            <label className="form-label">Precisión</label>
+            <label className="form-label">precisión (m)</label>
             <input type="text" readOnly name="precision" className="form-control" value={formData.precision || ''} />
           </div>
         </div>
 
         {/* SISTEMA DE AGUA */}
-        <h3 style={{ margin: '2rem 0 1rem', color: 'var(--primary-dark)' }}>Sistema de Agua</h3>
-        <div className="grid-2">
+        <div className="grid-2" style={{ marginTop: '1.5rem' }}>
           <div className="form-group">
-            <label className="form-label">¿Sistema Propio?</label>
+            <label className="form-label">La IPRESS cuenta con sistema de abastecimiento de agua propio</label>
             <select name="aguaPropio" className="form-control" value={formData.aguaPropio || 'No'} onChange={handleChange}>
-              <option value="Si">Sí</option>
+              <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">Fuente de Agua</label>
+            <label className="form-label">La Fuente de agua de la IPRESS es mediante</label>
             <select name="fuenteAgua" className="form-control" value={formData.fuenteAgua || ''} onChange={handleChange}>
               <option value="">Seleccione...</option>
               {FUENTES_AGUA.map(f => (
@@ -225,58 +223,79 @@ export const Diagnostico = () => {
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">¿Tiene Bombas?</label>
+            <label className="form-label">El Sistema de abastecimiento de agua contempla bombas de agua</label>
             <select name="bombasAgua" className="form-control" value={formData.bombasAgua || 'No'} onChange={handleChange}>
-              <option value="Si">Sí</option>
+              <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">¿Bombas Operativas?</label>
+            <label className="form-label">Las bombas de agua se encuentran operativas</label>
             <select name="bombasOperativas" className="form-control" value={formData.bombasOperativas || 'No'} onChange={handleChange}>
-              <option value="Si">Sí</option>
+              <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">¿Tiene Reservorio?</label>
+            <label className="form-label">La IPRESS cuenta con reservorio de agua</label>
             <select name="reservorio" className="form-control" value={formData.reservorio || 'No'} onChange={handleChange}>
-              <option value="Si">Sí</option>
+              <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">¿Reservorio Elevado?</label>
+            <label className="form-label">Volumen del Reservorio (m3)</label>
+            <input type="text" name="volumenReservorio" className="form-control" value={formData.volumenReservorio || ''} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">El reservorio es elevado</label>
             <select name="reservorioElevado" className="form-control" value={formData.reservorioElevado || 'No'} onChange={handleChange}>
-              <option value="Si">Sí</option>
+              <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">¿Reservorio Operativo?</label>
+            <label className="form-label">El reservorio se encuentra operativo</label>
             <select name="reservorioOperativo" className="form-control" value={formData.reservorioOperativo || 'No'} onChange={handleChange}>
-              <option value="Si">Sí</option>
+              <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
-            <label className="form-label">¿Tratamiento de Agua?</label>
+            <label className="form-label">La IPRESS cuenta con cisterna de agua</label>
+            <select name="cisterna" className="form-control" value={formData.cisterna || 'No'} onChange={handleChange}>
+              <option value="Si">Si</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Volumen de la Cisterna (m3)</label>
+            <input type="text" name="volumenCisterna" className="form-control" value={formData.volumenCisterna || ''} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">La cisterna de agua se encuentra operativo</label>
+            <select name="cisternaOperativa" className="form-control" value={formData.cisternaOperativa || 'No'} onChange={handleChange}>
+              <option value="Si">Si</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">Se realiza algun tipo de tratamiento al agua en la IPRESS</label>
             <select name="tratamientoAgua" className="form-control" value={formData.tratamientoAgua || 'No'} onChange={handleChange}>
-              <option value="Si">Sí</option>
+              <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
         </div>
 
         {/* FINALIZACIÓN */}
-        <h3 style={{ margin: '2rem 0 1rem', color: 'var(--primary-dark)' }}>Finalización</h3>
-        <div className="form-group">
+        <div className="form-group" style={{ marginTop: '1.5rem' }}>
           <label className="form-label">Observaciones</label>
           <textarea name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
         </div>
         <div className="grid-2">
           <div className="form-group">
-            <label className="form-label">Responsable</label>
+            <label className="form-label">Nombre del responsable de la vigilancia de la calidad del agua</label>
             <input type="text" name="responsable" className="form-control" value={formData.responsable || ''} onChange={handleChange} />
           </div>
           <div className="form-group">

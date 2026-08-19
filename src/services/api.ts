@@ -24,6 +24,10 @@ export interface SyncRequest {
   reservorio?: string;
   reservorioElevado?: string;
   reservorioOperativo?: string;
+  volumenReservorio?: string;
+  cisterna?: string;
+  volumenCisterna?: string;
+  cisternaOperativa?: string;
   tratamientoAgua?: string;
   observaciones?: string;
   responsable?: string;
