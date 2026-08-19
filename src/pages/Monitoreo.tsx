@@ -79,11 +79,12 @@ export const Monitoreo = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '2rem' }}>
+      <form onSubmit={handleSubmit} style={{ padding: '0 0 2rem 0' }}>
         
         {/* IDENTIFICACIÓN */}
-        <h3 style={{ marginBottom: '1rem', color: 'var(--primary-dark)' }}>Identificación</h3>
-        <div className="grid-2">
+        <div className="form-section">
+          <h3 className="section-heading">Datos de Identificación</h3>
+          
           <div className="form-group">
             <label className="form-label">Nombre de la IPRESS</label>
             <input required type="text" name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange} />
@@ -92,7 +93,7 @@ export const Monitoreo = () => {
             <label className="form-label">Código RENIPRESS</label>
             <input required type="text" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} />
           </div>
-          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+          <div className="form-group">
             <label className="form-label">Unidad Ejecutora</label>
             <select required name="unidadEjecutora" className="form-control" value={formData.unidadEjecutora || ''} onChange={handleChange}>
               <option value="">Seleccione...</option>
@@ -104,8 +105,9 @@ export const Monitoreo = () => {
         </div>
 
         {/* DATOS TÉCNICOS */}
-        <h3 style={{ margin: '2rem 0 1rem', color: 'var(--primary-dark)' }}>Datos Técnicos de Monitoreo</h3>
-        <div className="grid-2">
+        <div className="form-section">
+          <h3 className="section-heading">Datos Técnicos de Monitoreo</h3>
+          
           <div className="form-group">
             <label className="form-label">Cloro Residual (mg/L)</label>
             <input type="text" name="cloro" className="form-control" value={formData.cloro || ''} onChange={handleChange} />
@@ -122,7 +124,7 @@ export const Monitoreo = () => {
             <label className="form-label">Turbiedad (NTU)</label>
             <input type="text" name="turbiedad" className="form-control" value={formData.turbiedad || ''} onChange={handleChange} />
           </div>
-          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+          <div className="form-group">
             <label className="form-label">Conductividad (µS/cm)</label>
             <input type="text" name="conductividad" className="form-control" value={formData.conductividad || ''} onChange={handleChange} />
           </div>

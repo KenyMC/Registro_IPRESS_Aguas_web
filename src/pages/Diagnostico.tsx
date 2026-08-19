@@ -138,10 +138,12 @@ export const Diagnostico = () => {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '2rem' }}>
+      <form onSubmit={handleSubmit} style={{ padding: '0 0 2rem 0' }}>
         
-        {/* IDENTIFICACIÓN */}
-        <div className="grid-2">
+        {/* SECCIÓN 1: IDENTIFICACIÓN Y UBICACIÓN */}
+        <div className="form-section">
+          <h3 className="section-heading">Datos de Ubicación de la IPRESS</h3>
+          
           <div className="form-group">
             <label className="form-label">Nombre de la IPRESS</label>
             <input required type="text" name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange} />
@@ -150,7 +152,7 @@ export const Diagnostico = () => {
             <label className="form-label">Codigo RENIPRESS</label>
             <input required type="text" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} />
           </div>
-          <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+          <div className="form-group">
             <label className="form-label">Unidad Ejecutora</label>
             <select required name="unidadEjecutora" className="form-control" value={formData.unidadEjecutora || ''} onChange={handleChange}>
               <option value="">Seleccione...</option>
@@ -159,10 +161,7 @@ export const Diagnostico = () => {
               ))}
             </select>
           </div>
-        </div>
-
-        {/* UBICACIÓN */}
-        <div className="grid-2">
+          
           <div className="form-group">
             <label className="form-label">Provincia</label>
             <input type="text" name="provincia" className="form-control" value={formData.provincia || ''} onChange={handleChange} />
@@ -179,34 +178,37 @@ export const Diagnostico = () => {
             <label className="form-label">Ubigeo del CCPP</label>
             <input type="text" name="ubigeo" className="form-control" value={formData.ubigeo || ''} onChange={handleChange} />
           </div>
+
+          <div style={{ marginTop: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <label className="form-label" style={{ margin: 0 }}>Georeferencia de La IPRESS</label>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={handleGetLocation}>
+                <MapPin size={16} /> Obtener Ubicación
+              </button>
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ color: 'var(--text-muted)' }}>latitud (x.y °)</label>
+              <input type="text" readOnly name="latitud" className="form-control" value={formData.latitud || ''} />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ color: 'var(--text-muted)' }}>longitud (x.y °)</label>
+              <input type="text" readOnly name="longitud" className="form-control" value={formData.longitud || ''} />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ color: 'var(--text-muted)' }}>altitud (m)</label>
+              <input type="text" readOnly name="altitud" className="form-control" value={formData.altitud || ''} />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ color: 'var(--text-muted)' }}>precisión (m)</label>
+              <input type="text" readOnly name="precision" className="form-control" value={formData.precision || ''} />
+            </div>
+          </div>
         </div>
 
-        {/* GEOREFERENCIA */}
-        <h3 style={{ margin: '2rem 0 1rem', color: 'var(--primary-dark)' }}>Georeferencia de La IPRESS</h3>
-        <button type="button" className="btn btn-secondary btn-sm" onClick={handleGetLocation} style={{ marginBottom: '1rem' }}>
-          <MapPin size={18} /> Obtener Ubicación Actual
-        </button>
-        <div className="grid-2">
-          <div className="form-group">
-            <label className="form-label">latitud (x.y °)</label>
-            <input type="text" readOnly name="latitud" className="form-control" value={formData.latitud || ''} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">longitud (x.y °)</label>
-            <input type="text" readOnly name="longitud" className="form-control" value={formData.longitud || ''} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">altitud (m)</label>
-            <input type="text" readOnly name="altitud" className="form-control" value={formData.altitud || ''} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">precisión (m)</label>
-            <input type="text" readOnly name="precision" className="form-control" value={formData.precision || ''} />
-          </div>
-        </div>
-
-        {/* SISTEMA DE AGUA */}
-        <div className="grid-2" style={{ marginTop: '1.5rem' }}>
+        {/* SECCIÓN 2: SISTEMA DE AGUA */}
+        <div className="form-section">
+          <h3 className="section-heading">Datos de la fuente de agua de la IPRESS</h3>
+          
           <div className="form-group">
             <label className="form-label">La IPRESS cuenta con sistema de abastecimiento de agua propio</label>
             <select name="aguaPropio" className="form-control" value={formData.aguaPropio || 'No'} onChange={handleChange}>
@@ -289,12 +291,10 @@ export const Diagnostico = () => {
           </div>
         </div>
 
-        {/* FINALIZACIÓN */}
-        <div className="form-group" style={{ marginTop: '1.5rem' }}>
-          <label className="form-label">Observaciones</label>
-          <textarea name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
-        </div>
-        <div className="grid-2">
+        {/* SECCIÓN 3: RESPONSABLE Y FINALIZACIÓN */}
+        <div className="form-section">
+          <h3 className="section-heading">Datos del responsable</h3>
+          
           <div className="form-group">
             <label className="form-label">Nombre del responsable de la vigilancia de la calidad del agua</label>
             <input type="text" name="responsable" className="form-control" value={formData.responsable || ''} onChange={handleChange} />
@@ -303,17 +303,21 @@ export const Diagnostico = () => {
             <label className="form-label">DNI</label>
             <input type="text" name="dni" className="form-control" value={formData.dni || ''} onChange={handleChange} />
           </div>
-        </div>
+          <div className="form-group">
+            <label className="form-label">Observaciones</label>
+            <textarea name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
+          </div>
 
-        <div className="form-group" style={{ marginTop: '1rem' }}>
-          <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            Firma
-            <button type="button" onClick={clearSignature} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.875rem' }}>
-              Limpiar Firma
-            </button>
-          </label>
-          <div className="signature-container">
-            <SignatureCanvas ref={sigCanvas} penColor="black" canvasProps={{ className: 'sigCanvas' }} />
+          <div className="form-group" style={{ marginTop: '1.5rem' }}>
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              Firma
+              <button type="button" onClick={clearSignature} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.875rem' }}>
+                Limpiar Firma
+              </button>
+            </label>
+            <div className="signature-container">
+              <SignatureCanvas ref={sigCanvas} penColor="black" canvasProps={{ className: 'sigCanvas' }} />
+            </div>
           </div>
         </div>
 
