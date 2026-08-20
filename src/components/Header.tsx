@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { Droplet, ClipboardList } from 'lucide-react';
+import { Droplet, Droplets, ClipboardList } from 'lucide-react';
 
 export const Header = () => {
   return (
@@ -10,7 +10,7 @@ export const Header = () => {
           <img src="https://diresacusco.gob.pe/img/logo.png" alt="Logo DIRESA" style={{ height: '40px', objectFit: 'contain' }} />
         </div>
         <Link to="/" className="logo">
-          <Droplet className="logo-icon" size={28} />
+          <Droplets className="logo-icon" size={28} />
           <span>Calidad del Agua IPRESS</span>
         </Link>
         <div className="header-nav-wrapper">
