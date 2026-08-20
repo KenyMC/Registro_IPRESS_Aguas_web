@@ -1,9 +1,20 @@
+import { useState, useEffect } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { Droplet, Droplets, ClipboardList } from 'lucide-react';
 
 export const Header = () => {
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
-    <header className="header">
+    <header className={`header ${isScrolled ? 'scrolled' : ''}`}>
       <div className="header-content">
         <div className="header-logos">
           <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3KU-5YMhb1Ee8FfD3Dd2bYTU3mecNLtGAaaAm1VhSdg&s" alt="Logo 1" style={{ height: '40px', objectFit: 'contain' }} />

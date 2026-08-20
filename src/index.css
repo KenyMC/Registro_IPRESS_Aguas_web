@@ -205,7 +205,6 @@ select.form-control {
   background-color: #fee2e2;
 }
 
-/* Header */
 .header {
   padding: 1rem 0;
   border-bottom: 1px solid var(--border);
@@ -215,6 +214,43 @@ select.form-control {
   top: 0;
   z-index: 10;
   box-shadow: var(--shadow-sm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.header.scrolled {
+  background: var(--primary);
+  border-bottom-color: transparent;
+  box-shadow: var(--shadow);
+  color: white;
+}
+
+.header.scrolled .logo {
+  color: white;
+}
+
+.header.scrolled .logo-icon {
+  color: white;
+}
+
+.header.scrolled .header-nav {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+.header.scrolled .nav-link {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.header.scrolled .nav-link:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.header.scrolled .nav-link.active {
+  background: white;
+  color: var(--primary);
+  border-color: transparent;
 }
 
 .header-content {
