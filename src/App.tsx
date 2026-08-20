@@ -49,7 +49,10 @@ function App() {
         </Routes>
       </main>
       <footer style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
-        <p>&copy; {new Date().getFullYear()} Calidad del Agua IPRESS. Todos los derechos reservados.</p>
+        <p>&copy; PVCACH Cusco {new Date().getFullYear()} - Todos los derechos reservados.</p>
+        <p style={{ fontFamily: '"Great Vibes", "Dancing Script", cursive', fontStyle: 'italic', marginTop: '0.5rem', fontSize: '1.1rem', color: 'var(--text)' }}>
+          Design by Keny Orlando MC
+        </p>
       </footer>
     </>
   );
