@@ -17,8 +17,8 @@ export const Header = () => {
     <header className={`header ${isScrolled ? 'scrolled' : ''}`}>
       <div className="header-content">
         <div className="header-logos">
-          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3KU-5YMhb1Ee8FfD3Dd2bYTU3mecNLtGAaaAm1VhSdg&s" alt="Logo 1" style={{ height: '40px', objectFit: 'contain' }} />
-          <img src="https://diresacusco.gob.pe/img/logo.png" alt="Logo DIRESA" style={{ height: '40px', objectFit: 'contain' }} />
+          <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3KU-5YMhb1Ee8FfD3Dd2bYTU3mecNLtGAaaAm1VhSdg&s" alt="Logo 1" className="header-logo-img" />
+          <img src="https://diresacusco.gob.pe/img/logo.png" alt="Logo DIRESA" className="header-logo-img" />
         </div>
         <Link to="/" className="logo">
           <Droplets className="logo-icon" size={28} />

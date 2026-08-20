@@ -267,18 +267,21 @@ select.form-control {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.header-logo-img {
+  width: 44px;
+  height: 44px;
+  padding: 4px;
+  border-radius: 50%;
+  background-color: white;
+  object-fit: contain;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.header.scrolled .header-logos {
-  background: white;
-  padding: 4px 12px;
-  border-radius: 8px;
-  box-shadow: var(--shadow-sm);
-}
-
-.header-logos img {
-  /* Removed mix-blend-mode because it darkens the colors on blue background */
+.header.scrolled .header-logo-img {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .header-nav-wrapper {
