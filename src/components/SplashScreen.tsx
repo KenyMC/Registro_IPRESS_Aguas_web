@@ -19,6 +19,7 @@ export const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
           const serverRecords = await fetchRecordsFromServer();
           if (serverRecords && serverRecords.length > 0) {
             mergeRecords(serverRecords);
+            window.dispatchEvent(new Event('recordsUpdated'));
           }
         } catch (error) {
           console.error("Failed to sync on startup", error);

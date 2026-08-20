@@ -14,50 +14,56 @@ export const Home: React.FC = () => {
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    const records = getRecords();
-    
-    const diagnosticos = records.filter(r => r.tipo === 'diagnostico');
-    const monitoreos = records.filter(r => r.tipo === 'monitoreo');
-    
-    // Contar establecimientos únicos (por nombre de IPRESS)
-    const ipressSet = new Set();
-    diagnosticos.forEach(d => {
-      if (d.nombreIpress) ipressSet.add(d.nombreIpress);
-    });
-    monitoreos.forEach(m => {
-      if (m.nombreIpress) ipressSet.add(m.nombreIpress);
-    });
-
-    setStats({
-      totalDiagnosticos: diagnosticos.length,
-      totalMonitoreos: monitoreos.length,
-      establecimientosUnicos: ipressSet.size,
-    });
-
-    // Preparar datos para el gráfico (agrupados por fecha)
-    const dateGroups: Record<string, { date: string, Diagnósticos: number, Monitoreos: number }> = {};
-    
-    records.forEach(r => {
-      if (!r.fechaRegistro) return;
-      // Usar solo la fecha (YYYY-MM-DD)
-      const dateStr = new Date(r.fechaRegistro).toISOString().split('T')[0];
+    const loadData = () => {
+      const records = getRecords();
       
-      if (!dateGroups[dateStr]) {
-        dateGroups[dateStr] = { date: dateStr, Diagnósticos: 0, Monitoreos: 0 };
-      }
+      const diagnosticos = records.filter(r => r.tipo === 'diagnostico');
+      const monitoreos = records.filter(r => r.tipo === 'monitoreo');
       
-      if (r.tipo === 'diagnostico') {
-        dateGroups[dateStr].Diagnósticos++;
-      } else if (r.tipo === 'monitoreo') {
-        dateGroups[dateStr].Monitoreos++;
-      }
-    });
+      // Contar establecimientos únicos (por nombre de IPRESS)
+      const ipressSet = new Set();
+      diagnosticos.forEach(d => {
+        if (d.nombreIpress) ipressSet.add(d.nombreIpress);
+      });
+      monitoreos.forEach(m => {
+        if (m.nombreIpress) ipressSet.add(m.nombreIpress);
+      });
 
-    // Convertir a array y ordenar por fecha
-    const sortedData = Object.values(dateGroups).sort((a, b) => a.date.localeCompare(b.date));
-    // Mostrar solo los últimos 7 días con datos
-    setChartData(sortedData.slice(-7));
+      setStats({
+        totalDiagnosticos: diagnosticos.length,
+        totalMonitoreos: monitoreos.length,
+        establecimientosUnicos: ipressSet.size,
+      });
 
+      // Preparar datos para el gráfico (agrupados por fecha)
+      const dateGroups: Record<string, { date: string, Diagnósticos: number, Monitoreos: number }> = {};
+      
+      records.forEach(r => {
+        if (!r.fechaRegistro) return;
+        // Usar solo la fecha (YYYY-MM-DD)
+        const dateStr = new Date(r.fechaRegistro).toISOString().split('T')[0];
+        
+        if (!dateGroups[dateStr]) {
+          dateGroups[dateStr] = { date: dateStr, Diagnósticos: 0, Monitoreos: 0 };
+        }
+        
+        if (r.tipo === 'diagnostico') {
+          dateGroups[dateStr].Diagnósticos++;
+        } else if (r.tipo === 'monitoreo') {
+          dateGroups[dateStr].Monitoreos++;
+        }
+      });
+
+      // Convertir a array y ordenar por fecha
+      const sortedData = Object.values(dateGroups).sort((a, b) => a.date.localeCompare(b.date));
+      // Mostrar solo los últimos 7 días con datos
+      setChartData(sortedData.slice(-7));
+    };
+
+    loadData();
+
+    window.addEventListener('recordsUpdated', loadData);
+    return () => window.removeEventListener('recordsUpdated', loadData);
   }, []);
 
   return (
