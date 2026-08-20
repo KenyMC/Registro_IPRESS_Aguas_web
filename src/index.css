@@ -270,8 +270,8 @@ select.form-control {
 }
 
 .header-logo-img {
-  width: 54px;
-  height: 54px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   background-color: white;
   object-fit: contain;
@@ -280,11 +280,11 @@ select.form-control {
 }
 
 .header-logos img:first-child {
-  padding: 10px; /* Evita que las esquinas cuadradas del logo de Cusco se corten */
+  padding: 14px; /* Aumentado a 14px para que la diagonal del cuadrado interno (32px) sea 45px, lo cual cabe perfectamente en el círculo de 60px sin recortar esquinas */
 }
 
 .header-logos img:last-child {
-  padding: 4px; /* El logo de DIRESA ya es circular y tiene margen propio, así que usa menos padding para no verse tan pequeño */
+  padding: 6px; /* Padding de 6px para el logo circular */
 }
 
 .header.scrolled .header-logo-img {
