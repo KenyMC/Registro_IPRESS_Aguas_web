@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter } from 'lucide-react';
 import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { syncEntry } from '../services/api';
 
@@ -47,7 +47,8 @@ export const MonitoreoList = () => {
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>Fecha:</label>
+            <Filter size={16} style={{ color: 'var(--text-muted)' }} />
+            <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0, fontWeight: 500 }}>Buscar por Fecha:</label>
             <input 
               type="date" 
               className="form-control" 
