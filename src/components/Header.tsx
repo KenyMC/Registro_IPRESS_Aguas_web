@@ -23,6 +23,9 @@ export const Header = () => {
           <div className="logo-circle">
             <img src="./logo-diresa.png" alt="Logo DIRESA" className="logo-img-diresa" />
           </div>
+          <div className="logo-circle">
+            <img src="./logo-pvcach.png" alt="Logo PVCACH" className="logo-img-pvcach" />
+          </div>
         </div>
         <Link to="/" className="logo">
           <Droplets className="logo-icon" size={28} />

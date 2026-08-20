@@ -301,6 +301,13 @@ select.form-control {
   transform: scale(1.03); /* Reduced scale so it doesn't touch the edges */
 }
 
+.logo-img-pvcach {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: scale(0.9); /* Adjust scale for the drop to fit comfortably */
+}
+
 .header-nav-wrapper {
   display: flex;
   justify-content: flex-end;
