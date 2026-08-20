@@ -269,6 +269,11 @@ select.form-control {
   gap: 12px;
 }
 
+.header-logos img {
+  mix-blend-mode: multiply;
+  /* Add brightness to slightly correct the color shift if needed, but multiply should be fine */
+}
+
 .header-nav-wrapper {
   display: flex;
   justify-content: flex-end;
