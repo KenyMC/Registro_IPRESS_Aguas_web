@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['logo-cusco.jpg', 'logo-diresa.png', 'app-icon.png'],
+      includeAssets: ['logo-cusco.jpg', 'logo-diresa.png', 'logo-pvcach.png', 'app-icon.png'],
       manifest: {
         name: 'Calidad Agua IPRESS',
         short_name: 'Agua IPRESS',
