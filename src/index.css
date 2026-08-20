@@ -270,9 +270,9 @@ select.form-control {
 }
 
 .header-logo-img {
-  width: 44px;
-  height: 44px;
-  padding: 4px;
+  width: 50px;
+  height: 50px;
+  padding: 8px;
   border-radius: 50%;
   background-color: white;
   object-fit: contain;
