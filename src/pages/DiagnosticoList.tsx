@@ -6,14 +6,24 @@ import { syncEntry } from '../services/api';
 
 export const DiagnosticoList = () => {
   const [records, setRecords] = useState<LocalRecord[]>([]);
+  const [filterDate, setFilterDate] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
     loadRecords();
-  }, []);
+  }, [filterDate]);
 
   const loadRecords = () => {
-    const allRecords = getRecords().filter(r => r.tipo === 'diagnostico' && r.estado !== 'Inactivo');
+    let allRecords = getRecords().filter(r => r.tipo === 'diagnostico' && r.estado !== 'Inactivo');
+    
+    if (filterDate) {
+      allRecords = allRecords.filter(r => {
+        if (!r.fechaRegistro) return false;
+        const dateStr = new Date(r.fechaRegistro).toISOString().split('T')[0];
+        return dateStr === filterDate;
+      });
+    }
+
     // Sort by date descending
     allRecords.sort((a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime());
     setRecords(allRecords);
@@ -33,11 +43,30 @@ export const DiagnosticoList = () => {
 
   return (
     <div className="container animate-fade-in">
-      <div className="flex-between" style={{ marginBottom: '2rem' }}>
+      <div className="flex-between" style={{ marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2 className="section-title" style={{ margin: 0, border: 'none' }}>Registros de Diagnóstico</h2>
-        <Link to="/diagnostico/nuevo" className="btn btn-primary">
-          <Plus size={20} /> Agregar Registro
-        </Link>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+            <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>Fecha:</label>
+            <input 
+              type="date" 
+              className="form-control" 
+              style={{ padding: '0.25rem 0.5rem', width: 'auto', border: 'none', backgroundColor: 'transparent', outline: 'none' }} 
+              value={filterDate} 
+              onChange={(e) => setFilterDate(e.target.value)} 
+            />
+            {filterDate && (
+              <button onClick={() => setFilterDate('')} className="btn-icon" style={{ color: 'var(--danger)', padding: '0.25rem' }} title="Limpiar filtro">
+                <XCircle size={16} />
+              </button>
+            )}
+          </div>
+
+          <Link to="/diagnostico/nuevo" className="btn btn-primary">
+            <Plus size={20} /> Agregar Registro
+          </Link>
+        </div>
       </div>
 
       <div className="table-container">

@@ -4,7 +4,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { syncEntry, SyncRequest } from '../services/api';
 import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { getCachedIpressList, IpressRecord } from '../services/ipressData';
-import { MapPin, Save, RefreshCw, ArrowLeft } from 'lucide-react';
+import { MapPin, Save, RefreshCw, ArrowLeft, PenTool } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -65,6 +65,7 @@ export const Diagnostico = () => {
   
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
+  const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
 
   useEffect(() => {
     const list = getCachedIpressList();
@@ -80,6 +81,7 @@ export const Diagnostico = () => {
           setIsOtroUnidad(true);
         }
         if (existing.firma) {
+          setIsSignatureEmpty(false);
           setTimeout(() => {
             sigCanvas.current?.fromDataURL(existing.firma!);
           }, 100);
@@ -150,6 +152,7 @@ export const Diagnostico = () => {
   const clearSignature = () => {
     sigCanvas.current?.clear();
     setFormData(prev => ({ ...prev, firma: '' }));
+    setIsSignatureEmpty(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -242,19 +245,19 @@ export const Diagnostico = () => {
           
           <div className="form-group">
             <label className="form-label">Provincia</label>
-            <input type="text" name="provincia" className="form-control" value={formData.provincia || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
+            <input required type="text" name="provincia" className="form-control" value={formData.provincia || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
           </div>
           <div className="form-group">
             <label className="form-label">Distrito</label>
-            <input type="text" name="distrito" className="form-control" value={formData.distrito || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
+            <input required type="text" name="distrito" className="form-control" value={formData.distrito || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
           </div>
           <div className="form-group">
             <label className="form-label">Centro Poblado donde esta ubicado la IPRESS</label>
-            <input type="text" name="centroPoblado" className="form-control" value={formData.centroPoblado || ''} onChange={handleChange} />
+            <input required type="text" name="centroPoblado" className="form-control" value={formData.centroPoblado || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">Ubigeo del CCPP</label>
-            <input type="text" name="ubigeo" className="form-control" value={formData.ubigeo || ''} onChange={handleChange} />
+            <input required type="number" name="ubigeo" className="form-control" value={formData.ubigeo || ''} onChange={handleChange} />
           </div>
 
         </div>
@@ -272,19 +275,19 @@ export const Diagnostico = () => {
             <div>
               <div className="form-group">
                 <label className="form-label" style={{ color: 'var(--text-muted)' }}>latitud (x.y °)</label>
-                <input type="text" name="latitud" className="form-control" value={formData.latitud || ''} onChange={handleChange} />
+                <input required type="number" step="any" name="latitud" className="form-control" value={formData.latitud || ''} onChange={handleChange} />
               </div>
               <div className="form-group">
                 <label className="form-label" style={{ color: 'var(--text-muted)' }}>longitud (x.y °)</label>
-                <input type="text" name="longitud" className="form-control" value={formData.longitud || ''} onChange={handleChange} />
+                <input required type="number" step="any" name="longitud" className="form-control" value={formData.longitud || ''} onChange={handleChange} />
               </div>
               <div className="form-group">
                 <label className="form-label" style={{ color: 'var(--text-muted)' }}>altitud (m)</label>
-                <input type="text" name="altitud" className="form-control" value={formData.altitud || ''} onChange={handleChange} />
+                <input required type="number" step="any" name="altitud" className="form-control" value={formData.altitud || ''} onChange={handleChange} />
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ color: 'var(--text-muted)' }}>precisión (m)</label>
-                <input type="text" name="precision" className="form-control" value={formData.precision || ''} onChange={handleChange} />
+                <input required type="number" step="any" name="precision" className="form-control" value={formData.precision || ''} onChange={handleChange} />
               </div>
             </div>
 
@@ -329,14 +332,14 @@ export const Diagnostico = () => {
           
           <div className="form-group">
             <label className="form-label">La IPRESS cuenta con sistema de abastecimiento de agua propio</label>
-            <select name="aguaPropio" className="form-control" value={formData.aguaPropio || 'No'} onChange={handleChange}>
+            <select required name="aguaPropio" className="form-control" value={formData.aguaPropio || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">La Fuente de agua de la IPRESS es mediante</label>
-            <select name="fuenteAgua" className="form-control" value={formData.fuenteAgua || ''} onChange={handleChange}>
+            <select required name="fuenteAgua" className="form-control" value={formData.fuenteAgua || ''} onChange={handleChange}>
               <option value="">Seleccione...</option>
               {FUENTES_AGUA.map(f => (
                 <option key={f} value={f}>{f}</option>
@@ -345,64 +348,64 @@ export const Diagnostico = () => {
           </div>
           <div className="form-group">
             <label className="form-label">El Sistema de abastecimiento de agua contempla bombas de agua</label>
-            <select name="bombasAgua" className="form-control" value={formData.bombasAgua || 'No'} onChange={handleChange}>
+            <select required name="bombasAgua" className="form-control" value={formData.bombasAgua || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Las bombas de agua se encuentran operativas</label>
-            <select name="bombasOperativas" className="form-control" value={formData.bombasOperativas || 'No'} onChange={handleChange}>
+            <select required name="bombasOperativas" className="form-control" value={formData.bombasOperativas || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">La IPRESS cuenta con reservorio de agua</label>
-            <select name="reservorio" className="form-control" value={formData.reservorio || 'No'} onChange={handleChange}>
+            <select required name="reservorio" className="form-control" value={formData.reservorio || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Volumen del Reservorio (m3)</label>
-            <input type="text" name="volumenReservorio" className="form-control" value={formData.volumenReservorio || ''} onChange={handleChange} />
+            <input required type="number" step="any" name="volumenReservorio" className="form-control" value={formData.volumenReservorio || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">El reservorio es elevado</label>
-            <select name="reservorioElevado" className="form-control" value={formData.reservorioElevado || 'No'} onChange={handleChange}>
+            <select required name="reservorioElevado" className="form-control" value={formData.reservorioElevado || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">El reservorio se encuentra operativo</label>
-            <select name="reservorioOperativo" className="form-control" value={formData.reservorioOperativo || 'No'} onChange={handleChange}>
+            <select required name="reservorioOperativo" className="form-control" value={formData.reservorioOperativo || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">La IPRESS cuenta con cisterna de agua</label>
-            <select name="cisterna" className="form-control" value={formData.cisterna || 'No'} onChange={handleChange}>
+            <select required name="cisterna" className="form-control" value={formData.cisterna || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Volumen de la Cisterna (m3)</label>
-            <input type="text" name="volumenCisterna" className="form-control" value={formData.volumenCisterna || ''} onChange={handleChange} />
+            <input required type="number" step="any" name="volumenCisterna" className="form-control" value={formData.volumenCisterna || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">La cisterna de agua se encuentra operativo</label>
-            <select name="cisternaOperativa" className="form-control" value={formData.cisternaOperativa || 'No'} onChange={handleChange}>
+            <select required name="cisternaOperativa" className="form-control" value={formData.cisternaOperativa || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
           </div>
           <div className="form-group">
             <label className="form-label">Se realiza algun tipo de tratamiento al agua en la IPRESS</label>
-            <select name="tratamientoAgua" className="form-control" value={formData.tratamientoAgua || 'No'} onChange={handleChange}>
+            <select required name="tratamientoAgua" className="form-control" value={formData.tratamientoAgua || 'No'} onChange={handleChange}>
               <option value="Si">Si</option>
               <option value="No">No</option>
             </select>
@@ -415,15 +418,15 @@ export const Diagnostico = () => {
           
           <div className="form-group">
             <label className="form-label">Nombre del responsable de la vigilancia de la calidad del agua</label>
-            <input type="text" name="responsable" className="form-control" value={formData.responsable || ''} onChange={handleChange} />
+            <input required type="text" name="responsable" className="form-control" value={formData.responsable || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">DNI</label>
-            <input type="text" name="dni" className="form-control" value={formData.dni || ''} onChange={handleChange} />
+            <input required type="number" name="dni" className="form-control" value={formData.dni || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">Observaciones</label>
-            <textarea name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
+            <textarea required name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
           </div>
 
           <div className="form-group" style={{ marginTop: '1.5rem' }}>
@@ -433,8 +436,19 @@ export const Diagnostico = () => {
                 Limpiar Firma
               </button>
             </label>
-            <div className="signature-container">
-              <SignatureCanvas ref={sigCanvas} penColor="black" canvasProps={{ className: 'sigCanvas' }} />
+            <div className="signature-container" style={{ position: 'relative' }}>
+              {isSignatureEmpty && (
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+                  <PenTool size={48} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
+                  <p style={{ margin: 0, fontSize: '1.1rem', opacity: 0.6, fontWeight: 500 }}>Ponga su Firma aquí</p>
+                </div>
+              )}
+              <SignatureCanvas 
+                ref={sigCanvas} 
+                onBegin={() => setIsSignatureEmpty(false)} 
+                penColor="black" 
+                canvasProps={{ className: 'sigCanvas' }} 
+              />
             </div>
           </div>
         </div>

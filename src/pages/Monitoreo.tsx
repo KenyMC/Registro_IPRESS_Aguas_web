@@ -206,32 +206,32 @@ export const Monitoreo = () => {
               Cloro Residual (mg/L)
               <WarningBadge show={validateParameter('cloro', formData.cloro || '') !== null} />
             </label>
-            <input type="text" name="cloro" className="form-control" value={formData.cloro || ''} onChange={handleChange} />
+            <input required type="number" step="any" name="cloro" className="form-control" value={formData.cloro || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">Temperatura (°C)</label>
-            <input type="text" name="temperatura" className="form-control" value={formData.temperatura || ''} onChange={handleChange} />
+            <input required type="number" step="any" name="temperatura" className="form-control" value={formData.temperatura || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">
               pH
               <WarningBadge show={validateParameter('ph', formData.ph || '') !== null} />
             </label>
-            <input type="text" name="ph" className="form-control" value={formData.ph || ''} onChange={handleChange} />
+            <input required type="number" step="any" name="ph" className="form-control" value={formData.ph || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">
               Turbiedad (NTU)
               <WarningBadge show={validateParameter('turbiedad', formData.turbiedad || '') !== null} />
             </label>
-            <input type="text" name="turbiedad" className="form-control" value={formData.turbiedad || ''} onChange={handleChange} />
+            <input required type="number" step="any" name="turbiedad" className="form-control" value={formData.turbiedad || ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">
               Conductividad (µS/cm)
               <WarningBadge show={validateParameter('conductividad', formData.conductividad || '') !== null} />
             </label>
-            <input type="text" name="conductividad" className="form-control" value={formData.conductividad || ''} onChange={handleChange} />
+            <input required type="number" step="any" name="conductividad" className="form-control" value={formData.conductividad || ''} onChange={handleChange} />
           </div>
         </div>
 
