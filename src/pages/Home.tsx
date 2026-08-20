@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ClipboardList, Activity, Building2, FileText, BarChart3 } from 'lucide-react';
+import { ClipboardList, Droplet, Building2, FileText, BarChart3 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getRecords } from '../services/storage';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -97,7 +97,7 @@ export const Home: React.FC = () => {
 
         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <div style={{ padding: '1rem', backgroundColor: 'rgba(245, 158, 11, 0.1)', borderRadius: '12px', color: '#f59e0b' }}>
-            <Activity size={24} />
+            <Droplet size={24} />
           </div>
           <div>
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Monitoreos</p>
@@ -152,7 +152,7 @@ export const Home: React.FC = () => {
 
         <Link to="/monitoreo" className="glass-panel action-card">
           <div className="icon-wrapper">
-            <Activity size={32} />
+            <Droplet size={32} />
           </div>
           <h3>Registro de Monitoreo</h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
