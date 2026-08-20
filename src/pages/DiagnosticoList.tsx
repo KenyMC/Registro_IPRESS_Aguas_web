@@ -11,6 +11,12 @@ export const DiagnosticoList = () => {
 
   useEffect(() => {
     loadRecords();
+    
+    // Escuchar actualizaciones de sincronización de fondo
+    window.addEventListener('recordsUpdated', loadRecords);
+    return () => {
+      window.removeEventListener('recordsUpdated', loadRecords);
+    };
   }, [filterDate]);
 
   const loadRecords = () => {

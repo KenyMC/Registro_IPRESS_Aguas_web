@@ -18,10 +18,10 @@ export const Header = () => {
       <div className="header-content">
         <div className="header-logos">
           <div className="logo-circle">
-            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ3KU-5YMhb1Ee8FfD3Dd2bYTU3mecNLtGAaaAm1VhSdg&s" alt="Logo 1" className="logo-img-cusco" />
+            <img src="./logo-cusco.jpg" alt="Logo 1" className="logo-img-cusco" />
           </div>
           <div className="logo-circle">
-            <img src="https://diresacusco.gob.pe/img/logo.png" alt="Logo DIRESA" className="logo-img-diresa" />
+            <img src="./logo-diresa.png" alt="Logo DIRESA" className="logo-img-diresa" />
           </div>
         </div>
         <Link to="/" className="logo">

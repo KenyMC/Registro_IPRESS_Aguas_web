@@ -8,12 +8,27 @@ import { Monitoreo } from './pages/Monitoreo';
 import { DiagnosticoList } from './pages/DiagnosticoList';
 import { MonitoreoList } from './pages/MonitoreoList';
 import { fetchAndCacheIpressList } from './services/ipressData';
+import { syncPendingRecords } from './services/storage';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     fetchAndCacheIpressList();
+    
+    const handleOnline = () => {
+      syncPendingRecords();
+    };
+
+    window.addEventListener('online', handleOnline);
+    // Also try syncing on app load if online
+    if (navigator.onLine) {
+      syncPendingRecords();
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
   }, []);
 
   return (
