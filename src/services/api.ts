@@ -64,3 +64,21 @@ export const syncEntry = async (data: SyncRequest): Promise<boolean> => {
     return false;
   }
 };
+
+export const fetchRecordsFromServer = async (): Promise<any[]> => {
+  try {
+    const response = await fetch(SCRIPT_URL);
+    if (!response.ok) {
+      throw new Error("Network response was not ok");
+    }
+    const data = await response.json();
+    if (data.error) {
+      console.error("Error from Apps Script:", data.error);
+      return [];
+    }
+    return data;
+  } catch (error) {
+    console.error("Error fetching records:", error);
+    return [];
+  }
+};

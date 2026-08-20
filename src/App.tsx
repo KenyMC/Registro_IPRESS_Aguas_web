@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Header } from './components/Header';
+import { SplashScreen } from './components/SplashScreen';
 import { Home } from './pages/Home';
 import { Diagnostico } from './pages/Diagnostico';
 import { Monitoreo } from './pages/Monitoreo';
@@ -9,12 +10,15 @@ import { MonitoreoList } from './pages/MonitoreoList';
 import { fetchAndCacheIpressList } from './services/ipressData';
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
   useEffect(() => {
     fetchAndCacheIpressList();
   }, []);
 
   return (
     <>
+      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
       <Header />
       <main style={{ flex: 1, padding: '2rem 0' }}>
         <Routes>
