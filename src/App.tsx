@@ -50,7 +50,7 @@ function App() {
       </main>
       <footer style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
         <p>&copy; PVCACH Cusco {new Date().getFullYear()} - Todos los derechos reservados.</p>
-        <p style={{ fontFamily: '"Great Vibes", "Dancing Script", cursive', fontStyle: 'italic', marginTop: '0.5rem', fontSize: '1.1rem', color: 'var(--text)' }}>
+        <p className="signature-text">
           Design by Keny Orlando MC
         </p>
       </footer>
