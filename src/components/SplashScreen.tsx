@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Database, DownloadCloud, CheckCircle } from 'lucide-react';
+import { Database, CheckCircle } from 'lucide-react';
 import { fetchRecordsFromServer } from '../services/api';
 import { mergeRecords } from '../services/storage';
 
