@@ -40,7 +40,7 @@ export const Login = () => {
           <div className="logo-circle"><img src="./logo-pvcach.png" alt="PVCACH" className="logo-img-pvcach" /></div>
         </div>
 
-        <h1 className="login-title">Vigilancia de la Calidad del Agua</h1>
+        <h1 className="login-title elegant-title" style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Vigilancia de la Calidad del Agua - IPRESS</h1>
         <p className="login-subtitle">Ingresa tus credenciales para continuar</p>
 
         {errorMsg && (

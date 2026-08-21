@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700&display=swap');
 
 :root {
   --primary: #2563eb; /* Elegant Blue */
@@ -254,10 +254,11 @@ select.form-control {
 }
 
 .header-content {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  max-width: 1200px;
+  gap: 1.5rem;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 1rem;
   width: 100%;
@@ -489,14 +490,22 @@ select.form-control {
 }
 
 .logo {
-  font-size: 1.5rem;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.6rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--primary-dark);
   text-decoration: none;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+}
+
+.elegant-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .logo-icon {
