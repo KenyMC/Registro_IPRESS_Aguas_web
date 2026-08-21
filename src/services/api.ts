@@ -44,6 +44,42 @@ export interface SyncRequest {
   conductividad?: string;
 }
 
+export interface User {
+  usuario: string;
+  contrasena: string;
+  codigoRenipress: string;
+  red: string;
+  rol: string;
+  estado: string;
+}
+
+export const syncUser = async (userPayload: Partial<User>): Promise<boolean> => {
+  if (import.meta.env.VITE_APP_OFFLINE_MODE === 'true') {
+    return true;
+  }
+  
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({
+        tipo: 'usuario',
+        ...userPayload
+      }),
+    });
+
+    if (response.ok || response.type === 'opaque') {
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Network error during user sync:', error);
+    return false;
+  }
+};
+
 export const syncEntry = async (data: SyncRequest): Promise<boolean> => {
   try {
     // Note: We use mode 'no-cors' to avoid CORS issues from the browser to Apps Script.

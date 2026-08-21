@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter } from 'lucide-react';
 import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { syncEntry } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 export const DiagnosticoList = () => {
   const [records, setRecords] = useState<LocalRecord[]>([]);
   const [filterDate, setFilterDate] = useState<string>('');
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     loadRecords();
@@ -17,11 +19,24 @@ export const DiagnosticoList = () => {
     return () => {
       window.removeEventListener('recordsUpdated', loadRecords);
     };
-  }, [filterDate]);
+  }, [filterDate, user]);
 
   const loadRecords = () => {
+    if (!user) return;
+    
     let allRecords = getRecords().filter(r => r.tipo === 'diagnostico' && r.estado !== 'Inactivo');
     
+    // RBAC Filter
+    if (user.rol !== 'Administra todas las Redes') {
+      if (user.rol.includes('Red')) {
+        // Red Admin
+        allRecords = allRecords.filter(r => r.unidadEjecutora === user.red);
+      } else if (user.rol === 'IPRESS') {
+        // IPRESS User
+        allRecords = allRecords.filter(r => r.codigoRenipress === user.codigoRenipress);
+      }
+    }
+
     if (filterDate) {
       allRecords = allRecords.filter(r => {
         if (!r.fechaRegistro) return false;

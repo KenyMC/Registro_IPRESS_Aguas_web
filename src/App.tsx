@@ -1,16 +1,18 @@
-import { Routes, Route } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Header } from './components/Header';
 import { SplashScreen } from './components/SplashScreen';
-import { Home } from './pages/Home';
+import { Login } from './pages/Login';
 import { Diagnostico } from './pages/Diagnostico';
 import { Monitoreo } from './pages/Monitoreo';
 import { DiagnosticoList } from './pages/DiagnosticoList';
 import { MonitoreoList } from './pages/MonitoreoList';
+import { UserAdmin } from './pages/UserAdmin';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { fetchAndCacheIpressList } from './services/ipressData';
 import { syncPendingRecords } from './services/storage';
 
-function App() {
+const SplashManager = ({ children }: { children: React.ReactNode }) => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -21,40 +23,87 @@ function App() {
     };
 
     window.addEventListener('online', handleOnline);
-    // Also try syncing on app load if online
     if (navigator.onLine) {
       syncPendingRecords();
     }
 
+    const timer = setTimeout(() => setShowSplash(false), 2000);
     return () => {
       window.removeEventListener('online', handleOnline);
+      clearTimeout(timer);
     };
   }, []);
 
+  return showSplash ? <SplashScreen onFinish={() => {}} /> : <>{children}</>;
+};
+
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <SplashScreen onFinish={() => {}} />;
+  if (!user) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+};
+
+const ProtectedAdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <SplashScreen onFinish={() => {}} />;
+  if (!user || user.rol !== 'Administra todas las Redes') return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+
+const MainLayout = ({ children }: { children: React.ReactNode }) => (
+  <>
+    <Header />
+    <main style={{ flex: 1, padding: '2rem 0' }}>
+      {children}
+    </main>
+    <footer style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
+      <p>&copy; PVCACH Cusco {new Date().getFullYear()} - Todos los derechos reservados.</p>
+      <p className="signature-text">
+        Design by Keny Orlando MC
+      </p>
+    </footer>
+  </>
+);
+
+function App() {
   return (
-    <>
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-      <Header />
-      <main style={{ flex: 1, padding: '2rem 0' }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          
-          <Route path="/diagnostico" element={<DiagnosticoList />} />
-          <Route path="/diagnostico/nuevo" element={<Diagnostico />} />
-          <Route path="/diagnostico/editar/:id" element={<Diagnostico />} />
-          
-          <Route path="/monitoreo" element={<MonitoreoList />} />
-          <Route path="/monitoreo/nuevo" element={<Monitoreo />} />
-          <Route path="/monitoreo/editar/:id" element={<Monitoreo />} />
-        </Routes>
-      </main>
-      <footer style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}>
-        <p>&copy; PVCACH Cusco {new Date().getFullYear()} - Todos los derechos reservados.</p>
-        <p className="signature-text">
-          Design by Keny Orlando MC
-        </p>
-      </footer>
-    </>
+    <AuthProvider>
+      <Router>
+        <SplashManager>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            
+            <Route path="/" element={
+              <ProtectedRoute><MainLayout><DiagnosticoList /></MainLayout></ProtectedRoute>
+            } />
+            <Route path="/diagnostico" element={
+              <ProtectedRoute><MainLayout><DiagnosticoList /></MainLayout></ProtectedRoute>
+            } />
+            <Route path="/diagnostico/nuevo" element={
+              <ProtectedRoute><MainLayout><Diagnostico /></MainLayout></ProtectedRoute>
+            } />
+            <Route path="/diagnostico/editar/:id" element={
+              <ProtectedRoute><MainLayout><Diagnostico /></MainLayout></ProtectedRoute>
+            } />
+            
+            <Route path="/monitoreo" element={
+              <ProtectedRoute><MainLayout><MonitoreoList /></MainLayout></ProtectedRoute>
+            } />
+            <Route path="/monitoreo/nuevo" element={
+              <ProtectedRoute><MainLayout><Monitoreo /></MainLayout></ProtectedRoute>
+            } />
+            <Route path="/monitoreo/editar/:id" element={
+              <ProtectedRoute><MainLayout><Monitoreo /></MainLayout></ProtectedRoute>
+            } />
+
+            <Route path="/admin-usuarios" element={
+              <ProtectedAdminRoute><MainLayout><UserAdmin /></MainLayout></ProtectedAdminRoute>
+            } />
+          </Routes>
+        </SplashManager>
+      </Router>
+    </AuthProvider>
   );
 }
 
