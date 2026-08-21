@@ -35,8 +35,8 @@ export const Login = () => {
       <div className="login-glass-card animate-fade-in">
         
         <div className="login-logos" style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem' }}>
-          <div className="logo-circle"><img src="./logo-cusco.jpg" alt="Gobierno Regional Cusco" /></div>
-          <div className="logo-circle"><img src="./logo-diresa.png" alt="DIRESA Cusco" /></div>
+          <div className="logo-circle"><img src="./logo-cusco.jpg" alt="Gobierno Regional Cusco" className="logo-img-cusco" /></div>
+          <div className="logo-circle"><img src="./logo-diresa.png" alt="DIRESA Cusco" className="logo-img-diresa" /></div>
           <div className="logo-circle"><img src="./logo-pvcach.png" alt="PVCACH" className="logo-img-pvcach" /></div>
         </div>
 

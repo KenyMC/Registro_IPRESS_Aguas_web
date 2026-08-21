@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Header } from './components/Header';
 import { SplashScreen } from './components/SplashScreen';
+import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Diagnostico } from './pages/Diagnostico';
 import { Monitoreo } from './pages/Monitoreo';
@@ -74,7 +75,7 @@ function App() {
             <Route path="/login" element={<Login />} />
             
             <Route path="/" element={
-              <ProtectedRoute><MainLayout><DiagnosticoList /></MainLayout></ProtectedRoute>
+              <ProtectedRoute><MainLayout><Home /></MainLayout></ProtectedRoute>
             } />
             <Route path="/diagnostico" element={
               <ProtectedRoute><MainLayout><DiagnosticoList /></MainLayout></ProtectedRoute>
