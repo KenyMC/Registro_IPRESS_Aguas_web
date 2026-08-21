@@ -81,14 +81,14 @@ export const Header = () => {
               </button>
 
               {isMenuOpen && (
-                <div className="profile-dropdown glass-panel animate-fade-in" style={{ position: 'absolute', top: '100%', right: '0', marginTop: '0.5rem', padding: '0.5rem', minWidth: '200px', zIndex: 100, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div className="profile-dropdown glass-panel animate-fade-in" style={{ position: 'absolute', top: '100%', right: '0', marginTop: '0.5rem', padding: '0.5rem', minWidth: '200px', zIndex: 100, display: 'flex', flexDirection: 'column', gap: '0.25rem', color: 'var(--text-main)' }}>
                   <div style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)', marginBottom: '0.25rem' }}>
                     <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Rol:</p>
                     <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>{user.rol}</p>
                   </div>
                   
                   {user.rol === 'Administra todas las Redes' && (
-                    <Link to="/admin-usuarios" className="btn btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', background: 'transparent', color: 'var(--text)' }} onClick={() => setIsMenuOpen(false)}>
+                    <Link to="/admin-usuarios" className="btn btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-start', background: 'transparent', color: 'var(--text-main)' }} onClick={() => setIsMenuOpen(false)}>
                       <Users size={16} /> Administrar Usuarios
                     </Link>
                   )}

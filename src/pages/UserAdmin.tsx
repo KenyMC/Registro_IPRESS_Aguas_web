@@ -30,95 +30,97 @@ export const UserAdmin = () => {
   };
 
   return (
-    <div className="container animate-fade-in">
-      <div className="flex-between" style={{ marginBottom: '2rem' }}>
-        <h2 className="section-title" style={{ margin: 0, border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Shield size={24} style={{ color: 'var(--primary)' }} />
-          Panel de Administración de Usuarios
-        </h2>
-        <button className="btn btn-primary" onClick={() => setEditingUser({
-          usuario: '',
-          contrasena: '',
-          codigoRenipress: '',
-          red: '',
-          rol: 'IPRESS',
-          estado: 'Activo'
-        })}>
-          <Plus size={20} /> Nuevo Usuario
-        </button>
-      </div>
+    <>
+      <div className="container animate-fade-in">
+        <div className="flex-between" style={{ marginBottom: '2rem' }}>
+          <h2 className="section-title" style={{ margin: 0, border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Shield size={24} style={{ color: 'var(--primary)' }} />
+            Panel de Administración de Usuarios
+          </h2>
+          <button className="btn btn-primary" onClick={() => setEditingUser({
+            usuario: '',
+            contrasena: '',
+            codigoRenipress: '',
+            red: '',
+            rol: 'IPRESS',
+            estado: 'Activo'
+          })}>
+            <Plus size={20} /> Nuevo Usuario
+          </button>
+        </div>
 
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Contraseña</th>
-              <th>Red</th>
-              <th>Rol</th>
-              <th>Estado</th>
-              <th style={{ textAlign: 'right' }}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usersList.map((user, idx) => (
-              <tr key={idx} style={{ opacity: user.estado !== 'Activo' ? 0.6 : 1 }}>
-                <td style={{ fontWeight: 600 }}>{user.usuario}</td>
-                <td>••••••••</td>
-                <td>{user.red}</td>
-                <td>{user.rol}</td>
-                <td>
-                  <span className={`status-badge ${user.estado === 'Activo' ? 'success' : 'danger'}`}>
-                    {user.estado}
-                  </span>
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button onClick={() => handleEdit(user)} className="btn-icon" title="Editar" style={{ color: 'var(--primary)' }}>
-                    <Edit2 size={18} />
-                  </button>
-                  {user.estado === 'Activo' ? (
-                    <button 
-                      onClick={async () => {
-                        if(window.confirm(`¿Desea deshabilitar a ${user.usuario}?`)){
+        <div className="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Usuario</th>
+                <th>Contraseña</th>
+                <th>Red</th>
+                <th>Rol</th>
+                <th>Estado</th>
+                <th style={{ textAlign: 'right' }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usersList.map((user, idx) => (
+                <tr key={idx} style={{ opacity: user.estado !== 'Activo' ? 0.6 : 1 }}>
+                  <td style={{ fontWeight: 600 }}>{user.usuario}</td>
+                  <td>••••••••</td>
+                  <td>{user.red}</td>
+                  <td>{user.rol}</td>
+                  <td>
+                    <span className={`status-badge ${user.estado === 'Activo' ? 'success' : 'danger'}`}>
+                      {user.estado}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button onClick={() => handleEdit(user)} className="btn-icon" title="Editar" style={{ color: 'var(--primary)' }}>
+                      <Edit2 size={18} />
+                    </button>
+                    {user.estado === 'Activo' ? (
+                      <button 
+                        onClick={async () => {
+                          if(window.confirm(`¿Desea deshabilitar a ${user.usuario}?`)){
+                            setSaving(true);
+                            await syncUser({ ...user, estado: 'Inactivo' });
+                            await refreshUsers();
+                            setSaving(false);
+                          }
+                        }} 
+                        className="btn-icon" 
+                        title="Deshabilitar" 
+                        style={{ color: 'var(--danger)' }}
+                        disabled={saving}
+                      >
+                        <UserX size={18} />
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={async () => {
                           setSaving(true);
-                          await syncUser({ ...user, estado: 'Inactivo' });
+                          await syncUser({ ...user, estado: 'Activo' });
                           await refreshUsers();
                           setSaving(false);
-                        }
-                      }} 
-                      className="btn-icon" 
-                      title="Deshabilitar" 
-                      style={{ color: 'var(--danger)' }}
-                      disabled={saving}
-                    >
-                      <UserX size={18} />
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={async () => {
-                        setSaving(true);
-                        await syncUser({ ...user, estado: 'Activo' });
-                        await refreshUsers();
-                        setSaving(false);
-                      }} 
-                      className="btn-icon" 
-                      title="Habilitar" 
-                      style={{ color: 'var(--success)' }}
-                      disabled={saving}
-                    >
-                      <CheckCircle size={18} />
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                        }} 
+                        className="btn-icon" 
+                        title="Habilitar" 
+                        style={{ color: 'var(--success)' }}
+                        disabled={saving}
+                      >
+                        <CheckCircle size={18} />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {editingUser && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div className="glass-panel animate-fade-in" style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px' }}>
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
+          <div className="glass-panel animate-fade-in" style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary)' }}>
               {editingUser.usuario ? `Editar Usuario: ${editingUser.usuario}` : 'Crear Nuevo Usuario'}
             </h3>
@@ -183,7 +185,6 @@ export const UserAdmin = () => {
           </div>
         </div>
       )}
-
-    </div>
+    </>
   );
 };
