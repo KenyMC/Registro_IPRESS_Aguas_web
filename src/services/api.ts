@@ -102,7 +102,8 @@ export const syncEntry = async (data: SyncRequest): Promise<boolean> => {
   }
 };
 
-export const fetchRecordsFromServer = async (): Promise<unknown[]> => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const fetchRecordsFromServer = async (): Promise<any[]> => {
   try {
     const response = await fetch(SCRIPT_URL);
     if (!response.ok) {

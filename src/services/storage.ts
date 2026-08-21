@@ -42,7 +42,8 @@ export const getRecordById = (id: string): LocalRecord | undefined => {
   return getRecords().find(r => r.id === id);
 };
 
-export const mergeRecords = (serverRecords: LocalRecord[]): void => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const mergeRecords = (serverRecords: any[]): void => {
   const localRecords = getRecords();
   
   // We use UUID to match server records with local records.

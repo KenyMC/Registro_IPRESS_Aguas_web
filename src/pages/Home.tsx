@@ -11,7 +11,7 @@ export const Home: React.FC = () => {
     establecimientosUnicos: 0,
   });
 
-  const [chartData, setChartData] = useState<{ fecha: string; diagnosticos: number; monitoreos: number }[]>([]);
+  const [chartData, setChartData] = useState<{ date: string; Diagnósticos: number; Monitoreos: number }[]>([]);
 
   useEffect(() => {
     const loadData = () => {
