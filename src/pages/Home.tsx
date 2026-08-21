@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ClipboardList, Droplet, Building2, FileText, BarChart3 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getRecords } from '../services/storage';
+import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
 export const Home: React.FC = () => {
@@ -12,10 +13,22 @@ export const Home: React.FC = () => {
   });
 
   const [chartData, setChartData] = useState<{ date: string; Diagnósticos: number; Monitoreos: number }[]>([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadData = () => {
-      const records = getRecords();
+      if (!user) return;
+      
+      let records = getRecords().filter(r => r.estado !== 'Inactivo');
+      
+      // Filtro por Rol (RBAC)
+      if (user.rol !== 'Administra todas las Redes') {
+        if (user.rol.includes('Red')) {
+          records = records.filter(r => r.unidadEjecutora === user.red);
+        } else if (user.rol === 'IPRESS') {
+          records = records.filter(r => r.codigoRenipress === user.codigoRenipress);
+        }
+      }
       
       const diagnosticos = records.filter(r => r.tipo === 'diagnostico');
       const monitoreos = records.filter(r => r.tipo === 'monitoreo');
@@ -64,7 +77,8 @@ export const Home: React.FC = () => {
 
     window.addEventListener('recordsUpdated', loadData);
     return () => window.removeEventListener('recordsUpdated', loadData);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   return (
     <div className="container animate-fade-in">
