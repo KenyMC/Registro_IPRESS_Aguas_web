@@ -23,7 +23,7 @@ export const Login = () => {
       } else {
         setErrorMsg(result.message || 'Error de autenticación');
       }
-    } catch (err) {
+    } catch {
       setErrorMsg('Error al intentar iniciar sesión.');
     } finally {
       setLoading(false);

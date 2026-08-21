@@ -42,7 +42,7 @@ export const getRecordById = (id: string): LocalRecord | undefined => {
   return getRecords().find(r => r.id === id);
 };
 
-export const mergeRecords = (serverRecords: any[]): void => {
+export const mergeRecords = (serverRecords: LocalRecord[]): void => {
   const localRecords = getRecords();
   
   // We use UUID to match server records with local records.

@@ -19,6 +19,7 @@ export const DiagnosticoList = () => {
     return () => {
       window.removeEventListener('recordsUpdated', loadRecords);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterDate, user]);
 
   const loadRecords = () => {

@@ -102,7 +102,7 @@ export const syncEntry = async (data: SyncRequest): Promise<boolean> => {
   }
 };
 
-export const fetchRecordsFromServer = async (): Promise<any[]> => {
+export const fetchRecordsFromServer = async (): Promise<unknown[]> => {
   try {
     const response = await fetch(SCRIPT_URL);
     if (!response.ok) {
