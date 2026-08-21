@@ -1,4 +1,4 @@
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Header } from './components/Header';
 import { SplashScreen } from './components/SplashScreen';
@@ -69,8 +69,7 @@ const MainLayout = ({ children }: { children: React.ReactNode }) => (
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <SplashManager>
+      <SplashManager>
           <Routes>
             <Route path="/login" element={<Login />} />
             
@@ -101,8 +100,7 @@ function App() {
               <ProtectedAdminRoute><MainLayout><UserAdmin /></MainLayout></ProtectedAdminRoute>
             } />
           </Routes>
-        </SplashManager>
-      </Router>
+      </SplashManager>
     </AuthProvider>
   );
 }
