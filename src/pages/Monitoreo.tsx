@@ -10,6 +10,12 @@ const UNIDADES_EJECUTORAS = [
   "Red CCE", "Red Chumbivilcas", "Red La Convencion", "Hospital", "Otro"
 ];
 
+const PUNTOS_MONITOREO = [
+  "Captacion Manante", "Captacion Riachuelo", "Captacion Pozo", "Camion Cisterna",
+  "Reservorio", "Cisterna", "SS.HH.", "Cocina", "Comedor", "Sala de partos",
+  "Sala de Operaciones", "Laboratorio", "Nutrición", "UCI", "Otros"
+];
+
 const validateParameter = (name: string, value: string) => {
   if (!value) return null;
   const num = parseFloat(value);
@@ -66,6 +72,7 @@ export const Monitoreo = () => {
 
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
+  const [puntoOption, setPuntoOption] = useState<string>('');
 
   useEffect(() => {
     const list = getCachedIpressList();
@@ -79,6 +86,13 @@ export const Monitoreo = () => {
         setFormData(existing);
         if (existing.unidadEjecutora === 'Otro') {
           setIsOtroUnidad(true);
+        }
+        if (existing.puntosMonitoreo) {
+          if (!PUNTOS_MONITOREO.includes(existing.puntosMonitoreo)) {
+            setPuntoOption('Otros');
+          } else {
+            setPuntoOption(existing.puntosMonitoreo);
+          }
         }
       }
     } else {
@@ -111,6 +125,16 @@ export const Monitoreo = () => {
         }));
         return;
       }
+    }
+
+    if (name === 'puntoOption') {
+      setPuntoOption(value);
+      if (value !== 'Otros') {
+        setFormData(prev => ({ ...prev, puntosMonitoreo: value }));
+      } else {
+        setFormData(prev => ({ ...prev, puntosMonitoreo: '' }));
+      }
+      return;
     }
 
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -201,6 +225,23 @@ export const Monitoreo = () => {
         <div className="form-section">
           <h3 className="section-heading">Datos Técnicos de Monitoreo</h3>
           
+          <div className="form-group">
+            <label className="form-label">Puntos de Monitoreo</label>
+            <select required name="puntoOption" className="form-control" value={puntoOption} onChange={handleChange}>
+              <option value="">Seleccione un punto...</option>
+              {PUNTOS_MONITOREO.map(punto => (
+                <option key={punto} value={punto}>{punto}</option>
+              ))}
+            </select>
+          </div>
+          
+          {puntoOption === 'Otros' && (
+            <div className="form-group animate-fade-in">
+              <label className="form-label">Especifique el Punto de Monitoreo</label>
+              <input required type="text" name="puntosMonitoreo" className="form-control" value={formData.puntosMonitoreo || ''} onChange={handleChange} placeholder="Ingrese el punto manualmente" />
+            </div>
+          )}
+
           <div className="form-group">
             <label className="form-label">
               Cloro Residual (mg/L)

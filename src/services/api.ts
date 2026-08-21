@@ -36,6 +36,7 @@ export interface SyncRequest {
   firma?: string;
 
   // Monitoreo
+  puntosMonitoreo?: string;
   cloro?: string;
   temperatura?: string;
   ph?: string;
