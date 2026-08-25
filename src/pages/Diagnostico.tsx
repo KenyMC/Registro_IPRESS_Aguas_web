@@ -92,6 +92,7 @@ export const Diagnostico = () => {
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
   const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
+  const [hasExistingSignatureUrl, setHasExistingSignatureUrl] = useState(false);
 
   useEffect(() => {
     const list = getCachedIpressList();
@@ -101,16 +102,21 @@ export const Diagnostico = () => {
   useEffect(() => {
     if (id) {
       const existing = getRecordById(id);
-      if (existing) {
+      if (existing && existing.tipo === 'diagnostico') {
         setFormData(existing);
         if (existing.unidadEjecutora === 'Otro') {
           setIsOtroUnidad(true);
         }
         if (existing.firma) {
-          setIsSignatureEmpty(false);
-          setTimeout(() => {
-            sigCanvas.current?.fromDataURL(existing.firma!);
-          }, 100);
+          if (existing.firma.startsWith('http')) {
+            setHasExistingSignatureUrl(true);
+            setIsSignatureEmpty(false);
+          } else {
+            setIsSignatureEmpty(false);
+            setTimeout(() => {
+              sigCanvas.current?.fromDataURL(existing.firma!);
+            }, 100);
+          }
         }
       }
     } else {
@@ -197,6 +203,7 @@ export const Diagnostico = () => {
     sigCanvas.current?.clear();
     setFormData(prev => ({ ...prev, firma: '' }));
     setIsSignatureEmpty(true);
+    setHasExistingSignatureUrl(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,10 +220,15 @@ export const Diagnostico = () => {
       firmaBase64 = dataUrl.split(',')[1];
       firmaName = 'firma.png';
       firmaMime = 'image/png';
-    } else if (firmaBase64 && firmaBase64.startsWith('data:image')) {
-      firmaBase64 = firmaBase64.split(',')[1];
-      firmaName = 'firma.png';
-      firmaMime = 'image/png';
+    } else if (hasExistingSignatureUrl) {
+      firmaBase64 = formData.firma || '';
+    }
+
+    if (!firmaBase64 && !hasExistingSignatureUrl) {
+      setErrorMsg('Debe ingresar la firma del responsable.');
+      setIsSubmitting(false);
+      window.scrollTo(0, document.body.scrollHeight);
+      return;
     }
 
     const payload: SyncRequest = {
@@ -517,19 +529,27 @@ export const Diagnostico = () => {
                 Limpiar Firma
               </button>
             </label>
-            <div className="signature-container" style={{ position: 'relative' }}>
-              {isSignatureEmpty && (
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', pointerEvents: 'none' }}>
-                  <PenTool size={48} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
-                  <p style={{ margin: 0, fontSize: '1.1rem', opacity: 0.6, fontWeight: 500 }}>Ponga su Firma aquí</p>
+            <div className="signature-container" style={{ position: 'relative', minHeight: '200px', border: '1px solid var(--border)', borderRadius: '8px' }}>
+              {hasExistingSignatureUrl ? (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <img src={formData.firma} alt="Firma Existente" style={{ maxHeight: '100%', maxWidth: '100%' }} />
                 </div>
+              ) : (
+                <>
+                  {isSignatureEmpty && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+                      <PenTool size={48} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
+                      <p style={{ margin: 0, fontSize: '1.1rem', opacity: 0.6, fontWeight: 500 }}>Ponga su Firma aquí</p>
+                    </div>
+                  )}
+                  <SignatureCanvas 
+                    ref={sigCanvas} 
+                    onBegin={() => setIsSignatureEmpty(false)} 
+                    penColor="black" 
+                    canvasProps={{ className: 'signature-canvas' }} 
+                  />
+                </>
               )}
-              <SignatureCanvas 
-                ref={sigCanvas} 
-                onBegin={() => setIsSignatureEmpty(false)} 
-                penColor="black" 
-                canvasProps={{ className: 'sigCanvas' }} 
-              />
             </div>
           </div>
         </div>
