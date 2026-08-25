@@ -531,26 +531,15 @@ export const Diagnostico = () => {
             </label>
             <div className="signature-container" style={{ position: 'relative', minHeight: '200px', border: '1px solid var(--border)', borderRadius: '8px' }}>
               {hasExistingSignatureUrl ? (
-                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '1rem' }}>
-                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)', fontSize: '0.95rem' }}>Firma Registrada</h4>
-                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center', backgroundColor: '#f9fafb', borderRadius: '8px', padding: '1rem', border: '1px dashed var(--border)' }}>
-                    <img 
-                      src={formData.firma} 
-                      alt="Firma Registrada" 
-                      style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain' }} 
-                      onError={(e) => {
-                        // Fallback in case Drive blocks the image rendering (permissions issue)
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        const parent = target.parentElement;
-                        if (parent) {
-                          const fallback = document.createElement('div');
-                          fallback.innerHTML = `<p style="color: #ef4444; font-size: 0.85rem; text-align: center; margin: 0;">Error al cargar la imagen. Verifica los permisos públicos en Google Drive.</p><a href="${formData.firma}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--primary);">Abrir enlace externo</a>`;
-                          parent.appendChild(fallback);
-                        }
-                      }}
-                    />
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '2rem' }}>
+                  <div style={{ backgroundColor: 'rgba(76, 175, 80, 0.1)', color: '#4caf50', padding: '1rem', borderRadius: '50%', marginBottom: '1rem' }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
                   </div>
+                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)' }}>Firma Registrada</h4>
+                  <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>La firma ya está guardada en Google Drive.</p>
+                  <a href={formData.firma} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: 'var(--primary)', color: 'white', padding: '0.5rem 1rem', borderRadius: '4px', textDecoration: 'none', fontSize: '0.9rem' }}>
+                    Ver Firma
+                  </a>
                 </div>
               ) : (
                 <>
