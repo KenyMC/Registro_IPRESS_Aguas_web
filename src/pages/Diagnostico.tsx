@@ -490,6 +490,8 @@ export const Diagnostico = () => {
             <label className="form-label">Hora</label>
             <input required type="time" name="hora" className="form-control" value={formData.hora || ''} onChange={handleChange} />
           </div>
+        </div>
+
         {/* SECCIÓN 3: RESPONSABLE Y FINALIZACIÓN */}
         <div className="form-section">
           <h3 className="section-heading">Datos del responsable</h3>
