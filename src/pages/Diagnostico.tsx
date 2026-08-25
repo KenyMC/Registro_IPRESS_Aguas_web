@@ -531,8 +531,15 @@ export const Diagnostico = () => {
             </label>
             <div className="signature-container" style={{ position: 'relative', minHeight: '200px', border: '1px solid var(--border)', borderRadius: '8px' }}>
               {hasExistingSignatureUrl ? (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                  <img src={formData.firma} alt="Firma Existente" style={{ maxHeight: '100%', maxWidth: '100%' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '2rem' }}>
+                  <div style={{ backgroundColor: 'rgba(76, 175, 80, 0.1)', color: '#4caf50', padding: '1rem', borderRadius: '50%', marginBottom: '1rem' }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+                  </div>
+                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)' }}>Firma Registrada</h4>
+                  <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>La firma ya está guardada en Google Drive.</p>
+                  <a href={formData.firma} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', backgroundColor: 'var(--primary)', color: 'white', padding: '0.5rem 1rem', borderRadius: '4px', textDecoration: 'none', fontSize: '0.9rem' }}>
+                    Ver Firma
+                  </a>
                 </div>
               ) : (
                 <>
