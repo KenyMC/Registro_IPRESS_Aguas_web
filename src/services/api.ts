@@ -31,9 +31,28 @@ export interface SyncRequest {
   cisternaOperativa?: string;
   tratamientoAgua?: string;
   observaciones?: string;
+  fecha?: string;
+  hora?: string;
   responsable?: string;
   dni?: string;
-  firma?: string;
+  
+  // Fotos Base64
+  foto1Base64?: string;
+  foto1Name?: string;
+  foto1Mime?: string;
+  
+  foto2Base64?: string;
+  foto2Name?: string;
+  foto2Mime?: string;
+  
+  foto3Base64?: string;
+  foto3Name?: string;
+  foto3Mime?: string;
+  
+  // Firma
+  firma?: string; // (Mantenemos firma como base64 pero enviaremos firmaMime también si es posible)
+  firmaName?: string;
+  firmaMime?: string;
 
   // Monitoreo
   puntosMonitoreo?: string;

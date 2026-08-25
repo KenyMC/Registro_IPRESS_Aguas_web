@@ -31,6 +31,31 @@ const RecenterMap = ({ lat, lng }: { lat: number, lng: number }) => {
   return null;
 };
 
+// Utilidad para comprimir imágenes y obtener el base64 sin prefijo
+const imageToBase64 = (file: File, maxWidth = 800): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const ratio = Math.min(maxWidth / img.width, 1);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        const base64String = dataUrl.split(',')[1];
+        resolve(base64String);
+      };
+      img.onerror = (e) => reject(e);
+    };
+    reader.onerror = (e) => reject(e);
+  });
+};
+
 const UNIDADES_EJECUTORAS = [
   "Red Cusco Norte", "Red Cusco Sur", "Red Cusco VRAEM", 
   "Red CCE", "Red Chumbivilcas", "Red La Convencion", "Hospital", "Otro"
@@ -128,6 +153,23 @@ export const Diagnostico = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'foto1' | 'foto2' | 'foto3') => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      try {
+        const base64 = await imageToBase64(file);
+        setFormData(prev => ({
+          ...prev,
+          [`${fieldName}Base64`]: base64,
+          [`${fieldName}Name`]: file.name,
+          [`${fieldName}Mime`]: 'image/jpeg',
+        }));
+      } catch (err) {
+        alert('Error al procesar la imagen');
+      }
+    }
+  };
+
 
   const handleGetLocation = () => {
     if ('geolocation' in navigator) {
@@ -163,8 +205,18 @@ export const Diagnostico = () => {
     setErrorMsg('');
 
     let firmaBase64 = formData.firma || '';
+    let firmaName = formData.firmaName || '';
+    let firmaMime = formData.firmaMime || '';
+    
     if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-      firmaBase64 = sigCanvas.current.toDataURL('image/png');
+      const dataUrl = sigCanvas.current.toDataURL('image/png');
+      firmaBase64 = dataUrl.split(',')[1];
+      firmaName = 'firma.png';
+      firmaMime = 'image/png';
+    } else if (firmaBase64 && firmaBase64.startsWith('data:image')) {
+      firmaBase64 = firmaBase64.split(',')[1];
+      firmaName = 'firma.png';
+      firmaMime = 'image/png';
     }
 
     const payload: SyncRequest = {
@@ -172,6 +224,8 @@ export const Diagnostico = () => {
       uuid: formData.uuid || crypto.randomUUID(),
       fechaRegistro: formData.fechaRegistro || new Date().toISOString(),
       firma: firmaBase64,
+      firmaName,
+      firmaMime,
     };
 
     // Try to sync to Google Apps Script
@@ -412,8 +466,30 @@ export const Diagnostico = () => {
               <option value="No">No</option>
             </select>
           </div>
-        </div>
-
+          
+          <div className="form-group">
+            <label className="form-label">Foto Observacion 1</label>
+            <input type="file" accept="image/*" className="form-control" onChange={(e) => handleFileChange(e, 'foto1')} />
+            {formData.foto1Name && <small style={{ color: 'var(--primary)' }}>Cargado: {formData.foto1Name}</small>}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Foto Observacion 2</label>
+            <input type="file" accept="image/*" className="form-control" onChange={(e) => handleFileChange(e, 'foto2')} />
+            {formData.foto2Name && <small style={{ color: 'var(--primary)' }}>Cargado: {formData.foto2Name}</small>}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Foto Observacion 3</label>
+            <input type="file" accept="image/*" className="form-control" onChange={(e) => handleFileChange(e, 'foto3')} />
+            {formData.foto3Name && <small style={{ color: 'var(--primary)' }}>Cargado: {formData.foto3Name}</small>}
+          </div>
+          <div className="form-group">
+            <label className="form-label">Fecha</label>
+            <input required type="date" name="fecha" className="form-control" value={formData.fecha || ''} onChange={handleChange} />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Hora</label>
+            <input required type="time" name="hora" className="form-control" value={formData.hora || ''} onChange={handleChange} />
+          </div>
         {/* SECCIÓN 3: RESPONSABLE Y FINALIZACIÓN */}
         <div className="form-section">
           <h3 className="section-heading">Datos del responsable</h3>
@@ -426,6 +502,7 @@ export const Diagnostico = () => {
             <label className="form-label">DNI</label>
             <input required type="number" name="dni" className="form-control" value={formData.dni || ''} onChange={handleChange} />
           </div>
+          
           <div className="form-group">
             <label className="form-label">Observaciones</label>
             <textarea required name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
