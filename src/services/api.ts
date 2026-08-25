@@ -35,23 +35,23 @@ export interface SyncRequest {
   hora?: string;
   responsable?: string;
   dni?: string;
-  
+
   // Fotos Base64 y URLs existentes
   foto1Base64?: string;
   foto1Name?: string;
   foto1Mime?: string;
   urlFoto1?: string;
-  
+
   foto2Base64?: string;
   foto2Name?: string;
   foto2Mime?: string;
   urlFoto2?: string;
-  
+
   foto3Base64?: string;
   foto3Name?: string;
   foto3Mime?: string;
   urlFoto3?: string;
-  
+
   // Firma
   firma?: string; // (Mantenemos firma como base64 pero enviaremos firmaMime también si es posible)
   firmaName?: string;
@@ -79,7 +79,7 @@ export const syncUser = async (userPayload: Partial<User>): Promise<boolean> => 
   if (import.meta.env.VITE_APP_OFFLINE_MODE === 'true') {
     return true;
   }
-  
+
   try {
     const response = await fetch(SCRIPT_URL, {
       method: 'POST',

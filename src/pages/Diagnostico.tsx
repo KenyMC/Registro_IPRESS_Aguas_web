@@ -57,12 +57,12 @@ const imageToBase64 = (file: File, maxWidth = 800): Promise<string> => {
 };
 
 const UNIDADES_EJECUTORAS = [
-  "Red Cusco Norte", "Red Cusco Sur", "Red Cusco VRAEM", 
+  "Red Cusco Norte", "Red Cusco Sur", "Red Cusco VRAEM",
   "Red CCE", "Red Chumbivilcas", "Red La Convencion", "Hospital", "Otro"
 ];
 
 const FUENTES_AGUA = [
-  "La Red Publica", "Manante", "Riachuelo", "Pozo", 
+  "La Red Publica", "Manante", "Riachuelo", "Pozo",
   "Camion Cisterna", "Agua de lluvia"
 ];
 
@@ -70,7 +70,7 @@ export const Diagnostico = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const sigCanvas = useRef<SignatureCanvas>(null);
-  
+
   const [formData, setFormData] = useState<Partial<SyncRequest>>({
     tipo: 'diagnostico',
     estado: 'Activo',
@@ -88,7 +88,7 @@ export const Diagnostico = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  
+
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
   const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
@@ -131,8 +131,8 @@ export const Diagnostico = () => {
     if (name === 'unidadEjecutora') {
       const isOtro = value === 'Otro' || value === '';
       setIsOtroUnidad(isOtro);
-      setFormData(prev => ({ 
-        ...prev, 
+      setFormData(prev => ({
+        ...prev,
         unidadEjecutora: value,
         nombreIpress: '',
         codigoRenipress: '',
@@ -214,7 +214,7 @@ export const Diagnostico = () => {
     let firmaBase64 = formData.firma || '';
     let firmaName = formData.firmaName || '';
     let firmaMime = formData.firmaMime || '';
-    
+
     if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
       const dataUrl = sigCanvas.current.toDataURL('image/png');
       firmaBase64 = dataUrl.split(',')[1];
@@ -242,21 +242,21 @@ export const Diagnostico = () => {
 
     // Try to sync to Google Apps Script
     const isSynced = await syncEntry(payload);
-    
+
     // Save locally regardless of sync success
     const localRecord: LocalRecord = {
       ...payload,
       id: id || crypto.randomUUID(),
       isSynced
     };
-    
+
     saveRecord(localRecord);
     setIsSubmitting(false);
 
     if (!isSynced) {
       alert('Se guardó localmente, pero hubo un error al sincronizar con el servidor.');
     }
-    
+
     navigate('/diagnostico');
   };
 
@@ -278,11 +278,11 @@ export const Diagnostico = () => {
       )}
 
       <form onSubmit={handleSubmit} style={{ padding: '0 0 2rem 0' }}>
-        
+
         {/* SECCIÓN 1: IDENTIFICACIÓN Y UBICACIÓN */}
         <div className="form-section">
           <h3 className="section-heading">Datos de Ubicación de la IPRESS</h3>
-          
+
           <div className="form-group">
             <label className="form-label">Unidad Ejecutora</label>
             <select required name="unidadEjecutora" className="form-control" value={formData.unidadEjecutora || ''} onChange={handleChange}>
@@ -310,7 +310,7 @@ export const Diagnostico = () => {
             <label className="form-label">Codigo RENIPRESS</label>
             <input required type="number" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">Provincia</label>
             <input required type="text" name="provincia" className="form-control" value={formData.provincia || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
@@ -338,7 +338,7 @@ export const Diagnostico = () => {
               <MapPin size={16} /> Obtener Ubicación
             </button>
           </div>
-          
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
             <div>
               <div className="form-group">
@@ -361,13 +361,13 @@ export const Diagnostico = () => {
 
             <div style={{ minHeight: '300px', backgroundColor: '#e2e8f0', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
               {formData.latitud && formData.longitud ? (
-                <MapContainer 
-                  center={[parseFloat(formData.latitud) || 0, parseFloat(formData.longitud) || 0]} 
-                  zoom={15} 
+                <MapContainer
+                  center={[parseFloat(formData.latitud) || 0, parseFloat(formData.longitud) || 0]}
+                  zoom={15}
                   style={{ height: '100%', width: '100%' }}
                 >
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <Marker 
+                  <Marker
                     draggable={true}
                     eventHandlers={{
                       dragend: (e) => {
@@ -380,7 +380,7 @@ export const Diagnostico = () => {
                         }));
                       }
                     }}
-                    position={[parseFloat(formData.latitud) || 0, parseFloat(formData.longitud) || 0]} 
+                    position={[parseFloat(formData.latitud) || 0, parseFloat(formData.longitud) || 0]}
                   />
                   <RecenterMap lat={parseFloat(formData.latitud) || 0} lng={parseFloat(formData.longitud) || 0} />
                 </MapContainer>
@@ -397,7 +397,7 @@ export const Diagnostico = () => {
         {/* SECCIÓN 2: SISTEMA DE AGUA */}
         <div className="form-section">
           <h3 className="section-heading">Datos de la fuente de agua de la IPRESS</h3>
-          
+
           <div className="form-group">
             <label className="form-label">La IPRESS cuenta con sistema de abastecimiento de agua propio</label>
             <select required name="aguaPropio" className="form-control" value={formData.aguaPropio || 'No'} onChange={handleChange}>
@@ -478,7 +478,7 @@ export const Diagnostico = () => {
               <option value="No">No</option>
             </select>
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">Foto Observacion 1</label>
             <input type="file" accept="image/*" className="form-control" onChange={(e) => handleFileChange(e, 'foto1')} />
@@ -507,7 +507,7 @@ export const Diagnostico = () => {
         {/* SECCIÓN 3: RESPONSABLE Y FINALIZACIÓN */}
         <div className="form-section">
           <h3 className="section-heading">Datos del responsable</h3>
-          
+
           <div className="form-group">
             <label className="form-label">Nombre del responsable de la vigilancia de la calidad del agua</label>
             <input required type="text" name="responsable" className="form-control" value={formData.responsable || ''} onChange={handleChange} />
@@ -516,7 +516,7 @@ export const Diagnostico = () => {
             <label className="form-label">DNI</label>
             <input required type="number" name="dni" className="form-control" value={formData.dni || ''} onChange={handleChange} />
           </div>
-          
+
           <div className="form-group">
             <label className="form-label">Observaciones</label>
             <textarea required name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
@@ -531,12 +531,58 @@ export const Diagnostico = () => {
             </label>
             <div className="signature-container" style={{ position: 'relative', minHeight: '200px', border: '1px solid var(--border)', borderRadius: '8px' }}>
               {hasExistingSignatureUrl ? (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '1rem', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
-                  <img 
-                    src={formData.firma} 
-                    alt="Firma Registrada" 
-                    style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain' }} 
-                  />
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '1rem' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)', fontSize: '0.95rem' }}>Firma Registrada</h4>
+                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center', backgroundColor: '#f9fafb', borderRadius: '8px', padding: '1rem', border: '1px dashed var(--border)' }}>
+                    <img 
+                      src={formData.firma} 
+                      alt="Firma Registrada" 
+                      /* 
+                       * TÉCNICA DE EVASIÓN CORS: 
+                       * 'no-referrer' evita que el navegador envíe la cabecera HTTP Referer. 
+                       * Esto engaña a Google Drive haciéndole creer que la petición es directa 
+                       * y no originada desde un dominio externo (localhost/github pages), previniendo el bloqueo CORS. 
+                       */
+                      referrerPolicy="no-referrer"
+                      style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain' }} 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        
+                        /* SISTEMA DE TRIPLE FALLBACK */
+                        
+                        // 1. Si falla la URL original (uc?export=view), intentamos con el CDN directo (lh3)
+                        // lh3.googleusercontent.com es una red de entrega de contenido (CDN) de Google que a menudo 
+                        // tiene políticas CORS más relajadas para servir imágenes públicamente.
+                        if (target.src.includes('uc?export=view')) {
+                          const fileId = formData.firma.split('id=')[1];
+                          if (fileId) {
+                            target.src = `https://lh3.googleusercontent.com/d/${fileId}`;
+                            return;
+                          }
+                        }
+                        
+                        // 2. Si lh3 falla, intentamos con la API de generación de miniaturas (thumbnail)
+                        // Esta API genera una previsualización dinámica y suele evadir bloqueos persistentes.
+                        if (target.src.includes('lh3.googleusercontent.com')) {
+                          const fileId = formData.firma.split('id=')[1];
+                          if (fileId) {
+                            target.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+                            return;
+                          }
+                        }
+                        
+                        // 3. Si todos los métodos automáticos fallan (restricciones extremas del navegador como 
+                        // bloqueo de cookies de terceros), mostramos un fallback seguro con un botón.
+                        target.style.display = 'none';
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const fallback = document.createElement('div');
+                          fallback.innerHTML = `<p style="color: #ef4444; font-size: 0.85rem; text-align: center; margin: 0;">Firma guardada, pero el navegador bloquea la previsualización.</p><a href="${formData.firma}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--primary);">Abrir Firma en nueva pestaña</a>`;
+                          parent.appendChild(fallback);
+                        }
+                      }}
+                    />
+                  </div>
                 </div>
               ) : (
                 <>
@@ -546,11 +592,11 @@ export const Diagnostico = () => {
                       <p style={{ margin: 0, fontSize: '1.1rem', opacity: 0.6, fontWeight: 500 }}>Ponga su Firma aquí</p>
                     </div>
                   )}
-                  <SignatureCanvas 
-                    ref={sigCanvas} 
-                    onBegin={() => setIsSignatureEmpty(false)} 
-                    penColor="black" 
-                    canvasProps={{ className: 'signature-canvas' }} 
+                  <SignatureCanvas
+                    ref={sigCanvas}
+                    onBegin={() => setIsSignatureEmpty(false)}
+                    penColor="black"
+                    canvasProps={{ className: 'signature-canvas' }}
                   />
                 </>
               )}
