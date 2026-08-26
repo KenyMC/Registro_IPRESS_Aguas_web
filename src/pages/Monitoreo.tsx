@@ -477,101 +477,82 @@ export const Monitoreo = () => {
           </div>
           
           <div className="form-group" style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label className="form-label" style={{ margin: 0 }}>Firma del Inspector</label>
-              <button 
-                type="button" 
-                onClick={clearSignature}
-                className="btn btn-secondary btn-sm"
-                style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-              >
-                <RefreshCw size={12} /> Limpiar
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              Firma
+              <button type="button" onClick={clearSignature} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.875rem' }}>
+                Limpiar Firma
               </button>
-            </div>
-            
-            <div style={{ 
-              border: signatureError ? '2px solid var(--danger)' : '1px solid var(--border)', 
-              borderRadius: '8px', 
-              backgroundColor: '#fff',
-              position: 'relative',
-              overflow: 'hidden'
-            }}>
-              <SignatureCanvas
-                ref={sigCanvas}
-                penColor="black"
-                canvasProps={{
-                  width: 500,
-                  height: 200,
-                  className: 'signature-canvas',
-                  style: { width: '100%', height: '200px' }
-                }}
-                onEnd={() => setIsSignatureEmpty(false)}
-              />
-              
-              {!isSignatureEmpty && !isSignatureDirty && hasExistingSignatureUrl && (
-                <div style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  backgroundColor: 'rgba(255,255,255,0.9)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 10
-                }}>
-                  {isSignatureLoading && (
-                    <RefreshCw className="animate-spin" style={{ color: 'var(--primary)', marginBottom: '1rem' }} />
-                  )}
-                  {formData.firma || formData.urlFirma ? (
+            </label>
+            <div className="signature-container" style={{ position: 'relative', minHeight: '200px', border: '1px solid var(--border)', borderRadius: '8px' }}>
+              {hasExistingSignatureUrl ? (
+                <div style={{ width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '1rem' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)', fontSize: '0.95rem' }}>Firma Registrada</h4>
+                  <div style={{ width: '100%', display: 'flex', justifyContent: 'center', backgroundColor: '#f9fafb', borderRadius: '8px', padding: '1rem', border: '1px dashed var(--border)' }}>
+                    {isSignatureLoading && (
+                      <div style={{ position: 'absolute', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+                        <RefreshCw className="animate-spin" size={24} color="var(--primary)" />
+                        <span style={{ marginLeft: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Cargando firma...</span>
+                      </div>
+                    )}
                     <img 
-                      src={formData.firma ? `data:image/png;base64,${formData.firma}` : formData.urlFirma} 
-                      alt="Firma" 
-                      style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
-                      onLoad={() => {
-                        setIsSignatureLoading(false);
-                        loadSignatureFromUrl();
-                      }}
+                      src={formData.firma} 
+                      alt="Firma Registrada" 
                       referrerPolicy="no-referrer"
-                    />
-                  ) : null}
-                  <div style={{ position: 'absolute', bottom: '10px', right: '10px', display: 'flex', gap: '0.5rem' }}>
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setIsSignatureDirty(true);
-                        setIsSignatureEmpty(true);
-                        sigCanvas.current?.clear();
+                      style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain', display: isSignatureLoading ? 'none' : 'block' }} 
+                      onLoad={() => setIsSignatureLoading(false)}
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        if (target.src.includes('uc?export=view')) {
+                          const fileId = formData.firma!.split('id=')[1];
+                          if (fileId) {
+                            target.src = `https://lh3.googleusercontent.com/d/${fileId}`;
+                            return;
+                          }
+                        }
+                        if (target.src.includes('lh3.googleusercontent.com')) {
+                          const fileId = formData.firma!.split('id=')[1];
+                          if (fileId) {
+                            target.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+                            return;
+                          }
+                        }
+                        target.style.display = 'none';
+                        setIsSignatureLoading(false);
+                        const parent = target.parentElement;
+                        if (parent) {
+                          const fallback = document.createElement('div');
+                          fallback.innerHTML = `<p style="color: #ef4444; font-size: 0.85rem; text-align: center; margin: 0;">Firma guardada, pero el navegador bloquea la previsualización.</p><a href="${formData.firma}" target="_blank" rel="noopener noreferrer" style="display: inline-block; margin-top: 0.5rem; font-size: 0.85rem; color: var(--primary);">Abrir Firma en nueva pestaña</a>`;
+                          parent.appendChild(fallback);
+                        }
                       }}
-                      className="btn btn-primary btn-sm"
-                      style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', opacity: 0.9 }}
-                    >
-                      <PenTool size={14} /> Editar Firma
-                    </button>
+                    />
                   </div>
                 </div>
-              )}
-              
-              {isSignatureEmpty && (
-                <div style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  color: 'var(--text-muted)',
-                  pointerEvents: 'none',
-                  opacity: 0.5
-                }}>
-                  Firme aquí
-                </div>
+              ) : (
+                <>
+                  {isSignatureEmpty && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+                      <PenTool size={48} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
+                      <p style={{ margin: 0, fontSize: '1.1rem', opacity: 0.6, fontWeight: 500 }}>Ponga su Firma aquí</p>
+                    </div>
+                  )}
+                  <SignatureCanvas
+                    ref={sigCanvas}
+                    onBegin={() => {
+                      setIsSignatureEmpty(false);
+                      setSignatureError(false);
+                      setIsSignatureDirty(true);
+                    }}
+                    penColor="black"
+                    canvasProps={{ className: 'signature-canvas' }}
+                  />
+                </>
               )}
             </div>
             {signatureError && (
-              <small style={{ color: 'var(--danger)', display: 'block', marginTop: '0.25rem' }}>
-                La firma es obligatoria
-              </small>
+              <p style={{ color: 'var(--danger)', fontSize: '0.875rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <PenTool size={14} /> Debe ingresar la firma del responsable para guardar.
+              </p>
             )}
           </div>
         </div>
