@@ -156,7 +156,7 @@ export const Diagnostico = () => {
         const fallbackFecha = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
         const fallbackHora = now.toTimeString().split(' ')[0].substring(0, 5);
         
-        let fechaLimpia = existing.fecha || fallbackFecha;
+        let fechaLimpia: any = existing.fecha || fallbackFecha;
         // Fix for timestamps coming from google sheets
         if (typeof fechaLimpia === 'string' && fechaLimpia.includes('T')) {
           fechaLimpia = fechaLimpia.split('T')[0];
@@ -164,7 +164,7 @@ export const Diagnostico = () => {
           fechaLimpia = fechaLimpia.toISOString().split('T')[0];
         }
 
-        let horaLimpia = existing.hora || fallbackHora;
+        let horaLimpia: any = existing.hora || fallbackHora;
         if (horaLimpia instanceof Date) {
           horaLimpia = horaLimpia.toTimeString().split(' ')[0].substring(0, 5);
         }
