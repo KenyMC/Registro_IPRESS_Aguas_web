@@ -134,9 +134,11 @@ export const Diagnostico = () => {
       hora: defaultHora,
     };
   });
+  const [initialData, setInitialData] = useState<Partial<SyncRequest>>(formData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [signatureError, setSignatureError] = useState(false);
+  const [isSignatureDirty, setIsSignatureDirty] = useState(false);
 
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
@@ -169,11 +171,13 @@ export const Diagnostico = () => {
           horaLimpia = horaLimpia.toTimeString().split(' ')[0].substring(0, 5);
         }
 
-        setFormData({
+        const newData = {
           ...existing,
           fecha: fechaLimpia,
           hora: horaLimpia
-        });
+        };
+        setFormData(newData);
+        setInitialData(newData);
         if (existing.unidadEjecutora === 'Otro') {
           setIsOtroUnidad(true);
         }
@@ -275,9 +279,11 @@ export const Diagnostico = () => {
 
   const clearSignature = () => {
     sigCanvas.current?.clear();
-    setFormData(prev => ({ ...prev, firma: '' }));
     setIsSignatureEmpty(true);
     setHasExistingSignatureUrl(false);
+    setSignatureError(false);
+    setIsSignatureDirty(true);
+    setFormData(prev => ({ ...prev, firma: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -598,7 +604,7 @@ export const Diagnostico = () => {
 
           <div className="form-group">
             <label className="form-label">Observaciones</label>
-            <textarea required name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
+            <textarea name="observaciones" className="form-control" rows={3} value={formData.observaciones || ''} onChange={handleChange}></textarea>
           </div>
 
           <div className="form-group" style={{ marginTop: '1.5rem' }}>
@@ -684,6 +690,7 @@ export const Diagnostico = () => {
                     onBegin={() => {
                       setIsSignatureEmpty(false);
                       setSignatureError(false);
+                      setIsSignatureDirty(true);
                     }}
                     penColor="black"
                     canvasProps={{ className: 'signature-canvas' }}
@@ -700,7 +707,11 @@ export const Diagnostico = () => {
         </div>
 
         <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          <button 
+            type="submit" 
+            className="btn btn-primary" 
+            disabled={isSubmitting || (JSON.stringify(formData) === JSON.stringify(initialData) && !isSignatureDirty)}
+          >
             {isSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <Save size={20} />}
             {isSubmitting ? 'Guardando...' : 'Guardar Registro'}
           </button>
