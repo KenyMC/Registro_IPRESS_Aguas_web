@@ -4,7 +4,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { syncEntry, SyncRequest } from '../services/api';
 import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { getCachedIpressList, IpressRecord } from '../services/ipressData';
-import { MapPin, Save, RefreshCw, ArrowLeft, PenTool } from 'lucide-react';
+import { MapPin, Save, RefreshCw, ArrowLeft, PenTool, Camera, Upload } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -66,25 +66,73 @@ const FUENTES_AGUA = [
   "Camion Cisterna", "Agua de lluvia"
 ];
 
+const PhotoInput = ({ label, fieldName, formData, handleFileChange }: { label: string, fieldName: 'foto1' | 'foto2' | 'foto3', formData: Partial<SyncRequest>, handleFileChange: (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'foto1' | 'foto2' | 'foto3') => void }) => {
+  const base64 = formData[`${fieldName}Base64` as keyof SyncRequest];
+  const url = formData[`url${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}` as keyof SyncRequest] as string | undefined;
+  const imageSrc = base64 ? `data:image/jpeg;base64,${base64}` : url;
+
+  return (
+    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+      <label className="form-label">{label}</label>
+      <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'center' }}>
+              <Camera size={16} /> Tomar Foto
+              <input type="file" accept="image/jpeg, image/png" capture="environment" style={{ display: 'none' }} onChange={(e) => handleFileChange(e, fieldName)} />
+            </label>
+            <label className="btn btn-secondary btn-sm" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'center' }}>
+              <Upload size={16} /> Seleccionar Archivo
+              <input type="file" accept="image/jpeg, image/png" style={{ display: 'none' }} onChange={(e) => handleFileChange(e, fieldName)} />
+            </label>
+          </div>
+          <small style={{ color: 'var(--text-muted)' }}>Formatos permitidos: JPG, PNG</small>
+          {formData[`${fieldName}Name` as keyof SyncRequest] && (
+            <small style={{ color: 'var(--primary)', fontWeight: 500 }}>
+              Cargado: {formData[`${fieldName}Name` as keyof SyncRequest]}
+            </small>
+          )}
+        </div>
+        
+        <div style={{ width: '80px', height: '80px', border: imageSrc ? '2px solid var(--border)' : '2px dashed var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', flexShrink: 0, overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          {imageSrc ? (
+            <img src={imageSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={label} referrerPolicy="no-referrer" />
+          ) : (
+            <Camera size={24} color="var(--border)" />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const Diagnostico = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const sigCanvas = useRef<SignatureCanvas>(null);
 
-  const [formData, setFormData] = useState<Partial<SyncRequest>>({
-    tipo: 'diagnostico',
-    estado: 'Activo',
-    aguaPropio: 'No',
-    bombasAgua: 'No',
-    bombasOperativas: 'No',
-    reservorio: 'No',
-    reservorioElevado: 'No',
-    reservorioOperativo: 'No',
-    cisterna: 'No',
-    cisternaOperativa: 'No',
-    tratamientoAgua: 'No',
-    unidadEjecutora: UNIDADES_EJECUTORAS[0],
-    fuenteAgua: FUENTES_AGUA[0],
+  const [formData, setFormData] = useState<Partial<SyncRequest>>(() => {
+    const now = new Date();
+    const defaultFecha = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    const defaultHora = now.toTimeString().split(' ')[0].substring(0, 5);
+    
+    return {
+      tipo: 'diagnostico',
+      estado: 'Activo',
+      aguaPropio: 'No',
+      bombasAgua: 'No',
+      bombasOperativas: 'No',
+      reservorio: 'No',
+      reservorioElevado: 'No',
+      reservorioOperativo: 'No',
+      cisterna: 'No',
+      cisternaOperativa: 'No',
+      tratamientoAgua: 'No',
+      unidadEjecutora: UNIDADES_EJECUTORAS[0],
+      fuenteAgua: FUENTES_AGUA[0],
+      fecha: defaultFecha,
+      hora: defaultHora,
+    };
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -228,10 +276,25 @@ export const Diagnostico = () => {
       firmaBase64 = formData.firma || '';
     }
 
+    if (formData.latitud && !formData.latitud.startsWith('-')) {
+      setErrorMsg('La latitud para la región Cusco debe comenzar con el signo -');
+      setIsSubmitting(false);
+      window.scrollTo(0, 0);
+      return;
+    }
+
+    if (formData.longitud && !formData.longitud.startsWith('-')) {
+      setErrorMsg('La longitud para la región Cusco debe comenzar con el signo -');
+      setIsSubmitting(false);
+      window.scrollTo(0, 0);
+      return;
+    }
+
     if (!firmaBase64 && !hasExistingSignatureUrl) {
       setErrorMsg('Debe ingresar la firma del responsable.');
+      alert('Falta colocar la firma del responsable.');
       setIsSubmitting(false);
-      window.scrollTo(0, document.body.scrollHeight);
+      window.scrollTo(0, 0);
       return;
     }
 
@@ -483,21 +546,9 @@ export const Diagnostico = () => {
             </select>
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Foto Observacion 1</label>
-            <input type="file" accept="image/*" className="form-control" onChange={(e) => handleFileChange(e, 'foto1')} />
-            {formData.foto1Name && <small style={{ color: 'var(--primary)' }}>Cargado: {formData.foto1Name}</small>}
-          </div>
-          <div className="form-group">
-            <label className="form-label">Foto Observacion 2</label>
-            <input type="file" accept="image/*" className="form-control" onChange={(e) => handleFileChange(e, 'foto2')} />
-            {formData.foto2Name && <small style={{ color: 'var(--primary)' }}>Cargado: {formData.foto2Name}</small>}
-          </div>
-          <div className="form-group">
-            <label className="form-label">Foto Observacion 3</label>
-            <input type="file" accept="image/*" className="form-control" onChange={(e) => handleFileChange(e, 'foto3')} />
-            {formData.foto3Name && <small style={{ color: 'var(--primary)' }}>Cargado: {formData.foto3Name}</small>}
-          </div>
+          <PhotoInput label="Foto Observacion 1" fieldName="foto1" formData={formData} handleFileChange={handleFileChange} />
+          <PhotoInput label="Foto Observacion 2" fieldName="foto2" formData={formData} handleFileChange={handleFileChange} />
+          <PhotoInput label="Foto Observacion 3" fieldName="foto3" formData={formData} handleFileChange={handleFileChange} />
           <div className="form-group">
             <label className="form-label">Fecha</label>
             <input required type="date" name="fecha" className="form-control" value={formData.fecha || ''} onChange={handleChange} />
