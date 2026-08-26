@@ -325,8 +325,11 @@ export const Diagnostico = () => {
       uuid: formData.uuid || crypto.randomUUID(),
       fechaRegistro: formData.fechaRegistro || new Date().toISOString(),
       firma: firmaBase64,
-      firmaName,
+      firmaName: `${formData.dni || 'sin_dni'} - ${formData.responsable || 'sin_nombre'}.png`,
       firmaMime,
+      foto1Base64: formData.foto1Base64 || formData.urlFoto1 || '',
+      foto2Base64: formData.foto2Base64 || formData.urlFoto2 || '',
+      foto3Base64: formData.foto3Base64 || formData.urlFoto3 || '',
     };
 
     // Try to sync to Google Apps Script
