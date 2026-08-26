@@ -53,8 +53,13 @@ export const Home: React.FC = () => {
       
       records.forEach(r => {
         if (!r.fechaRegistro) return;
+        
+        // Parse date safely
+        const dateObj = new Date(r.fechaRegistro);
+        if (isNaN(dateObj.getTime())) return; // Skip if invalid date format
+        
         // Usar solo la fecha (YYYY-MM-DD)
-        const dateStr = new Date(r.fechaRegistro).toISOString().split('T')[0];
+        const dateStr = dateObj.toISOString().split('T')[0];
         
         if (!dateGroups[dateStr]) {
           dateGroups[dateStr] = { date: dateStr, Diagnósticos: 0, Monitoreos: 0 };

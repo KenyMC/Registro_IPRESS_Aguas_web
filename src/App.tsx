@@ -10,8 +10,9 @@ import { DiagnosticoList } from './pages/DiagnosticoList';
 import { MonitoreoList } from './pages/MonitoreoList';
 import { UserAdmin } from './pages/UserAdmin';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { fetchRecordsFromServer } from './services/api';
 import { fetchAndCacheIpressList } from './services/ipressData';
-import { syncPendingRecords } from './services/storage';
+import { syncPendingRecords, mergeRecords } from './services/storage';
 
 const SplashManager = ({ children }: { children: React.ReactNode }) => {
   const [showSplash, setShowSplash] = useState(true);
@@ -27,10 +28,25 @@ const SplashManager = ({ children }: { children: React.ReactNode }) => {
     if (navigator.onLine) {
       syncPendingRecords();
     }
+    
+    // Auto-actualización silenciosa cada 2 minutos (120000 ms)
+    const pollTimer = setInterval(async () => {
+      if (navigator.onLine) {
+        try {
+          const serverRecords = await fetchRecordsFromServer();
+          if (serverRecords && serverRecords.length > 0) {
+            mergeRecords(serverRecords);
+          }
+        } catch (e) {
+          console.error("Error en auto-actualización:", e);
+        }
+      }
+    }, 120000);
 
     const timer = setTimeout(() => setShowSplash(false), 2000);
     return () => {
       window.removeEventListener('online', handleOnline);
+      clearInterval(pollTimer);
       clearTimeout(timer);
     };
   }, []);

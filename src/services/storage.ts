@@ -71,6 +71,7 @@ export const mergeRecords = (serverRecords: any[]): void => {
   });
   
   localStorage.setItem(STORAGE_KEY, JSON.stringify(localRecords));
+  window.dispatchEvent(new Event('recordsUpdated'));
 };
 
 export const syncPendingRecords = async (): Promise<void> => {
