@@ -1,4 +1,4 @@
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbx1tfp6SJ-sy-ARL_RqlFLgwbYsHtP6aDTE_z8quv_51TCH-L-UPNHnhchHgf63k9m6/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyzbOmDEgCo4EBKcgdT_HfpaqZZiDKsjAbDZE8S4Jilzd0D9IPTRtScJKqMoO1nlFSo/exec';
 
 export interface SyncRequest {
   tipo: "diagnostico" | "monitoreo";
