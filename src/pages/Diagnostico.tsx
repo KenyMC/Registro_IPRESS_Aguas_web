@@ -93,7 +93,7 @@ export const Diagnostico = () => {
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
   const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
   const [hasExistingSignatureUrl, setHasExistingSignatureUrl] = useState(false);
-
+  const [isSignatureLoading, setIsSignatureLoading] = useState(true);
   useEffect(() => {
     const list = getCachedIpressList();
     setIpressList(list);
@@ -534,6 +534,12 @@ export const Diagnostico = () => {
                 <div style={{ width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: '100%', padding: '1rem' }}>
                   <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text)', fontSize: '0.95rem' }}>Firma Registrada</h4>
                   <div style={{ width: '100%', display: 'flex', justifyContent: 'center', backgroundColor: '#f9fafb', borderRadius: '8px', padding: '1rem', border: '1px dashed var(--border)' }}>
+                    {isSignatureLoading && (
+                      <div style={{ position: 'absolute', display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%' }}>
+                        <RefreshCw className="animate-spin" size={24} color="var(--primary)" />
+                        <span style={{ marginLeft: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Cargando firma...</span>
+                      </div>
+                    )}
                     <img 
                       src={formData.firma} 
                       alt="Firma Registrada" 
@@ -544,7 +550,8 @@ export const Diagnostico = () => {
                        * y no originada desde un dominio externo (localhost/github pages), previniendo el bloqueo CORS. 
                        */
                       referrerPolicy="no-referrer"
-                      style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain' }} 
+                      style={{ maxWidth: '100%', maxHeight: '120px', objectFit: 'contain', display: isSignatureLoading ? 'none' : 'block' }} 
+                      onLoad={() => setIsSignatureLoading(false)}
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         
@@ -574,6 +581,7 @@ export const Diagnostico = () => {
                         // 3. Si todos los métodos automáticos fallan (restricciones extremas del navegador como 
                         // bloqueo de cookies de terceros), mostramos un fallback seguro con un botón.
                         target.style.display = 'none';
+                        setIsSignatureLoading(false);
                         const parent = target.parentElement;
                         if (parent) {
                           const fallback = document.createElement('div');
