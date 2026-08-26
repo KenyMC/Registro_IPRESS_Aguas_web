@@ -146,7 +146,6 @@ export const Monitoreo = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [signatureError, setSignatureError] = useState(false);
-  const [isSignatureDirty, setIsSignatureDirty] = useState(false);
 
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
@@ -259,12 +258,6 @@ export const Monitoreo = () => {
     }
   };
 
-  const loadSignatureFromUrl = () => {
-    if (formData.firma && sigCanvas.current) {
-      sigCanvas.current.fromDataURL(`data:image/png;base64,${formData.firma}`, { width: sigCanvas.current.getCanvas().width, height: sigCanvas.current.getCanvas().height });
-      setIsSignatureEmpty(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -541,7 +534,6 @@ export const Monitoreo = () => {
                     onBegin={() => {
                       setIsSignatureEmpty(false);
                       setSignatureError(false);
-                      setIsSignatureDirty(true);
                     }}
                     penColor="black"
                     canvasProps={{ className: 'signature-canvas' }}
