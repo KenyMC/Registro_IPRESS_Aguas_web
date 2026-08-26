@@ -276,14 +276,14 @@ export const Diagnostico = () => {
       firmaBase64 = formData.firma || '';
     }
 
-    if (formData.latitud && !formData.latitud.startsWith('-')) {
+    if (formData.latitud && !String(formData.latitud).startsWith('-')) {
       setErrorMsg('La latitud para la región Cusco debe comenzar con el signo -');
       setIsSubmitting(false);
       window.scrollTo(0, 0);
       return;
     }
 
-    if (formData.longitud && !formData.longitud.startsWith('-')) {
+    if (formData.longitud && !String(formData.longitud).startsWith('-')) {
       setErrorMsg('La longitud para la región Cusco debe comenzar con el signo -');
       setIsSubmitting(false);
       window.scrollTo(0, 0);
