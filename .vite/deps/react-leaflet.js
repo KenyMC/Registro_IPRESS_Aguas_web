@@ -1,12 +1,12 @@
 import {
-  require_leaflet_src
-} from "./chunk-KVREVINV.js";
-import {
   require_react_dom
 } from "./chunk-JMVEG3FK.js";
 import {
   require_react
 } from "./chunk-TWJRYSII.js";
+import {
+  require_leaflet_src
+} from "./chunk-KVREVINV.js";
 import {
   __toESM
 } from "./chunk-DC5AMYBS.js";

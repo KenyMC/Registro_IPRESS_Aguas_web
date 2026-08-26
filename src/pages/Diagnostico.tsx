@@ -123,6 +123,7 @@ export const Diagnostico = () => {
       bombasAgua: 'No',
       bombasOperativas: 'No',
       reservorio: 'No',
+      tipoMaterialReservorio: '',
       reservorioElevado: 'No',
       reservorioOperativo: 'No',
       cisterna: 'No',
@@ -205,6 +206,15 @@ export const Diagnostico = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+
+    if (name === 'latitud' || name === 'longitud') {
+      let val = value;
+      if (val !== '' && !val.startsWith('-')) {
+        val = '-' + val;
+      }
+      setFormData(prev => ({ ...prev, [name]: val }));
+      return;
+    }
 
     if (name === 'unidadEjecutora') {
       const isOtro = value === 'Otro' || value === '';
@@ -534,6 +544,10 @@ export const Diagnostico = () => {
           </div>
           {formData.reservorio === 'Si' && (
             <>
+              <div className="form-group">
+                <label className="form-label">Tipo de material del Reservorio</label>
+                <input required type="text" name="tipoMaterialReservorio" className="form-control" value={formData.tipoMaterialReservorio || ''} onChange={handleChange} placeholder="Ej. Concreto, Geomembrana, etc." />
+              </div>
               <div className="form-group">
                 <label className="form-label">Volumen del Reservorio (m3)</label>
                 <input required type="number" step="any" name="volumenReservorio" className="form-control" value={formData.volumenReservorio || ''} onChange={handleChange} />

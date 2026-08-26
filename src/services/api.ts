@@ -23,6 +23,7 @@ export interface SyncRequest {
   bombasAgua?: string;
   bombasOperativas?: string;
   reservorio?: string;
+  tipoMaterialReservorio?: string;
   reservorioElevado?: string;
   reservorioOperativo?: string;
   volumenReservorio?: string;
