@@ -249,7 +249,6 @@ export const Monitoreo = () => {
       sigCanvas.current.clear();
       setHasExistingSignatureUrl(false);
       setIsSignatureEmpty(true);
-      setIsSignatureDirty(true);
       setFormData(prev => {
         const newData = { ...prev };
         delete newData.firma;
