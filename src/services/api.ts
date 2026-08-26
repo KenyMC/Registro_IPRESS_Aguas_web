@@ -57,6 +57,7 @@ export interface SyncRequest {
   firma?: string; // (Mantenemos firma como base64 pero enviaremos firmaMime también si es posible)
   firmaName?: string;
   firmaMime?: string;
+  urlFirma?: string;
 
   // Monitoreo
   puntosMonitoreo?: string;
