@@ -50,8 +50,11 @@ export const mergeRecords = (serverRecords: any[]): void => {
   // We assume server records are already formatted as LocalRecord, but with id = uuid
   
   serverRecords.forEach(serverRecord => {
-    // Check if it already exists locally
-    const existingIndex = localRecords.findIndex(r => r.uuid === serverRecord.uuid);
+    // Check if it already exists locally by UUID or by exact timestamp and name (for Diagnostico IDD overwrites)
+    const existingIndex = localRecords.findIndex(r => 
+      r.uuid === serverRecord.uuid || 
+      (r.fechaRegistro === serverRecord.fechaRegistro && r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo)
+    );
     
     // Server record is synced by definition
     const formattedRecord: LocalRecord = {
