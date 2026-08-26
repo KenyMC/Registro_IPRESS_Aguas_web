@@ -114,7 +114,11 @@ export const Diagnostico = () => {
           } else {
             setIsSignatureEmpty(false);
             setTimeout(() => {
-              sigCanvas.current?.fromDataURL(existing.firma!);
+              // Asegurarnos de que tenga el prefijo data URI para que el canvas pueda dibujarlo
+              const dataUrl = existing.firma!.startsWith('data:') 
+                ? existing.firma! 
+                : `data:${existing.firmaMime || 'image/png'};base64,${existing.firma}`;
+              sigCanvas.current?.fromDataURL(dataUrl);
             }, 100);
           }
         }
