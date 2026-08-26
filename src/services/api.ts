@@ -65,6 +65,8 @@ export interface SyncRequest {
   ph?: string;
   turbiedad?: string;
   conductividad?: string;
+  std?: string;
+  analisisBacteriologico?: string;
 }
 
 export interface User {
