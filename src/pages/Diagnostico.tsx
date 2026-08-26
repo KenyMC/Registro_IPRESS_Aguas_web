@@ -136,6 +136,7 @@ export const Diagnostico = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [signatureError, setSignatureError] = useState(false);
 
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
@@ -151,7 +152,28 @@ export const Diagnostico = () => {
     if (id) {
       const existing = getRecordById(id);
       if (existing && existing.tipo === 'diagnostico') {
-        setFormData(existing);
+        const now = new Date();
+        const fallbackFecha = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        const fallbackHora = now.toTimeString().split(' ')[0].substring(0, 5);
+        
+        let fechaLimpia = existing.fecha || fallbackFecha;
+        // Fix for timestamps coming from google sheets
+        if (typeof fechaLimpia === 'string' && fechaLimpia.includes('T')) {
+          fechaLimpia = fechaLimpia.split('T')[0];
+        } else if (fechaLimpia instanceof Date) {
+          fechaLimpia = fechaLimpia.toISOString().split('T')[0];
+        }
+
+        let horaLimpia = existing.hora || fallbackHora;
+        if (horaLimpia instanceof Date) {
+          horaLimpia = horaLimpia.toTimeString().split(' ')[0].substring(0, 5);
+        }
+
+        setFormData({
+          ...existing,
+          fecha: fechaLimpia,
+          hora: horaLimpia
+        });
         if (existing.unidadEjecutora === 'Otro') {
           setIsOtroUnidad(true);
         }
@@ -262,6 +284,7 @@ export const Diagnostico = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg('');
+    setSignatureError(false);
 
     let firmaBase64 = formData.firma || '';
     let firmaName = formData.firmaName || '';
@@ -279,22 +302,21 @@ export const Diagnostico = () => {
     if (formData.latitud && !String(formData.latitud).startsWith('-')) {
       setErrorMsg('La latitud para la región Cusco debe comenzar con el signo -');
       setIsSubmitting(false);
-      window.scrollTo(0, 0);
+      setTimeout(() => document.getElementsByName('latitud')[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return;
     }
 
     if (formData.longitud && !String(formData.longitud).startsWith('-')) {
       setErrorMsg('La longitud para la región Cusco debe comenzar con el signo -');
       setIsSubmitting(false);
-      window.scrollTo(0, 0);
+      setTimeout(() => document.getElementsByName('longitud')[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return;
     }
 
     if (!firmaBase64 && !hasExistingSignatureUrl) {
-      setErrorMsg('Debe ingresar la firma del responsable.');
-      alert('Falta colocar la firma del responsable.');
+      setSignatureError(true);
       setIsSubmitting(false);
-      window.scrollTo(0, 0);
+      setTimeout(() => document.querySelector('.signature-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       return;
     }
 
@@ -657,13 +679,21 @@ export const Diagnostico = () => {
                   )}
                   <SignatureCanvas
                     ref={sigCanvas}
-                    onBegin={() => setIsSignatureEmpty(false)}
+                    onBegin={() => {
+                      setIsSignatureEmpty(false);
+                      setSignatureError(false);
+                    }}
                     penColor="black"
                     canvasProps={{ className: 'signature-canvas' }}
                   />
                 </>
               )}
             </div>
+            {signatureError && (
+              <p style={{ color: 'var(--danger)', fontSize: '0.875rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <PenTool size={14} /> Debe ingresar la firma del responsable para guardar.
+              </p>
+            )}
           </div>
         </div>
 
