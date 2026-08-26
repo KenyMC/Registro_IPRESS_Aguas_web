@@ -287,13 +287,12 @@ export const Diagnostico = () => {
     setSignatureError(false);
 
     let firmaBase64 = formData.firma || '';
-    let firmaName = formData.firmaName || '';
     let firmaMime = formData.firmaMime || '';
+    const dynamicFirmaName = `${formData.dni || 'sin_dni'} - ${formData.responsable || 'sin_nombre'}.png`;
 
     if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
       const dataUrl = sigCanvas.current.toDataURL('image/png');
       firmaBase64 = dataUrl.split(',')[1];
-      firmaName = 'firma.png';
       firmaMime = 'image/png';
     } else if (hasExistingSignatureUrl) {
       firmaBase64 = formData.firma || '';
@@ -325,7 +324,7 @@ export const Diagnostico = () => {
       uuid: formData.uuid || crypto.randomUUID(),
       fechaRegistro: formData.fechaRegistro || new Date().toISOString(),
       firma: firmaBase64,
-      firmaName: `${formData.dni || 'sin_dni'} - ${formData.responsable || 'sin_nombre'}.png`,
+      firmaName: dynamicFirmaName,
       firmaMime,
       foto1Base64: formData.foto1Base64 || formData.urlFoto1 || '',
       foto2Base64: formData.foto2Base64 || formData.urlFoto2 || '',
