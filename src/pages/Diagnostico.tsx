@@ -554,7 +554,7 @@ export const Diagnostico = () => {
                         // lh3.googleusercontent.com es una red de entrega de contenido (CDN) de Google que a menudo 
                         // tiene políticas CORS más relajadas para servir imágenes públicamente.
                         if (target.src.includes('uc?export=view')) {
-                          const fileId = formData.firma.split('id=')[1];
+                          const fileId = formData.firma!.split('id=')[1];
                           if (fileId) {
                             target.src = `https://lh3.googleusercontent.com/d/${fileId}`;
                             return;
@@ -564,7 +564,7 @@ export const Diagnostico = () => {
                         // 2. Si lh3 falla, intentamos con la API de generación de miniaturas (thumbnail)
                         // Esta API genera una previsualización dinámica y suele evadir bloqueos persistentes.
                         if (target.src.includes('lh3.googleusercontent.com')) {
-                          const fileId = formData.firma.split('id=')[1];
+                          const fileId = formData.firma!.split('id=')[1];
                           if (fileId) {
                             target.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
                             return;
