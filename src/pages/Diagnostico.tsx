@@ -532,24 +532,28 @@ export const Diagnostico = () => {
               <option value="No">No</option>
             </select>
           </div>
-          <div className="form-group">
-            <label className="form-label">Volumen del Reservorio (m3)</label>
-            <input required type="number" step="any" name="volumenReservorio" className="form-control" value={formData.volumenReservorio || ''} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">El reservorio es elevado</label>
-            <select required name="reservorioElevado" className="form-control" value={formData.reservorioElevado || 'No'} onChange={handleChange}>
-              <option value="Si">Si</option>
-              <option value="No">No</option>
-            </select>
-          </div>
-          <div className="form-group">
-            <label className="form-label">El reservorio se encuentra operativo</label>
-            <select required name="reservorioOperativo" className="form-control" value={formData.reservorioOperativo || 'No'} onChange={handleChange}>
-              <option value="Si">Si</option>
-              <option value="No">No</option>
-            </select>
-          </div>
+          {formData.reservorio === 'Si' && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Volumen del Reservorio (m3)</label>
+                <input required type="number" step="any" name="volumenReservorio" className="form-control" value={formData.volumenReservorio || ''} onChange={handleChange} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">El reservorio es elevado</label>
+                <select required name="reservorioElevado" className="form-control" value={formData.reservorioElevado || 'No'} onChange={handleChange}>
+                  <option value="Si">Si</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">El reservorio se encuentra operativo</label>
+                <select required name="reservorioOperativo" className="form-control" value={formData.reservorioOperativo || 'No'} onChange={handleChange}>
+                  <option value="Si">Si</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+            </>
+          )}
           <div className="form-group">
             <label className="form-label">La IPRESS cuenta con cisterna de agua</label>
             <select required name="cisterna" className="form-control" value={formData.cisterna || 'No'} onChange={handleChange}>
@@ -557,17 +561,21 @@ export const Diagnostico = () => {
               <option value="No">No</option>
             </select>
           </div>
-          <div className="form-group">
-            <label className="form-label">Volumen de la Cisterna (m3)</label>
-            <input required type="number" step="any" name="volumenCisterna" className="form-control" value={formData.volumenCisterna || ''} onChange={handleChange} />
-          </div>
-          <div className="form-group">
-            <label className="form-label">La cisterna de agua se encuentra operativo</label>
-            <select required name="cisternaOperativa" className="form-control" value={formData.cisternaOperativa || 'No'} onChange={handleChange}>
-              <option value="Si">Si</option>
-              <option value="No">No</option>
-            </select>
-          </div>
+          {formData.cisterna === 'Si' && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Volumen de la Cisterna (m3)</label>
+                <input required type="number" step="any" name="volumenCisterna" className="form-control" value={formData.volumenCisterna || ''} onChange={handleChange} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">La cisterna de agua se encuentra operativo</label>
+                <select required name="cisternaOperativa" className="form-control" value={formData.cisternaOperativa || 'No'} onChange={handleChange}>
+                  <option value="Si">Si</option>
+                  <option value="No">No</option>
+                </select>
+              </div>
+            </>
+          )}
           <div className="form-group">
             <label className="form-label">Se realiza algun tipo de tratamiento al agua en la IPRESS</label>
             <select required name="tratamientoAgua" className="form-control" value={formData.tratamientoAgua || 'No'} onChange={handleChange}>
