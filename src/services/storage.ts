@@ -22,8 +22,8 @@ export const saveRecord = (record: LocalRecord): void => {
   
   // Find matching local record by UUID (backend assigns UUIDs to new records)
   const existingIndex = records.findIndex(r => {
-    if (r.uuid === record.uuid && r.uuid !== '') return true;
-    if (r.id && r.id === record.id) return true;
+    if (String(r.uuid) === String(record.uuid) && record.uuid !== '') return true;
+    if (r.id && String(r.id) === String(record.id)) return true;
     if (!r.uuid && r.fechaRegistro && record.fechaRegistro) {
       try {
         const localDate = new Date(r.fechaRegistro);
@@ -60,7 +60,7 @@ export const deleteRecord = (id: string): void => {
 };
 
 export const getRecordById = (id: string): LocalRecord | undefined => {
-  return getRecords().find(r => r.id === id);
+  return getRecords().find(r => String(r.id) === String(id));
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -73,7 +73,7 @@ export const mergeRecords = (serverRecords: any[]): void => {
   serverRecords.forEach(serverRecord => {
     // Check if it already exists locally by UUID or by timestamp (ignoring milliseconds) and name
     const existingIndex = localRecords.findIndex(r => {
-      if (r.uuid === serverRecord.uuid && r.uuid !== '') return true;
+      if (String(r.uuid) === String(serverRecord.uuid) && serverRecord.uuid !== '') return true;
       if (r.fechaRegistro && serverRecord.fechaRegistro) {
         try {
           const localDate = new Date(r.fechaRegistro);
@@ -96,7 +96,8 @@ export const mergeRecords = (serverRecords: any[]): void => {
     // Server record is synced by definition
     const formattedRecord: LocalRecord = {
       ...serverRecord,
-      id: serverRecord.uuid, // Use uuid as internal id for downloaded records
+      uuid: String(serverRecord.uuid || ''),
+      id: String(serverRecord.uuid || ''), // Ensure id is always a string
       isSynced: true
     };
 

@@ -167,8 +167,30 @@ export const Monitoreo = () => {
     if (id) {
       const existing = getRecordById(id);
       if (existing) {
-        setFormData(existing);
-        setInitialData(existing);
+        const now = new Date();
+        const fallbackFecha = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+        const fallbackHora = now.toTimeString().split(' ')[0].substring(0, 5);
+        
+        let fechaLimpia: any = existing.fecha || fallbackFecha;
+        if (typeof fechaLimpia === 'string' && fechaLimpia.includes('T')) {
+          fechaLimpia = fechaLimpia.split('T')[0];
+        } else if (fechaLimpia instanceof Date) {
+          fechaLimpia = fechaLimpia.toISOString().split('T')[0];
+        }
+
+        let horaLimpia: any = existing.hora || fallbackHora;
+        if (horaLimpia instanceof Date) {
+          horaLimpia = horaLimpia.toTimeString().split(' ')[0].substring(0, 5);
+        }
+
+        const newData = {
+          ...existing,
+          fecha: fechaLimpia,
+          hora: horaLimpia
+        };
+
+        setFormData(newData);
+        setInitialData(newData);
         if (existing.unidadEjecutora === 'Otro') {
           setIsOtroUnidad(true);
         }
