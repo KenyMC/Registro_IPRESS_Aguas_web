@@ -25,9 +25,18 @@ export const saveRecord = (record: LocalRecord): void => {
     if (r.uuid === record.uuid && r.uuid !== '') return true;
     if (r.id && r.id === record.id) return true;
     if (!r.uuid && r.fechaRegistro && record.fechaRegistro) {
-      const localDate = new Date(r.fechaRegistro).toISOString().split('.')[0];
-      const recordDate = new Date(record.fechaRegistro).toISOString().split('.')[0];
-      return localDate === recordDate && r.nombreIpress === record.nombreIpress;
+      try {
+        const localDate = new Date(r.fechaRegistro);
+        const recordDate = new Date(record.fechaRegistro);
+        if (!isNaN(localDate.getTime()) && !isNaN(recordDate.getTime())) {
+          const localIso = localDate.toISOString().split('.')[0];
+          const recordIso = recordDate.toISOString().split('.')[0];
+          return localIso === recordIso && r.nombreIpress === record.nombreIpress;
+        }
+      } catch (e) {
+        // ignore
+      }
+      return r.fechaRegistro === record.fechaRegistro && r.nombreIpress === record.nombreIpress;
     }
     return false;
   });
@@ -65,9 +74,19 @@ export const mergeRecords = (serverRecords: any[]): void => {
     const existingIndex = localRecords.findIndex(r => {
       if (r.uuid === serverRecord.uuid && r.uuid !== '') return true;
       if (r.fechaRegistro && serverRecord.fechaRegistro) {
-        const localDate = new Date(r.fechaRegistro).toISOString().split('.')[0];
-        const serverDate = new Date(serverRecord.fechaRegistro).toISOString().split('.')[0];
-        return localDate === serverDate && r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo;
+        try {
+          const localDate = new Date(r.fechaRegistro);
+          const serverDate = new Date(serverRecord.fechaRegistro);
+          if (!isNaN(localDate.getTime()) && !isNaN(serverDate.getTime())) {
+            const localIso = localDate.toISOString().split('.')[0];
+            const serverIso = serverDate.toISOString().split('.')[0];
+            return localIso === serverIso && r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo;
+          }
+        } catch (e) {
+          // ignore Invalid time value
+        }
+        // Fallback to exact string match
+        return r.fechaRegistro === serverRecord.fechaRegistro && r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo;
       }
       return false;
     });
