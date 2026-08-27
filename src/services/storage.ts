@@ -19,7 +19,18 @@ export const getRecords = (): LocalRecord[] => {
 
 export const saveRecord = (record: LocalRecord): void => {
   const records = getRecords();
-  const existingIndex = records.findIndex(r => r.id === record.id);
+  
+  // Find matching local record by UUID (backend assigns UUIDs to new records)
+  const existingIndex = records.findIndex(r => {
+    if (r.uuid === record.uuid && r.uuid !== '') return true;
+    if (r.id && r.id === record.id) return true;
+    if (!r.uuid && r.fechaRegistro && record.fechaRegistro) {
+      const localDate = new Date(r.fechaRegistro).toISOString().split('.')[0];
+      const recordDate = new Date(record.fechaRegistro).toISOString().split('.')[0];
+      return localDate === recordDate && r.nombreIpress === record.nombreIpress;
+    }
+    return false;
+  });
   
   if (existingIndex >= 0) {
     records[existingIndex] = record;
@@ -50,11 +61,16 @@ export const mergeRecords = (serverRecords: any[]): void => {
   // We assume server records are already formatted as LocalRecord, but with id = uuid
   
   serverRecords.forEach(serverRecord => {
-    // Check if it already exists locally by UUID or by exact timestamp and name (for Diagnostico IDD overwrites)
-    const existingIndex = localRecords.findIndex(r => 
-      r.uuid === serverRecord.uuid || 
-      (r.fechaRegistro === serverRecord.fechaRegistro && r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo)
-    );
+    // Check if it already exists locally by UUID or by timestamp (ignoring milliseconds) and name
+    const existingIndex = localRecords.findIndex(r => {
+      if (r.uuid === serverRecord.uuid && r.uuid !== '') return true;
+      if (r.fechaRegistro && serverRecord.fechaRegistro) {
+        const localDate = new Date(r.fechaRegistro).toISOString().split('.')[0];
+        const serverDate = new Date(serverRecord.fechaRegistro).toISOString().split('.')[0];
+        return localDate === serverDate && r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo;
+      }
+      return false;
+    });
     
     // Server record is synced by definition
     const formattedRecord: LocalRecord = {
