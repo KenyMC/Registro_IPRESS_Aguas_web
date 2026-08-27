@@ -29,9 +29,10 @@ export const saveRecord = (record: LocalRecord): void => {
         const localDate = new Date(r.fechaRegistro);
         const recordDate = new Date(record.fechaRegistro);
         if (!isNaN(localDate.getTime()) && !isNaN(recordDate.getTime())) {
-          const localIso = localDate.toISOString().split('.')[0];
-          const recordIso = recordDate.toISOString().split('.')[0];
-          return localIso === recordIso && r.nombreIpress === record.nombreIpress;
+          const timeDiff = Math.abs(localDate.getTime() - recordDate.getTime());
+          if (timeDiff < 120000) { // within 2 minutes
+            return r.nombreIpress === record.nombreIpress;
+          }
         }
       } catch (e) {
         // ignore
@@ -78,9 +79,10 @@ export const mergeRecords = (serverRecords: any[]): void => {
           const localDate = new Date(r.fechaRegistro);
           const serverDate = new Date(serverRecord.fechaRegistro);
           if (!isNaN(localDate.getTime()) && !isNaN(serverDate.getTime())) {
-            const localIso = localDate.toISOString().split('.')[0];
-            const serverIso = serverDate.toISOString().split('.')[0];
-            return localIso === serverIso && r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo;
+            const timeDiff = Math.abs(localDate.getTime() - serverDate.getTime());
+            if (timeDiff < 120000) { // within 2 minutes
+              return r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo;
+            }
           }
         } catch (e) {
           // ignore Invalid time value
