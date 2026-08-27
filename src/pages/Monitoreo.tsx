@@ -143,9 +143,12 @@ export const Monitoreo = () => {
     };
   });
   
+  const [initialData, setInitialData] = useState<Partial<SyncRequest>>(formData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [signatureError, setSignatureError] = useState(false);
+  const [isSignatureDirty, setIsSignatureDirty] = useState(false);
+  const [isFoto1Dirty, setIsFoto1Dirty] = useState(false);
 
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
@@ -165,6 +168,7 @@ export const Monitoreo = () => {
       const existing = getRecordById(id);
       if (existing) {
         setFormData(existing);
+        setInitialData(existing);
         if (existing.unidadEjecutora === 'Otro') {
           setIsOtroUnidad(true);
         }
@@ -237,6 +241,7 @@ export const Monitoreo = () => {
           [`${fieldName}Name`]: file.name,
           [`${fieldName}Mime`]: file.type
         }));
+        setIsFoto1Dirty(true);
       } catch (error) {
         console.error("Error al procesar imagen", error);
         alert("Error al procesar la imagen. Intente de nuevo.");
@@ -249,6 +254,7 @@ export const Monitoreo = () => {
       sigCanvas.current.clear();
       setHasExistingSignatureUrl(false);
       setIsSignatureEmpty(true);
+      setIsSignatureDirty(true);
       setFormData(prev => {
         const newData = { ...prev };
         delete newData.firma;
@@ -533,6 +539,7 @@ export const Monitoreo = () => {
                     onBegin={() => {
                       setIsSignatureEmpty(false);
                       setSignatureError(false);
+                      setIsSignatureDirty(true);
                     }}
                     penColor="black"
                     canvasProps={{ className: 'signature-canvas' }}
@@ -549,7 +556,7 @@ export const Monitoreo = () => {
         </div>
 
         <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          <button type="submit" className="btn btn-primary" disabled={isSubmitting || (JSON.stringify(formData) === JSON.stringify(initialData) && !isSignatureDirty && !isFoto1Dirty)}>
             {isSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <Save size={20} />}
             {isSubmitting ? 'Guardando...' : 'Guardar Monitoreo'}
           </button>
