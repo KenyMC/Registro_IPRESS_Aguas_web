@@ -29,7 +29,16 @@ const SplashManager = ({ children }: { children: React.ReactNode }) => {
       syncPendingRecords();
     }
     
-    // Auto-actualización silenciosa frecuente (15 segundos)
+    /**
+     * MOTOR DE SINCRONIZACIÓN EN TIEMPO REAL
+     * --------------------------------------
+     * Este polleo ocurre cada 15 segundos (15000ms).
+     * Solicita todos los registros al servidor (Google Sheets) y se los pasa a `mergeRecords`.
+     * Gracias a que `mergeRecords` descarta los locales que ya no existen en el servidor,
+     * esto crea un efecto de "Tiempo Real": si un administrador u otra IPRESS elimina o modifica
+     * un registro, dicho cambio se reflejará (o desaparecerá) en la pantalla de este usuario 
+     * en un máximo de 15 segundos, sin que tenga que refrescar la página manualmente.
+     */
     const pollTimer = setInterval(async () => {
       if (navigator.onLine) {
         try {

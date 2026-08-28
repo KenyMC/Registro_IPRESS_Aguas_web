@@ -63,6 +63,20 @@ export const getRecordById = (id: string): LocalRecord | undefined => {
   return getRecords().find(r => String(r.id) === String(id));
 };
 
+/**
+ * FUSIÓN DE REGISTROS Y SINCRONIZACIÓN DE ELIMINACIONES
+ * -----------------------------------------------------
+ * Esta función es el corazón del comportamiento "Offline-first" interactivo.
+ * Su lógica principal es:
+ * 1. El servidor (Google Sheets) es la FUENTE ABSOLUTA DE LA VERDAD para los registros sincronizados.
+ * 2. El cliente retiene temporalmente sus registros "pendientes de sincronización".
+ * 3. Descarta COMPLETAMENTE los registros sincronizados locales y adopta los que vienen del servidor.
+ * 
+ * BENEFICIO CLAVE (Sincronización de Eliminaciones):
+ * Como los registros sincronizados locales se descartan a favor de la lista del servidor, si
+ * un registro fue eliminado en Google Sheets (ya no viene en la petición), automáticamente
+ * desaparecerá del almacenamiento local del usuario (y de la pantalla, en combinación con el polleo de App.tsx).
+ */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mergeRecords = (serverRecords: any[]): void => {
   const localRecords = getRecords();

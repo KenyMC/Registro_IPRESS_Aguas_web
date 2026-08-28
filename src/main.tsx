@@ -4,7 +4,20 @@ import { HashRouter } from 'react-router-dom'
 
 import App from './App.tsx'
 import './index.css'
-// Control de versiones para forzar cierre de sesión y limpieza de caché a todos los usuarios
+/**
+ * SISTEMA DE CONTROL DE VERSIONES PWA Y FORZADO DE CACHÉ
+ * -----------------------------------------------------
+ * Esta constante `APP_VERSION` es fundamental para el ciclo de vida de la aplicación.
+ * Debido a la agresiva política de caché de las aplicaciones PWA offline-first, los
+ * usuarios pueden quedarse estancados en versiones antiguas del código y estado.
+ * 
+ * ¿Cómo forzar una actualización general?
+ * Solo necesitas incrementar este número (ej. '1.1.1'). Cuando el Service Worker descargue 
+ * silenciosamente el nuevo código y el usuario entre, este bloque detectará que su
+ * `localStorage` tiene la versión antigua. 
+ * Automáticamente purgará todo (borrando sesiones antiguas, registros cacheados corruptos)
+ * y recargará la página en un estado completamente limpio.
+ */
 const APP_VERSION = '1.1.0';
 const localVersion = localStorage.getItem('APP_VERSION');
 
