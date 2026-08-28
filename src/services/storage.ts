@@ -67,51 +67,46 @@ export const getRecordById = (id: string): LocalRecord | undefined => {
 export const mergeRecords = (serverRecords: any[]): void => {
   const localRecords = getRecords();
   
-  // We use UUID to match server records with local records.
-  // We assume server records are already formatted as LocalRecord, but with id = uuid
+  // Keep ONLY local records that have NOT been synced yet
+  const unsyncedLocalRecords = localRecords.filter(r => !r.isSynced);
   
-  serverRecords.forEach(serverRecord => {
-    // Check if it already exists locally by UUID or by timestamp (ignoring milliseconds) and name
-    const existingIndex = localRecords.findIndex(r => {
-      if (String(r.uuid) === String(serverRecord.uuid) && serverRecord.uuid !== '') return true;
-      if (r.fechaRegistro && serverRecord.fechaRegistro) {
+  // Map server records to local format
+  const formattedServerRecords: LocalRecord[] = serverRecords.map(serverRecord => ({
+      ...serverRecord,
+      uuid: String(serverRecord.uuid || ''),
+      id: String(serverRecord.uuid || ''),
+      isSynced: true
+  }));
+
+  const finalRecords: LocalRecord[] = [...formattedServerRecords];
+  
+  // Deduplicate unsynced local records that might actually be on the server
+  unsyncedLocalRecords.forEach(localRecord => {
+    const isAlreadyOnServer = formattedServerRecords.some(serverRecord => {
+      if (String(localRecord.uuid) === String(serverRecord.uuid) && serverRecord.uuid !== '') return true;
+      if (localRecord.fechaRegistro && serverRecord.fechaRegistro) {
         try {
-          const localDate = new Date(r.fechaRegistro);
+          const localDate = new Date(localRecord.fechaRegistro);
           const serverDate = new Date(serverRecord.fechaRegistro);
           if (!isNaN(localDate.getTime()) && !isNaN(serverDate.getTime())) {
             const timeDiff = Math.abs(localDate.getTime() - serverDate.getTime());
             if (timeDiff < 120000) { // within 2 minutes
-              return r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo;
+              return localRecord.nombreIpress === serverRecord.nombreIpress && localRecord.tipo === serverRecord.tipo;
             }
           }
-        } catch (e) {
-          // ignore Invalid time value
-        }
-        // Fallback to exact string match
-        return r.fechaRegistro === serverRecord.fechaRegistro && r.nombreIpress === serverRecord.nombreIpress && r.tipo === serverRecord.tipo;
+        } catch (e) {}
+        return localRecord.fechaRegistro === serverRecord.fechaRegistro && localRecord.nombreIpress === serverRecord.nombreIpress && localRecord.tipo === serverRecord.tipo;
       }
       return false;
     });
     
-    // Server record is synced by definition
-    const formattedRecord: LocalRecord = {
-      ...serverRecord,
-      uuid: String(serverRecord.uuid || ''),
-      id: String(serverRecord.uuid || ''), // Ensure id is always a string
-      isSynced: true
-    };
-
-    if (existingIndex >= 0) {
-      // For conflicts, typically we could check a timestamp, but for simplicity we assume the server state might be updated by other devices. 
-      // If local record is NOT synced, we might want to keep local, but since it's an offline-first, if it exists locally, it might be pending.
-      // Actually, if it exists on server, it means it's synced. Let's just update local with server data (especially state).
-      localRecords[existingIndex] = { ...localRecords[existingIndex], ...formattedRecord, isSynced: true };
-    } else {
-      localRecords.push(formattedRecord);
+    // If it's NOT on the server, we keep it as pending!
+    if (!isAlreadyOnServer) {
+      finalRecords.push(localRecord);
     }
   });
   
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(localRecords));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(finalRecords));
   window.dispatchEvent(new Event('recordsUpdated'));
 };
 

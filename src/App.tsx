@@ -29,7 +29,7 @@ const SplashManager = ({ children }: { children: React.ReactNode }) => {
       syncPendingRecords();
     }
     
-    // Auto-actualización silenciosa cada 2 minutos (120000 ms)
+    // Auto-actualización silenciosa frecuente (15 segundos)
     const pollTimer = setInterval(async () => {
       if (navigator.onLine) {
         try {
@@ -41,7 +41,7 @@ const SplashManager = ({ children }: { children: React.ReactNode }) => {
           console.error("Error en auto-actualización:", e);
         }
       }
-    }, 120000);
+    }, 15000);
 
     const timer = setTimeout(() => setShowSplash(false), 2000);
     return () => {
