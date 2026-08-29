@@ -34,7 +34,10 @@ export const DiagnosticoList = () => {
         allRecords = allRecords.filter(r => r.unidadEjecutora === user.red);
       } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
         // IPRESS/Hospital User
-        allRecords = allRecords.filter(r => String(r.codigoRenipress) === String(user.codigoRenipress));
+        allRecords = allRecords.filter(r => 
+          (user.codigoRenipress && String(r.codigoRenipress).trim() === String(user.codigoRenipress).trim()) ||
+          (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase())
+        );
       }
     }
 

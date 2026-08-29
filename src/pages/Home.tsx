@@ -26,7 +26,10 @@ export const Home: React.FC = () => {
         if (user.rol.includes('Red')) {
           records = records.filter(r => r.unidadEjecutora === user.red);
         } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
-          records = records.filter(r => String(r.codigoRenipress) === String(user.codigoRenipress));
+          records = records.filter(r => 
+            (user.codigoRenipress && String(r.codigoRenipress).trim() === String(user.codigoRenipress).trim()) ||
+            (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase())
+          );
         }
       }
       
