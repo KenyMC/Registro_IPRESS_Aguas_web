@@ -7,6 +7,7 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   usersList: User[];
+  setUsersList: React.Dispatch<React.SetStateAction<User[]>>;
   refreshUsers: () => Promise<void>;
 }
 
@@ -119,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, usersList, refreshUsers }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, usersList, setUsersList, refreshUsers }}>
       {children}
     </AuthContext.Provider>
   );

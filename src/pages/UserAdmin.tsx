@@ -4,8 +4,8 @@ import { User, syncUser } from '../services/api';
 import { Edit2, Shield, UserX, CheckCircle, Save, Plus } from 'lucide-react';
 
 export const UserAdmin = () => {
-  const { usersList, refreshUsers } = useAuth();
-  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const { usersList, setUsersList } = useAuth();
+  const [editingUser, setEditingUser] = useState<(User & { isNew?: boolean }) | null>(null);
   const [saving, setSaving] = useState(false);
 
   const handleEdit = (user: User) => {
@@ -20,9 +20,16 @@ export const UserAdmin = () => {
     const success = await syncUser(editingUser);
     
     if (success) {
-      alert('Cambios guardados correctamente en Google Sheets.\n(Actualiza la página si los cambios demoran en reflejarse en el CSV).');
+      setUsersList(prev => {
+        const exists = prev.find(u => u.usuario === editingUser.usuario);
+        const newList = exists 
+          ? prev.map(u => u.usuario === editingUser.usuario ? editingUser : u)
+          : [...prev, editingUser];
+        localStorage.setItem('aguas_auth_list', JSON.stringify(newList));
+        return newList;
+      });
+      alert('Cambios guardados correctamente.');
       setEditingUser(null);
-      await refreshUsers();
     } else {
       alert('Error al guardar. Asegúrese de tener conexión a internet o revise el Apps Script.');
     }
@@ -43,7 +50,8 @@ export const UserAdmin = () => {
             codigoRenipress: '',
             red: '',
             rol: 'IPRESS',
-            estado: 'Activo'
+            estado: 'Activo',
+            isNew: true
           })}>
             <Plus size={20} /> Nuevo Usuario
           </button>
@@ -83,7 +91,11 @@ export const UserAdmin = () => {
                           if(window.confirm(`¿Desea deshabilitar a ${user.usuario}?`)){
                             setSaving(true);
                             await syncUser({ ...user, estado: 'Inactivo' });
-                            await refreshUsers();
+                            setUsersList(prev => {
+                               const newList = prev.map(u => u.usuario === user.usuario ? { ...user, estado: 'Inactivo' } : u);
+                               localStorage.setItem('aguas_auth_list', JSON.stringify(newList));
+                               return newList;
+                            });
                             setSaving(false);
                           }
                         }} 
@@ -99,7 +111,11 @@ export const UserAdmin = () => {
                         onClick={async () => {
                           setSaving(true);
                           await syncUser({ ...user, estado: 'Activo' });
-                          await refreshUsers();
+                          setUsersList(prev => {
+                             const newList = prev.map(u => u.usuario === user.usuario ? { ...user, estado: 'Activo' } : u);
+                             localStorage.setItem('aguas_auth_list', JSON.stringify(newList));
+                             return newList;
+                          });
                           setSaving(false);
                         }} 
                         className="btn-icon" 
@@ -122,7 +138,7 @@ export const UserAdmin = () => {
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000 }}>
           <div className="glass-panel animate-fade-in" style={{ backgroundColor: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto' }}>
             <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary)' }}>
-              {editingUser.usuario ? `Editar Usuario: ${editingUser.usuario}` : 'Crear Nuevo Usuario'}
+              {editingUser.isNew ? 'Crear Nuevo Usuario' : `Editar Usuario: ${editingUser.usuario}`}
             </h3>
             
             <div className="form-group">
@@ -140,6 +156,7 @@ export const UserAdmin = () => {
               <select className="form-control" value={editingUser.red} onChange={e => setEditingUser({...editingUser, red: e.target.value})}>
                 <option value="">Seleccione una Red</option>
                 <option value="GERESA">GERESA</option>
+                <option value="Hospital">Hospital</option>
                 <option value="Red Cusco Norte">Red Cusco Norte</option>
                 <option value="Red Cusco Sur">Red Cusco Sur</option>
                 <option value="Red CCE">Red CCE</option>
