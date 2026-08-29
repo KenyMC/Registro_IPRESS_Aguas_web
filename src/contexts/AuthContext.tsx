@@ -61,7 +61,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUsers = async () => {
     try {
-      const response = await fetch(USERS_CSV_URL);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(USERS_CSV_URL, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
       if (response.ok) {
         const text = await response.text();
         const parsed = parseCSV(text);

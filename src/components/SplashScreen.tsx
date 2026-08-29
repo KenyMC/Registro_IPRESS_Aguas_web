@@ -16,7 +16,14 @@ export const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
       setTimeout(async () => {
         setStep(2);
         try {
-          const serverRecords = await fetchRecordsFromServer();
+          // Add a 10-second timeout to prevent the splash screen from hanging
+          const fetchPromise = fetchRecordsFromServer();
+          const timeoutPromise = new Promise<any[]>((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout fetching records')), 10000)
+          );
+          
+          const serverRecords = await Promise.race([fetchPromise, timeoutPromise]);
+          
           if (serverRecords && serverRecords.length > 0) {
             mergeRecords(serverRecords);
             window.dispatchEvent(new Event('recordsUpdated'));
@@ -37,7 +44,8 @@ export const SplashScreen = ({ onFinish }: { onFinish: () => void }) => {
     };
 
     loadData();
-  }, [onFinish]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (!isVisible && step === 3) return null;
 
