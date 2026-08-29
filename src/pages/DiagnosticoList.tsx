@@ -32,9 +32,9 @@ export const DiagnosticoList = () => {
       if (user.rol.includes('Red')) {
         // Red Admin
         allRecords = allRecords.filter(r => r.unidadEjecutora === user.red);
-      } else if (user.rol === 'IPRESS') {
-        // IPRESS User
-        allRecords = allRecords.filter(r => r.codigoRenipress === user.codigoRenipress);
+      } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
+        // IPRESS/Hospital User
+        allRecords = allRecords.filter(r => String(r.codigoRenipress) === String(user.codigoRenipress));
       }
     }
 

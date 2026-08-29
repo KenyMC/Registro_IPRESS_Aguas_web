@@ -31,8 +31,8 @@ export const MonitoreoList = () => {
     if (user.rol !== 'Administra todas las Redes') {
       if (user.rol.includes('Red')) {
         allRecords = allRecords.filter(r => r.unidadEjecutora === user.red);
-      } else if (user.rol === 'IPRESS') {
-        allRecords = allRecords.filter(r => r.codigoRenipress === user.codigoRenipress);
+      } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
+        allRecords = allRecords.filter(r => String(r.codigoRenipress) === String(user.codigoRenipress));
       }
     }
     

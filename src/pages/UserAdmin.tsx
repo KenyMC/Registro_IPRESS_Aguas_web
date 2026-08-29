@@ -158,6 +158,7 @@ export const UserAdmin = () => {
               <label className="form-label">Rol</label>
               <select className="form-control" value={editingUser.rol} onChange={e => setEditingUser({...editingUser, rol: e.target.value})}>
                 <option value="IPRESS">IPRESS</option>
+                <option value="Hospital">Hospital</option>
                 <option value="Administra todas las Redes">Administra todas las Redes</option>
                 <option value="Administra todas las IPRESS de la Red Norte">Administra todas las IPRESS de la Red Norte</option>
                 <option value="Administra todas las IPRESS de la Red Sur">Administra todas las IPRESS de la Red Sur</option>

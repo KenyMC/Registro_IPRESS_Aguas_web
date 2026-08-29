@@ -25,8 +25,8 @@ export const Home: React.FC = () => {
       if (user.rol !== 'Administra todas las Redes') {
         if (user.rol.includes('Red')) {
           records = records.filter(r => r.unidadEjecutora === user.red);
-        } else if (user.rol === 'IPRESS') {
-          records = records.filter(r => r.codigoRenipress === user.codigoRenipress);
+        } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
+          records = records.filter(r => String(r.codigoRenipress) === String(user.codigoRenipress));
         }
       }
       
