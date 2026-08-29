@@ -26,10 +26,16 @@ export const Home: React.FC = () => {
         if (user.rol.includes('Red')) {
           records = records.filter(r => r.unidadEjecutora === user.red);
         } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
-          records = records.filter(r => 
-            (user.codigoRenipress && String(r.codigoRenipress).trim() === String(user.codigoRenipress).trim()) ||
-            (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase())
-          );
+          records = records.filter(r => {
+            if (!user.codigoRenipress) return String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase();
+            
+            const uCode = String(user.codigoRenipress).trim();
+            const rCode = String(r.codigoRenipress || '').trim();
+            
+            return uCode === rCode || 
+                   (uCode !== '' && rCode !== '' && !isNaN(Number(uCode)) && !isNaN(Number(rCode)) && Number(uCode) === Number(rCode)) ||
+                   (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase());
+          });
         }
       }
       

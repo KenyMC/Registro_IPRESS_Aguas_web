@@ -34,10 +34,16 @@ export const DiagnosticoList = () => {
         allRecords = allRecords.filter(r => r.unidadEjecutora === user.red);
       } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
         // IPRESS/Hospital User
-        allRecords = allRecords.filter(r => 
-          (user.codigoRenipress && String(r.codigoRenipress).trim() === String(user.codigoRenipress).trim()) ||
-          (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase())
-        );
+        allRecords = allRecords.filter(r => {
+          if (!user.codigoRenipress) return String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase();
+          
+          const uCode = String(user.codigoRenipress).trim();
+          const rCode = String(r.codigoRenipress || '').trim();
+          
+          return uCode === rCode || 
+                 (uCode !== '' && rCode !== '' && !isNaN(Number(uCode)) && !isNaN(Number(rCode)) && Number(uCode) === Number(rCode)) ||
+                 (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase());
+        });
       }
     }
 
