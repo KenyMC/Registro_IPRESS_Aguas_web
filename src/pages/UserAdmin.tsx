@@ -63,6 +63,7 @@ export const UserAdmin = () => {
               <tr>
                 <th>Usuario</th>
                 <th>Contraseña</th>
+                <th>Renipress</th>
                 <th>Red</th>
                 <th>Rol</th>
                 <th>Estado</th>
@@ -74,6 +75,7 @@ export const UserAdmin = () => {
                 <tr key={idx} style={{ opacity: user.estado !== 'Activo' ? 0.6 : 1 }}>
                   <td style={{ fontWeight: 600 }}>{user.usuario}</td>
                   <td>••••••••</td>
+                  <td>{user.codigoRenipress || <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>-</span>}</td>
                   <td>{user.red}</td>
                   <td>{user.rol}</td>
                   <td>
