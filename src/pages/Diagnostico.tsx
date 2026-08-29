@@ -4,6 +4,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { syncEntry, SyncRequest } from '../services/api';
 import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { getCachedIpressList, IpressRecord } from '../services/ipressData';
+import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Save, RefreshCw, ArrowLeft, PenTool, Camera, Upload } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -110,6 +111,7 @@ export const Diagnostico = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const sigCanvas = useRef<SignatureCanvas>(null);
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState<Partial<SyncRequest>>(() => {
     const now = new Date();
@@ -129,7 +131,7 @@ export const Diagnostico = () => {
       cisterna: 'No',
       cisternaOperativa: 'No',
       tratamientoAgua: 'No',
-      unidadEjecutora: UNIDADES_EJECUTORAS[0],
+      unidadEjecutora: user?.red && user.rol !== 'Administra todas las Redes' ? user.red : UNIDADES_EJECUTORAS[0],
       fuenteAgua: FUENTES_AGUA[0],
       fecha: defaultFecha,
       hora: defaultHora,
@@ -149,7 +151,47 @@ export const Diagnostico = () => {
   useEffect(() => {
     const list = getCachedIpressList();
     setIpressList(list);
-  }, []);
+
+    // Auto-fill IPRESS for IPRESS/Hospital users on new records
+    if (!id && user && (user.rol === 'IPRESS' || user.rol === 'Hospital')) {
+      if (user.codigoRenipress) {
+        // Try to match by codigoRenipress (numeric or string)
+        const uCode = String(user.codigoRenipress).trim();
+        const matched = list.find(i => {
+          const rCode = String(i.codigo || '').trim();
+          return uCode === rCode || (uCode !== '' && rCode !== '' && !isNaN(Number(uCode)) && !isNaN(Number(rCode)) && Number(uCode) === Number(rCode));
+        });
+        
+        if (matched) {
+          setFormData(prev => ({
+            ...prev,
+            nombreIpress: matched.nombre,
+            codigoRenipress: matched.codigo
+          }));
+        } else {
+          // Fallback to username matching
+          const matchedByName = list.find(i => String(i.nombre).trim().toLowerCase() === String(user.usuario).trim().toLowerCase());
+          if (matchedByName) {
+            setFormData(prev => ({
+              ...prev,
+              nombreIpress: matchedByName.nombre,
+              codigoRenipress: matchedByName.codigo
+            }));
+          }
+        }
+      } else {
+        // Fallback to username matching if no codigoRenipress
+        const matchedByName = list.find(i => String(i.nombre).trim().toLowerCase() === String(user.usuario).trim().toLowerCase());
+        if (matchedByName) {
+          setFormData(prev => ({
+            ...prev,
+            nombreIpress: matchedByName.nombre,
+            codigoRenipress: matchedByName.codigo
+          }));
+        }
+      }
+    }
+  }, [id, user]);
 
   useEffect(() => {
     if (id) {
@@ -390,29 +432,48 @@ export const Diagnostico = () => {
         <div className="form-section">
           <h3 className="section-heading">Datos de Ubicación de la IPRESS</h3>
 
-          <div className="form-group">
-            <label className="form-label">Unidad Ejecutora</label>
-            <select required name="unidadEjecutora" className="form-control" value={formData.unidadEjecutora || ''} onChange={handleChange}>
-              <option value="">Seleccione...</option>
-              {UNIDADES_EJECUTORAS.map(ue => (
-                <option key={ue} value={ue}>{ue}</option>
-              ))}
-            </select>
-          </div>
+          <div className="grid-2">
+            <div className="form-group">
+              <label className="form-label">Unidad Ejecutora / Red *</label>
+              <select 
+                className="form-control"
+                name="unidadEjecutora" 
+                value={formData.unidadEjecutora} 
+                onChange={handleChange} 
+                required
+                disabled={user?.rol === 'IPRESS' || user?.rol === 'Hospital' || (user?.rol?.includes('Red') && user.rol !== 'Administra todas las Redes')}
+              >
+                <option value="">Seleccione...</option>
+                {UNIDADES_EJECUTORAS.map((ue, idx) => (
+                  <option key={idx} value={ue}>{ue}</option>
+                ))}
+              </select>
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Nombre de la IPRESS</label>
-            {!isOtroUnidad ? (
-              <select required name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange}>
-                <option value="">Seleccione IPRESS...</option>
+            <div className="form-group">
+              <label className="form-label">Nombre de la IPRESS *</label>
+              <select 
+                className="form-control"
+                name="nombreIpress" 
+                value={formData.nombreIpress} 
+                onChange={handleChange} 
+                required
+                disabled={user?.rol === 'IPRESS' || user?.rol === 'Hospital'}
+              >
+                <option value="">Seleccione una IPRESS</option>
                 {ipressList.filter(i => i.red === formData.unidadEjecutora).map((ipress, idx) => (
                   <option key={idx} value={ipress.nombre}>{ipress.nombre}</option>
                 ))}
               </select>
-            ) : (
-              <input required type="text" name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange} />
-            )}
+            </div>
           </div>
+
+          {!isOtroUnidad ? null : (
+            <div className="form-group">
+              <label className="form-label">Nombre de la IPRESS</label>
+              <input required type="text" name="nombreIpress" className="form-control" value={formData.nombreIpress || ''} onChange={handleChange} />
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label">Codigo RENIPRESS</label>
             <input required type="number" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
