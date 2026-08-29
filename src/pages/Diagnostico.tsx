@@ -476,7 +476,7 @@ export const Diagnostico = () => {
           )}
           <div className="form-group">
             <label className="form-label">Codigo RENIPRESS</label>
-            <input required type="number" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
+            <input required type="text" name="codigoRenipress" className="form-control" value={formData.codigoRenipress || ''} onChange={handleChange} readOnly={!isOtroUnidad} style={!isOtroUnidad ? { backgroundColor: '#f1f5f9' } : {}} />
           </div>
 
           <div className="form-group">

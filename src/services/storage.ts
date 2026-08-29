@@ -20,11 +20,11 @@ export const getRecords = (): LocalRecord[] => {
 export const saveRecord = (record: LocalRecord): void => {
   const records = getRecords();
   
-  // Find matching local record by UUID (backend assigns UUIDs to new records)
+  // Find matching local record by UUID and type (backend assigns UUIDs to new records)
   const existingIndex = records.findIndex(r => {
-    if (String(r.uuid) === String(record.uuid) && record.uuid !== '') return true;
+    if (String(r.uuid) === String(record.uuid) && record.uuid !== '' && r.tipo === record.tipo) return true;
     if (r.id && String(r.id) === String(record.id)) return true;
-    if (!r.uuid && r.fechaRegistro && record.fechaRegistro) {
+    if (!r.uuid && r.fechaRegistro && record.fechaRegistro && r.tipo === record.tipo) {
       try {
         const localDate = new Date(r.fechaRegistro);
         const recordDate = new Date(record.fechaRegistro);
@@ -78,26 +78,24 @@ export const getRecordById = (id: string): LocalRecord | undefined => {
  * desaparecerá del almacenamiento local del usuario (y de la pantalla, en combinación con el polleo de App.tsx).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const mergeRecords = (serverRecords: any[]): void => {
+export const mergeRecords = (serverData: any[]): void => {
   const localRecords = getRecords();
   
-  // Keep ONLY local records that have NOT been synced yet
-  const unsyncedLocalRecords = localRecords.filter(r => !r.isSynced);
-  
-  // Map server records to local format
-  const formattedServerRecords: LocalRecord[] = serverRecords.map(serverRecord => ({
-      ...serverRecord,
-      uuid: String(serverRecord.uuid || ''),
-      id: String(serverRecord.uuid || ''),
-      isSynced: true
+  // Create a new array that will hold the merged result
+  // Start with server records, marked as synced. Avoid ID collisions between tipos.
+  const finalRecords: LocalRecord[] = serverData.map(item => ({
+    ...item,
+    uuid: String(item.uuid || ''),
+    id: item.uuid ? `${item.tipo}-${item.uuid}` : crypto.randomUUID(),
+    isSynced: true
   }));
-
-  const finalRecords: LocalRecord[] = [...formattedServerRecords];
   
-  // Deduplicate unsynced local records that might actually be on the server
-  unsyncedLocalRecords.forEach(localRecord => {
-    const isAlreadyOnServer = formattedServerRecords.some(serverRecord => {
-      if (String(localRecord.uuid) === String(serverRecord.uuid) && serverRecord.uuid !== '') return true;
+  // Now, add any local records that have NOT been synced yet (isSynced = false)
+  // or that are not present in the server data.
+  localRecords.forEach(localRecord => {
+    // Check if this local record is already in the server data
+    const isAlreadyOnServer = finalRecords.some(serverRecord => {
+      if (String(localRecord.uuid) === String(serverRecord.uuid) && serverRecord.uuid !== '' && localRecord.tipo === serverRecord.tipo) return true;
       if (localRecord.fechaRegistro && serverRecord.fechaRegistro) {
         try {
           const localDate = new Date(localRecord.fechaRegistro);
