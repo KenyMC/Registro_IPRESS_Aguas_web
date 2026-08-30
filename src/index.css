@@ -572,6 +572,24 @@ select.form-control {
   }
 }
 
+.user-profile-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+@media (max-width: 500px) {
+  .user-profile-name {
+    max-width: 60px;
+  }
+  .header-nav-wrapper {
+    flex-wrap: wrap;
+  }
+}
+
 /* Cards */
 .card-grid {
   display: grid;

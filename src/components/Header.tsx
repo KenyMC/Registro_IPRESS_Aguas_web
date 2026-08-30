@@ -77,7 +77,7 @@ export const Header = () => {
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
               >
                 <UserCircle size={18} />
-                <span style={{ fontWeight: 600 }}>{user.usuario}</span>
+                <span className="user-profile-name" style={{ fontWeight: 600 }}>{user.usuario}</span>
               </button>
 
               {isMenuOpen && (

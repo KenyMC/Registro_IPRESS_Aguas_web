@@ -53,7 +53,7 @@ const PhotoInput = ({ label, fieldName, formData, handleFileChange }: { label: s
           </div>
           <small style={{ color: 'var(--text-muted)' }}>Formatos permitidos: JPG, PNG</small>
           {formData[`${fieldName}Name` as keyof SyncRequest] && (
-            <small style={{ color: 'var(--primary)', fontWeight: 500 }}>
+            <small style={{ color: 'var(--primary)', fontWeight: 500, wordBreak: 'break-all' }}>
               Cargado: {formData[`${fieldName}Name` as keyof SyncRequest]}
             </small>
           )}
