@@ -567,18 +567,41 @@ select.form-control {
 
 
 
+.mobile-menu-overlay {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 100;
+}
+
+.mobile-menu-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .mobile-menu-container {
   display: none;
   overflow: hidden;
   max-height: 0;
   transition: max-height 0.3s ease-in-out;
-  background: white;
-  border-top: 1px solid var(--border);
+  background: #f4f9ff;
+  border-top: 1px solid rgba(37, 99, 235, 0.1);
   position: absolute;
   top: 100%;
   left: 0;
   width: 100%;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.15), 0 8px 10px -6px rgba(37, 99, 235, 0.15);
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+  z-index: 101;
 }
 
 .mobile-menu-container.open {
@@ -593,19 +616,19 @@ select.form-control {
   color: var(--text-main);
   text-decoration: none;
   font-weight: 500;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.1);
   transition: background-color 0.2s, color 0.2s;
 }
 
 .mobile-nav-link:hover, .mobile-nav-link.active {
-  background-color: #f0f7ff;
+  background-color: #e0eeff;
   color: var(--primary);
 }
 
 .mobile-nav-link.logout-btn {
   background: none;
   border: none;
-  border-bottom: 1px solid var(--border);
+  border-bottom: none;
   color: var(--danger);
   width: 100%;
   text-align: left;
@@ -643,7 +666,7 @@ select.form-control {
     display: flex;
   }
   
-  .mobile-menu-container {
+  .mobile-menu-container, .mobile-menu-overlay {
     display: block;
   }
 }

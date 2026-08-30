@@ -130,11 +130,16 @@ export const Header = () => {
 
       {/* MOBILE MENU DROPDOWN */}
       {user && (
-        <div 
-          className={`mobile-menu-container ${isMobileMenuOpen ? 'open' : ''}`}
-          ref={mobileMenuRef}
-        >
-          <div className="mobile-menu-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', borderBottom: '1px solid var(--border)', backgroundColor: '#f8fafc' }}>
+        <>
+          <div 
+            className={`mobile-menu-overlay ${isMobileMenuOpen ? 'open' : ''}`}
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div 
+            className={`mobile-menu-container ${isMobileMenuOpen ? 'open' : ''}`}
+            ref={mobileMenuRef}
+          >
+            <div className="mobile-menu-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', borderBottom: '1px solid rgba(37, 99, 235, 0.1)', backgroundColor: '#e8f2ff' }}>
             <UserCircle size={32} color="var(--primary)" />
             <div>
               <p style={{ margin: 0, fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)' }}>{user.usuario}</p>
@@ -163,7 +168,8 @@ export const Header = () => {
               <LogOut size={20} /> Cerrar Sesión
             </button>
           </nav>
-        </div>
+          </div>
+        </>
       )}
     </header>
   );
