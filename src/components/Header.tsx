@@ -48,28 +48,31 @@ export const Header = () => {
   return (
     <header className={`header ${isScrolled ? 'scrolled' : ''}`}>
       <div className="header-content">
-        <div className="header-logos">
-          <div className="logo-circle">
-            <img src="./logo-cusco.jpg" alt="Logo 1" className="logo-img-cusco" />
+        <div className="header-left-group">
+          <div className="header-logos">
+            <div className="logo-circle">
+              <img src="./logo-cusco.jpg" alt="Logo 1" className="logo-img-cusco" />
+            </div>
+            <div className="logo-circle">
+              <img src="./logo-diresa.png" alt="Logo DIRESA" className="logo-img-diresa" />
+            </div>
+            <div className="logo-circle">
+              <img src="./logo-pvcach.png" alt="Logo PVCACH" className="logo-img-pvcach" />
+            </div>
           </div>
-          <div className="logo-circle">
-            <img src="./logo-diresa.png" alt="Logo DIRESA" className="logo-img-diresa" />
-          </div>
-          <div className="logo-circle">
-            <img src="./logo-pvcach.png" alt="Logo PVCACH" className="logo-img-pvcach" />
-          </div>
+          <Link to="/" className="logo">
+            <Droplets className="logo-icon" size={28} />
+            <span>Calidad del Agua IPRESS</span>
+          </Link>
         </div>
-        <Link to="/" className="logo">
-          <Droplets className="logo-icon" size={28} />
-          <span>Calidad del Agua IPRESS</span>
-        </Link>
         
         {user && (
           <button 
-            className="mobile-menu-btn" 
+            className="mobile-menu-btn logo-circle" 
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {isMobileMenuOpen ? <X size={24} color="var(--primary)" /> : <Menu size={24} color="var(--primary)" />}
           </button>
         )}
 
