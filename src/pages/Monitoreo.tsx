@@ -69,20 +69,15 @@ const PhotoInput = ({ label, fieldName, formData, handleFileChange }: { label: s
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 if (target.src.includes('uc?export=view')) {
-                  const fileId = url?.split('id=')[1];
+                  const fileId = target.src.split('id=')[1];
                   if (fileId) {
                     target.src = `https://lh3.googleusercontent.com/d/${fileId}`;
                     return;
                   }
+                } else if (target.src.includes('lh3.googleusercontent.com')) {
+                  target.src = 'https://via.placeholder.com/80?text=Foto';
+                  return;
                 }
-                if (target.src.includes('lh3.googleusercontent.com')) {
-                  const fileId = url?.split('id=')[1];
-                  if (fileId) {
-                    target.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
-                    return;
-                  }
-                }
-                target.style.display = 'none';
               }} 
             />
           ) : (
@@ -249,10 +244,14 @@ export const Monitoreo = () => {
         }
 
         let horaLimpia: any = existing.hora || fallbackHora;
-        if (typeof horaLimpia === 'string' && horaLimpia.includes('T')) {
-          const dateObj = new Date(horaLimpia);
-          if (!isNaN(dateObj.getTime())) {
-            horaLimpia = dateObj.toTimeString().split(' ')[0].substring(0, 5);
+        if (typeof horaLimpia === 'string') {
+          if (horaLimpia.includes('T')) {
+            const dateObj = new Date(horaLimpia);
+            if (!isNaN(dateObj.getTime())) {
+              horaLimpia = dateObj.toTimeString().split(' ')[0].substring(0, 5);
+            }
+          } else if (horaLimpia.match(/^\d{2}:\d{2}:\d{2}$/)) {
+            horaLimpia = horaLimpia.substring(0, 5);
           }
         } else if (horaLimpia instanceof Date) {
           horaLimpia = horaLimpia.toTimeString().split(' ')[0].substring(0, 5);
