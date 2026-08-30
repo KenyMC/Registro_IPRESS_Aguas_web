@@ -166,7 +166,9 @@ export const Diagnostico = () => {
           setFormData(prev => ({
             ...prev,
             nombreIpress: matched.nombre,
-            codigoRenipress: matched.codigo
+            codigoRenipress: matched.codigo,
+            provincia: matched.provincia,
+            distrito: matched.distrito
           }));
         } else {
           // Fallback to username matching
@@ -175,7 +177,9 @@ export const Diagnostico = () => {
             setFormData(prev => ({
               ...prev,
               nombreIpress: matchedByName.nombre,
-              codigoRenipress: matchedByName.codigo
+              codigoRenipress: matchedByName.codigo,
+              provincia: matchedByName.provincia,
+              distrito: matchedByName.distrito
             }));
           }
         }
@@ -186,7 +190,9 @@ export const Diagnostico = () => {
           setFormData(prev => ({
             ...prev,
             nombreIpress: matchedByName.nombre,
-            codigoRenipress: matchedByName.codigo
+            codigoRenipress: matchedByName.codigo,
+            provincia: matchedByName.provincia,
+            distrito: matchedByName.distrito
           }));
         }
       }

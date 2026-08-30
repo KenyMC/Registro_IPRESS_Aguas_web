@@ -120,7 +120,7 @@ export const MonitoreoList = () => {
                 <tr key={record.id}>
                   <td>{new Date(record.fechaRegistro).toLocaleDateString()}</td>
                   <td style={{ fontWeight: 500 }}>{record.nombreIpress}</td>
-                  <td>{record.cloro || '-'}</td>
+                  <td>{record.cloro !== undefined && record.cloro !== null && record.cloro !== '' ? record.cloro : '-'}</td>
                   <td>
                     {record.isSynced ? (
                       <span className="status-badge success"><CheckCircle size={14}/> Sincronizado</span>

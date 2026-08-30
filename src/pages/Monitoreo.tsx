@@ -476,38 +476,38 @@ export const Monitoreo = () => {
           <div className="form-group">
             <label className="form-label">
               Cloro Residual (mg/L)
-              <WarningBadge show={validateParameter('cloro', formData.cloro || '') !== null} />
+              <WarningBadge show={validateParameter('cloro', formData.cloro !== undefined && formData.cloro !== null ? String(formData.cloro) : '') !== null} />
             </label>
-            <input required type="number" step="any" name="cloro" className="form-control" value={formData.cloro || ''} onChange={handleChange} />
+            <input required type="number" step="any" name="cloro" className="form-control" value={formData.cloro !== undefined && formData.cloro !== null ? formData.cloro : ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">Temperatura (°C)</label>
-            <input type="number" step="any" name="temperatura" className="form-control" value={formData.temperatura || ''} onChange={handleChange} />
+            <input type="number" step="any" name="temperatura" className="form-control" value={formData.temperatura !== undefined && formData.temperatura !== null ? formData.temperatura : ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">
               pH
-              <WarningBadge show={validateParameter('ph', formData.ph || '') !== null} />
+              <WarningBadge show={validateParameter('ph', formData.ph !== undefined && formData.ph !== null ? String(formData.ph) : '') !== null} />
             </label>
-            <input type="number" step="any" name="ph" className="form-control" value={formData.ph || ''} onChange={handleChange} />
+            <input type="number" step="any" name="ph" className="form-control" value={formData.ph !== undefined && formData.ph !== null ? formData.ph : ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">
               Turbiedad (NTU)
-              <WarningBadge show={validateParameter('turbiedad', formData.turbiedad || '') !== null} />
+              <WarningBadge show={validateParameter('turbiedad', formData.turbiedad !== undefined && formData.turbiedad !== null ? String(formData.turbiedad) : '') !== null} />
             </label>
-            <input type="number" step="any" name="turbiedad" className="form-control" value={formData.turbiedad || ''} onChange={handleChange} />
+            <input type="number" step="any" name="turbiedad" className="form-control" value={formData.turbiedad !== undefined && formData.turbiedad !== null ? formData.turbiedad : ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">
               Conductividad (µS/cm)
-              <WarningBadge show={validateParameter('conductividad', formData.conductividad || '') !== null} />
+              <WarningBadge show={validateParameter('conductividad', formData.conductividad !== undefined && formData.conductividad !== null ? String(formData.conductividad) : '') !== null} />
             </label>
-            <input type="number" step="any" name="conductividad" className="form-control" value={formData.conductividad || ''} onChange={handleChange} />
+            <input type="number" step="any" name="conductividad" className="form-control" value={formData.conductividad !== undefined && formData.conductividad !== null ? formData.conductividad : ''} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">Valor de STD (mg/L)</label>
-            <input type="number" step="any" name="std" className="form-control" value={formData.std || ''} onChange={handleChange} />
+            <input type="number" step="any" name="std" className="form-control" value={formData.std !== undefined && formData.std !== null ? formData.std : ''} onChange={handleChange} />
           </div>
           
           <PhotoInput 
