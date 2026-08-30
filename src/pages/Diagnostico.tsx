@@ -209,8 +209,13 @@ export const Diagnostico = () => {
         
         let fechaLimpia: any = existing.fecha || fallbackFecha;
         // Fix for timestamps coming from google sheets
-        if (typeof fechaLimpia === 'string' && fechaLimpia.includes('T')) {
-          fechaLimpia = fechaLimpia.split('T')[0];
+        if (typeof fechaLimpia === 'string') {
+          if (fechaLimpia.includes('T')) {
+            fechaLimpia = fechaLimpia.split('T')[0];
+          } else if (fechaLimpia.match(/^\d{2}-\d{2}-\d{4}$/)) {
+            const [d, m, y] = fechaLimpia.split('-');
+            fechaLimpia = `${y}-${m}-${d}`;
+          }
         } else if (fechaLimpia instanceof Date) {
           fechaLimpia = fechaLimpia.toISOString().split('T')[0];
         }
@@ -670,7 +675,7 @@ export const Diagnostico = () => {
           <PhotoInput label="Foto Observacion 3" fieldName="foto3" formData={formData} handleFileChange={handleFileChange} />
           <div className="form-group">
             <label className="form-label">Fecha</label>
-            <input required type="date" name="fecha" className="form-control" value={formData.fecha || ''} onChange={handleChange} />
+            <input required type="date" name="fecha" className="form-control" value={formData.fecha || ''} min={new Date().toISOString().split('T')[0]} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">Hora</label>

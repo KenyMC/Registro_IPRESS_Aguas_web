@@ -61,7 +61,30 @@ const PhotoInput = ({ label, fieldName, formData, handleFileChange }: { label: s
         
         <div style={{ width: '80px', height: '80px', border: imageSrc ? '2px solid var(--border)' : '2px dashed var(--border)', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', flexShrink: 0, overflow: 'hidden', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
           {imageSrc ? (
-            <img src={imageSrc} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={label} referrerPolicy="no-referrer" />
+            <img 
+              src={imageSrc} 
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              alt={label} 
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src.includes('uc?export=view')) {
+                  const fileId = url?.split('id=')[1];
+                  if (fileId) {
+                    target.src = `https://lh3.googleusercontent.com/d/${fileId}`;
+                    return;
+                  }
+                }
+                if (target.src.includes('lh3.googleusercontent.com')) {
+                  const fileId = url?.split('id=')[1];
+                  if (fileId) {
+                    target.src = `https://drive.google.com/thumbnail?id=${fileId}&sz=w800`;
+                    return;
+                  }
+                }
+                target.style.display = 'none';
+              }} 
+            />
           ) : (
             <Camera size={24} color="var(--border)" />
           )}
@@ -214,14 +237,24 @@ export const Monitoreo = () => {
         const fallbackHora = now.toTimeString().split(' ')[0].substring(0, 5);
         
         let fechaLimpia: any = existing.fecha || fallbackFecha;
-        if (typeof fechaLimpia === 'string' && fechaLimpia.includes('T')) {
-          fechaLimpia = fechaLimpia.split('T')[0];
+        if (typeof fechaLimpia === 'string') {
+          if (fechaLimpia.includes('T')) {
+            fechaLimpia = fechaLimpia.split('T')[0];
+          } else if (fechaLimpia.match(/^\d{2}-\d{2}-\d{4}$/)) {
+            const [d, m, y] = fechaLimpia.split('-');
+            fechaLimpia = `${y}-${m}-${d}`;
+          }
         } else if (fechaLimpia instanceof Date) {
           fechaLimpia = fechaLimpia.toISOString().split('T')[0];
         }
 
         let horaLimpia: any = existing.hora || fallbackHora;
-        if (horaLimpia instanceof Date) {
+        if (typeof horaLimpia === 'string' && horaLimpia.includes('T')) {
+          const dateObj = new Date(horaLimpia);
+          if (!isNaN(dateObj.getTime())) {
+            horaLimpia = dateObj.toTimeString().split(' ')[0].substring(0, 5);
+          }
+        } else if (horaLimpia instanceof Date) {
           horaLimpia = horaLimpia.toTimeString().split(' ')[0].substring(0, 5);
         }
 
@@ -520,7 +553,7 @@ export const Monitoreo = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
             <div className="form-group">
               <label className="form-label">Fecha</label>
-              <input required type="date" name="fecha" className="form-control" value={formData.fecha || ''} onChange={handleChange} />
+              <input required type="date" name="fecha" className="form-control" value={formData.fecha || ''} min={new Date().toISOString().split('T')[0]} onChange={handleChange} />
             </div>
             <div className="form-group">
               <label className="form-label">Hora</label>

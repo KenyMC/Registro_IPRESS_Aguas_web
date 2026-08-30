@@ -108,6 +108,28 @@ export const syncUser = async (userPayload: Partial<User>): Promise<boolean> => 
 
 export const syncEntry = async (data: SyncRequest): Promise<boolean> => {
   try {
+    const payload = { ...data };
+
+    // Format fecha: YYYY-MM-DD -> DD-MM-YYYY
+    if (payload.fecha && typeof payload.fecha === 'string' && payload.fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      const [y, m, d] = payload.fecha.split('-');
+      payload.fecha = `${d}-${m}-${y}`;
+    }
+    
+    // Format hora: HH:mm -> HH:mm:ss
+    if (payload.hora && typeof payload.hora === 'string' && payload.hora.length === 5) {
+      payload.hora = `${payload.hora}:00`;
+    }
+    
+    // Format fechaRegistro: ISO -> DD-MM-YYYY HH:mm:ss
+    if (payload.fechaRegistro && typeof payload.fechaRegistro === 'string') {
+      const d = new Date(payload.fechaRegistro);
+      if (!isNaN(d.getTime())) {
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        payload.fechaRegistro = `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      }
+    }
+
     // Note: We use mode 'no-cors' to avoid CORS issues from the browser to Apps Script.
     // This means we won't be able to read the JSON response, but the data will be sent.
     // If the Apps Script allows CORS, we could use cors mode. Standard for simple GAS is plain text.
@@ -117,7 +139,7 @@ export const syncEntry = async (data: SyncRequest): Promise<boolean> => {
       headers: {
         "Content-Type": "text/plain", // often required for GAS to avoid preflight
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload),
     });
 
     // no-cors mode returns an opaque response with status 0, so we just return true.
