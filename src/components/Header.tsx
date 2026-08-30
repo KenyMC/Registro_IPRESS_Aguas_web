@@ -69,7 +69,7 @@ export const Header = () => {
         {user && (
           <button 
             className="mobile-menu-btn logo-circle" 
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+            style={{ alignItems: 'center', justifyContent: 'center', padding: 0 }}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X size={24} color="var(--primary)" /> : <Menu size={24} color="var(--primary)" />}

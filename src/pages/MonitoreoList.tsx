@@ -48,9 +48,25 @@ export const MonitoreoList = () => {
     
     if (filterDate) {
       allRecords = allRecords.filter(r => {
-        if (!r.fechaRegistro) return false;
-        const dateStr = new Date(r.fechaRegistro).toISOString().split('T')[0];
-        return dateStr === filterDate;
+        const extractDate = (val: string | undefined) => {
+          if (!val) return null;
+          if (typeof val !== 'string') {
+             try { return new Date(val).toISOString().split('T')[0]; } catch(e) { return null; }
+          }
+          if (val.match(/^\d{4}-\d{2}-\d{2}/)) return val.substring(0, 10);
+          if (val.match(/^\d{2}-\d{2}-\d{4}/)) {
+            const parts = val.split(' ')[0].split('-');
+            if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
+          if (val.includes('T')) return val.split('T')[0];
+          try {
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+          } catch(e) {}
+          return null;
+        };
+
+        return extractDate(r.fecha) === filterDate || extractDate(r.fechaRegistro) === filterDate;
       });
     }
 
@@ -118,7 +134,25 @@ export const MonitoreoList = () => {
             <tbody>
               {records.map(record => (
                 <tr key={record.id}>
-                  <td>{new Date(record.fechaRegistro).toLocaleDateString()}</td>
+                  <td>
+                    {(() => {
+                      const dVal = record.fecha || record.fechaRegistro;
+                      if (!dVal) return '-';
+                      if (typeof dVal === 'string' && dVal.match(/^\d{2}-\d{2}-\d{4}/)) {
+                        return dVal.split(' ')[0].replace(/-/g, '/');
+                      }
+                      if (typeof dVal === 'string' && dVal.match(/^\d{4}-\d{2}-\d{2}/)) {
+                        const parts = dVal.split(' ')[0].split('-');
+                        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                      }
+                      try {
+                        const d = new Date(dVal);
+                        return isNaN(d.getTime()) ? String(dVal).split(' ')[0] : d.toLocaleDateString();
+                      } catch(e) {
+                        return String(dVal).split(' ')[0];
+                      }
+                    })()}
+                  </td>
                   <td style={{ fontWeight: 500 }}>{record.nombreIpress}</td>
                   <td>{record.cloro !== undefined && record.cloro !== null && record.cloro !== '' ? record.cloro : '-'}</td>
                   <td>
