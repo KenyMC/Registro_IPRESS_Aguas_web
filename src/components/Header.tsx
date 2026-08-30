@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Droplet, Droplets, ClipboardList, UserCircle, LogOut, Users } from 'lucide-react';
+import { Droplet, Droplets, ClipboardList, UserCircle, LogOut, Users, Menu, X, Home } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,6 +28,16 @@ export const Header = () => {
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutsideMobile = (event: MouseEvent) => {
+      if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target as Node)) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutsideMobile);
+    return () => document.removeEventListener('mousedown', handleClickOutsideMobile);
   }, []);
 
   const handleLogout = () => {
@@ -51,7 +63,17 @@ export const Header = () => {
           <Droplets className="logo-icon" size={28} />
           <span>Calidad del Agua IPRESS</span>
         </Link>
-        <div className="header-nav-wrapper" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        
+        {user && (
+          <button 
+            className="mobile-menu-btn" 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          >
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+        )}
+
+        <div className="header-nav-wrapper desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <nav className="header-nav">
             <NavLink 
               to="/diagnostico" 
@@ -102,6 +124,44 @@ export const Header = () => {
           )}
         </div>
       </div>
+
+      {/* MOBILE MENU DROPDOWN */}
+      {user && (
+        <div 
+          className={`mobile-menu-container ${isMobileMenuOpen ? 'open' : ''}`}
+          ref={mobileMenuRef}
+        >
+          <div className="mobile-menu-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', borderBottom: '1px solid var(--border)', backgroundColor: '#f8fafc' }}>
+            <UserCircle size={32} color="var(--primary)" />
+            <div>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)' }}>{user.usuario}</p>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>{user.rol}</p>
+            </div>
+          </div>
+          
+          <nav className="mobile-nav-links" style={{ display: 'flex', flexDirection: 'column', padding: '0.5rem' }}>
+            <NavLink to="/" className={({ isActive }) => isActive ? "mobile-nav-link active" : "mobile-nav-link"} onClick={() => setIsMobileMenuOpen(false)}>
+              <Home size={20} /> Inicio
+            </NavLink>
+            <NavLink to="/diagnostico" className={({ isActive }) => isActive ? "mobile-nav-link active" : "mobile-nav-link"} onClick={() => setIsMobileMenuOpen(false)}>
+              <ClipboardList size={20} /> Diagnóstico
+            </NavLink>
+            <NavLink to="/monitoreo" className={({ isActive }) => isActive ? "mobile-nav-link active" : "mobile-nav-link"} onClick={() => setIsMobileMenuOpen(false)}>
+              <Droplet size={20} /> Monitoreo
+            </NavLink>
+            
+            {user.rol === 'Administra todas las Redes' && (
+              <NavLink to="/admin-usuarios" className={({ isActive }) => isActive ? "mobile-nav-link active" : "mobile-nav-link"} onClick={() => setIsMobileMenuOpen(false)}>
+                <Users size={20} /> Administrar Usuarios
+              </NavLink>
+            )}
+            
+            <button className="mobile-nav-link logout-btn" onClick={() => { handleLogout(); setIsMobileMenuOpen(false); }}>
+              <LogOut size={20} /> Cerrar Sesión
+            </button>
+          </nav>
+        </div>
+      )}
     </header>
   );
 };

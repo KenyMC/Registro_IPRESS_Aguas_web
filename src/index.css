@@ -553,40 +553,89 @@ select.form-control {
   color: var(--primary);
 }
 
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  color: var(--text-main);
+  padding: 0.5rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.mobile-menu-btn:hover {
+  background-color: var(--border);
+}
+
+.mobile-menu-container {
+  display: none;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease-in-out;
+  background: white;
+  border-top: 1px solid var(--border);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+}
+
+.mobile-menu-container.open {
+  max-height: 500px;
+}
+
+.mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  color: var(--text-main);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.mobile-nav-link:hover, .mobile-nav-link.active {
+  background-color: #f0f7ff;
+  color: var(--primary);
+}
+
+.mobile-nav-link.logout-btn {
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--danger);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-nav-link.logout-btn:hover {
+  background-color: #fef2f2;
+}
+
 @media (max-width: 900px) {
   .header-content {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
     gap: 1rem;
   }
-  .header-nav-wrapper {
-    width: 100%;
-    justify-content: center;
+  
+  .desktop-only {
+    display: none !important;
   }
-  .header-nav {
-    width: 100%;
-    justify-content: space-around;
+  
+  .mobile-menu-btn {
+    display: block;
   }
-  .nav-link {
-    flex: 1;
-  }
-}
-
-.user-profile-name {
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: inline-block;
-  vertical-align: middle;
-}
-
-@media (max-width: 500px) {
-  .user-profile-name {
-    max-width: 60px;
-  }
-  .header-nav-wrapper {
-    flex-wrap: wrap;
+  
+  .mobile-menu-container {
+    display: block;
   }
 }
 
