@@ -719,9 +719,7 @@ select.form-control {
 
 /* Tables */
 .table-container {
-  overflow-x: auto;
-  overflow-y: auto;
-  max-height: calc(100vh - 200px);
+  overflow-x: visible;
   background: white;
   border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -735,22 +733,25 @@ table {
 }
 
 th, td {
-  padding: 1rem;
+  padding: 0.75rem 0.5rem;
   border-bottom: 1px solid var(--border);
-  white-space: nowrap;
+  white-space: normal;
+  font-size: 0.85rem;
+  vertical-align: middle;
 }
 
 th {
   background-color: #f8fafc;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-muted);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   position: sticky;
-  top: 0;
+  top: 72px; /* Offset by the height of the main sticky header navigation */
   z-index: 5;
-  box-shadow: 0 1px 0 var(--border); /* Better than border for sticky headers */
+  box-shadow: 0 1px 0 var(--border), 0 -1px 0 var(--border);
+  line-height: 1.2;
 }
 
 tr:last-child td {
