@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { syncEntry } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,6 +8,8 @@ import { useAuth } from '../contexts/AuthContext';
 export const DiagnosticoList = () => {
   const [records, setRecords] = useState<LocalRecord[]>([]);
   const [filterDate, setFilterDate] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const recordsPerPage = 50;
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -21,6 +23,11 @@ export const DiagnosticoList = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterDate, user]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterDate]);
 
   const loadRecords = () => {
     if (!user) return;
@@ -124,9 +131,11 @@ export const DiagnosticoList = () => {
             No hay registros de diagnóstico almacenados localmente.
           </div>
         ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
           <table>
             <thead>
               <tr>
+                <th style={{ width: '50px', textAlign: 'center' }}>Nro.</th>
                 <th>Fecha</th>
                 <th>IPRESS</th>
                 <th>Unidad Ejecutora</th>
@@ -135,8 +144,11 @@ export const DiagnosticoList = () => {
               </tr>
             </thead>
             <tbody>
-              {records.map(record => (
+              {records.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage).map((record, index) => (
                 <tr key={record.id}>
+                  <td style={{ textAlign: 'center', fontWeight: 500, color: 'var(--text-muted)' }}>
+                    {(currentPage - 1) * recordsPerPage + index + 1}
+                  </td>
                   <td>
                     {(() => {
                       const dVal = record.fecha || record.fechaRegistro;
@@ -178,6 +190,33 @@ export const DiagnosticoList = () => {
               ))}
             </tbody>
           </table>
+          
+          {records.length > recordsPerPage && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border)', backgroundColor: 'white', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                Mostrando {(currentPage - 1) * recordsPerPage + 1} al {Math.min(currentPage * recordsPerPage, records.length)} de {records.length} registros
+              </span>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button 
+                  disabled={currentPage === 1} 
+                  onClick={() => setCurrentPage(p => p - 1)} 
+                  className="btn-icon"
+                  style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                >
+                   <ChevronLeft size={20} />
+                </button>
+                <button 
+                  disabled={currentPage === Math.ceil(records.length / recordsPerPage)} 
+                  onClick={() => setCurrentPage(p => p + 1)} 
+                  className="btn-icon"
+                  style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === Math.ceil(records.length / recordsPerPage) ? 0.5 : 1, cursor: currentPage === Math.ceil(records.length / recordsPerPage) ? 'not-allowed' : 'pointer' }}
+                >
+                   <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+          )}
+          </div>
         )}
       </div>
     </div>
