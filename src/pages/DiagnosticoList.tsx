@@ -137,8 +137,13 @@ export const DiagnosticoList = () => {
               <tr>
                 <th style={{ width: '50px', textAlign: 'center' }}>Nro.</th>
                 <th>Fecha</th>
-                <th>IPRESS</th>
                 <th>Unidad Ejecutora</th>
+                <th>IPRESS</th>
+                <th>Fuente de Agua</th>
+                <th>Tiene Bombas de Agua</th>
+                <th>Tiene Reservorio</th>
+                <th>Tiene Cisterna</th>
+                <th>Tratamiento de Agua</th>
                 <th>Estado Sync</th>
                 <th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
@@ -158,8 +163,13 @@ export const DiagnosticoList = () => {
                       return `${parts[2]}/${parts[1]}/${parts[0]}`;
                     })()}
                   </td>
+                  <td style={{ fontWeight: 500 }}>{record.unidadEjecutora}</td>
                   <td style={{ fontWeight: 500 }}>{record.nombreIpress}</td>
-                  <td>{record.unidadEjecutora}</td>
+                  <td>{record.fuenteAgua || '-'}</td>
+                  <td>{record.bombasAgua || '-'}</td>
+                  <td>{record.reservorio || '-'}</td>
+                  <td>{record.cisterna || '-'}</td>
+                  <td>{record.tratamientoAgua || '-'}</td>
                   <td>
                     {record.isSynced ? (
                       <span className="status-badge success"><CheckCircle size={14}/> Sincronizado</span>
