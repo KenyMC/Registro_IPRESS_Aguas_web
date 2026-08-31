@@ -90,14 +90,14 @@ const PhotoInput = ({ label, fieldName, formData, handleFileChange }: { label: s
 };
 
 const UNIDADES_EJECUTORAS = [
-  "Red Cusco Norte", "Red Cusco Sur", "Red Cusco VRAEM", 
-  "Red CCE", "Red Chumbivilcas", "Red La Convencion", "Hospital", "Otro"
+  "Hospital", "Red CCE", "Red Chumbivilcas", "Red Cusco Norte", "Red Cusco Sur", 
+  "Red Cusco VRAEM", "Red La Convencion", "Otro"
 ];
 
 const PUNTOS_MONITOREO = [
-  "Captacion Manante", "Captacion Riachuelo", "Captacion Pozo", "Camion Cisterna",
-  "Reservorio", "Cisterna", "SS.HH.", "Cocina", "Comedor", "Sala de partos",
-  "Sala de Operaciones", "Laboratorio", "Nutrición", "UCI", "Otros"
+  "Camion Cisterna", "Captacion Manante", "Captacion Pozo", "Captacion Riachuelo", 
+  "Cisterna", "Cocina", "Comedor", "Laboratorio", "Nutrición", "Reservorio", 
+  "SS.HH.", "Sala de Operaciones", "Sala de partos", "UCI", "Otros"
 ];
 
 const validateParameter = (name: string, value: string) => {
@@ -465,7 +465,10 @@ export const Monitoreo = () => {
                 disabled={user?.rol === 'IPRESS' || user?.rol === 'Hospital'}
               >
                 <option value="">Seleccione una IPRESS</option>
-                {ipressList.filter(i => i.red === formData.unidadEjecutora).map((ipress, idx) => (
+                {ipressList
+                  .filter(i => i.red === formData.unidadEjecutora)
+                  .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                  .map((ipress, idx) => (
                   <option key={idx} value={ipress.nombre}>{ipress.nombre}</option>
                 ))}
               </select>

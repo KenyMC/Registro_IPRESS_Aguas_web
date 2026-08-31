@@ -58,13 +58,12 @@ const imageToBase64 = (file: File, maxWidth = 800): Promise<string> => {
 };
 
 const UNIDADES_EJECUTORAS = [
-  "Red Cusco Norte", "Red Cusco Sur", "Red Cusco VRAEM",
-  "Red CCE", "Red Chumbivilcas", "Red La Convencion", "Hospital", "Otro"
+  "Hospital", "Red CCE", "Red Chumbivilcas", "Red Cusco Norte", "Red Cusco Sur", 
+  "Red Cusco VRAEM", "Red La Convencion", "Otro"
 ];
 
 const FUENTES_AGUA = [
-  "La Red Publica", "Manante", "Riachuelo", "Pozo",
-  "Camion Cisterna", "Agua de lluvia"
+  "Agua de lluvia", "Camion Cisterna", "La Red Publica", "Manante", "Pozo", "Riachuelo"
 ];
 
 const PhotoInput = ({ label, fieldName, formData, handleFileChange }: { label: string, fieldName: 'foto1' | 'foto2' | 'foto3', formData: Partial<SyncRequest>, handleFileChange: (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'foto1' | 'foto2' | 'foto3') => void }) => {
@@ -497,7 +496,10 @@ export const Diagnostico = () => {
                 disabled={user?.rol === 'IPRESS' || user?.rol === 'Hospital'}
               >
                 <option value="">Seleccione una IPRESS</option>
-                {ipressList.filter(i => i.red === formData.unidadEjecutora).map((ipress, idx) => (
+                {ipressList
+                  .filter(i => i.red === formData.unidadEjecutora)
+                  .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                  .map((ipress, idx) => (
                   <option key={idx} value={ipress.nombre}>{ipress.nombre}</option>
                 ))}
               </select>
