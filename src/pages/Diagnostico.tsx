@@ -825,7 +825,15 @@ export const Diagnostico = () => {
           </div>
         </div>
 
-        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate('/diagnostico')}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </button>
           <button 
             type="submit" 
             className="btn btn-primary" 

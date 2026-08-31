@@ -670,7 +670,15 @@ export const Monitoreo = () => {
           </div>
         </div>
 
-        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => navigate('/monitoreo')}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </button>
           <button type="submit" className="btn btn-primary" disabled={isSubmitting || (JSON.stringify(formData) === JSON.stringify(initialData) && !isSignatureDirty && !isFoto1Dirty)}>
             {isSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <Save size={20} />}
             {isSubmitting ? 'Guardando...' : 'Guardar Monitoreo'}
