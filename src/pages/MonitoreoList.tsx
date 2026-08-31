@@ -95,7 +95,7 @@ export const MonitoreoList = () => {
   };
 
   return (
-    <div className="container animate-fade-in">
+    <div className="container-fluid animate-fade-in">
       <div className="flex-between" style={{ marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h2 className="section-title" style={{ margin: 0, border: 'none' }}>Registros de Monitoreo</h2>
         

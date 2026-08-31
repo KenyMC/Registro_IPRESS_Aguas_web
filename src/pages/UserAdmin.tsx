@@ -38,7 +38,7 @@ export const UserAdmin = () => {
 
   return (
     <>
-      <div className="container animate-fade-in">
+      <div className="container-fluid animate-fade-in">
         <div className="flex-between" style={{ marginBottom: '2rem' }}>
           <h2 className="section-title" style={{ margin: 0, border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Shield size={24} style={{ color: 'var(--primary)' }} />
