@@ -5,6 +5,24 @@ import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/
 import { syncEntry } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
+const extractDate = (val: string | undefined) => {
+  if (!val) return null;
+  if (typeof val !== 'string') {
+     try { return new Date(val).toISOString().split('T')[0]; } catch(e) { return null; }
+  }
+  if (val.match(/^\d{4}-\d{2}-\d{2}/)) return val.substring(0, 10);
+  if (val.match(/^\d{2}-\d{2}-\d{4}/)) {
+    const parts = val.split(' ')[0].split('-');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  if (val.includes('T')) return val.split('T')[0];
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  } catch(e) {}
+  return null;
+};
+
 export const DiagnosticoList = () => {
   const [records, setRecords] = useState<LocalRecord[]>([]);
   const [filterDate, setFilterDate] = useState<string>('');
@@ -56,24 +74,6 @@ export const DiagnosticoList = () => {
 
     if (filterDate) {
       allRecords = allRecords.filter(r => {
-        const extractDate = (val: string | undefined) => {
-          if (!val) return null;
-          if (typeof val !== 'string') {
-             try { return new Date(val).toISOString().split('T')[0]; } catch(e) { return null; }
-          }
-          if (val.match(/^\d{4}-\d{2}-\d{2}/)) return val.substring(0, 10);
-          if (val.match(/^\d{2}-\d{2}-\d{4}/)) {
-            const parts = val.split(' ')[0].split('-');
-            if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-          }
-          if (val.includes('T')) return val.split('T')[0];
-          try {
-            const d = new Date(val);
-            if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-          } catch(e) {}
-          return null;
-        };
-
         const dateToFilter = extractDate(r.fecha) || extractDate(r.fechaRegistro);
         return dateToFilter === filterDate;
       });
@@ -151,22 +151,11 @@ export const DiagnosticoList = () => {
                   </td>
                   <td>
                     {(() => {
-                      const dVal = record.fecha || record.fechaRegistro;
-                      if (!dVal) return '-';
-                      if (typeof dVal === 'string' && dVal.match(/^\d{2}-\d{2}-\d{4}/)) {
-                        return dVal.split(' ')[0].replace(/-/g, '/');
-                      }
-                      if (typeof dVal === 'string' && dVal.match(/^\d{4}-\d{2}-\d{2}/)) {
-                        const datePart = dVal.split('T')[0].split(' ')[0];
-                        const parts = datePart.split('-');
-                        return `${parts[2]}/${parts[1]}/${parts[0]}`;
-                      }
-                      try {
-                        const d = new Date(dVal);
-                        return isNaN(d.getTime()) ? String(dVal).split(' ')[0] : d.toLocaleDateString();
-                      } catch(e) {
-                        return String(dVal).split(' ')[0];
-                      }
+                      let dateStr = extractDate(record.fecha);
+                      if (!dateStr) dateStr = extractDate(record.fechaRegistro);
+                      if (!dateStr) return '-';
+                      const parts = dateStr.split('-');
+                      return `${parts[2]}/${parts[1]}/${parts[0]}`;
                     })()}
                   </td>
                   <td style={{ fontWeight: 500 }}>{record.nombreIpress}</td>
