@@ -66,7 +66,8 @@ export const MonitoreoList = () => {
           return null;
         };
 
-        return extractDate(r.fecha) === filterDate || extractDate(r.fechaRegistro) === filterDate;
+        const dateToFilter = extractDate(r.fecha) || extractDate(r.fechaRegistro);
+        return dateToFilter === filterDate;
       });
     }
 
@@ -142,7 +143,8 @@ export const MonitoreoList = () => {
                         return dVal.split(' ')[0].replace(/-/g, '/');
                       }
                       if (typeof dVal === 'string' && dVal.match(/^\d{4}-\d{2}-\d{2}/)) {
-                        const parts = dVal.split(' ')[0].split('-');
+                        const datePart = dVal.split('T')[0].split(' ')[0];
+                        const parts = datePart.split('-');
                         return `${parts[2]}/${parts[1]}/${parts[0]}`;
                       }
                       try {
