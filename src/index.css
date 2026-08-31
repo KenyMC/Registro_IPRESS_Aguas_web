@@ -719,7 +719,7 @@ select.form-control {
 
 /* Tables */
 .table-container {
-  overflow-x: visible;
+  overflow-x: auto;
   background: white;
   border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -748,7 +748,7 @@ th {
   text-transform: uppercase;
   letter-spacing: 0.05em;
   position: sticky;
-  top: 72px; /* Offset by the height of the main sticky header navigation */
+  top: 0;
   z-index: 5;
   box-shadow: 0 1px 0 var(--border), 0 -1px 0 var(--border);
   line-height: 1.2;
