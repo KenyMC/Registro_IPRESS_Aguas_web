@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { syncEntry } from '../services/api';
@@ -30,6 +30,10 @@ export const MonitoreoList = () => {
   const recordsPerPage = 50;
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  const renderValue = (val: any) => {
+    return (val !== undefined && val !== null && val !== '') ? val : '-';
+  };
 
   useEffect(() => {
     loadRecords();
@@ -116,10 +120,9 @@ export const MonitoreoList = () => {
               </button>
             )}
           </div>
-
-          <Link to="/monitoreo/nuevo" className="btn btn-primary">
-            <Plus size={20} /> Agregar Registro
-          </Link>
+          <button onClick={() => navigate('/monitoreo/nuevo')} className="btn btn-primary">
+            <Plus size={18} /> Agregar Registro
+          </button>
         </div>
       </div>
 
@@ -165,13 +168,13 @@ export const MonitoreoList = () => {
                   </td>
                   <td style={{ fontWeight: 500 }}>{record.unidadEjecutora}</td>
                   <td style={{ fontWeight: 500 }}>{record.nombreIpress}</td>
-                  <td>{record.puntosMonitoreo || '-'}</td>
-                  <td>{record.cloro !== undefined && record.cloro !== null && record.cloro !== '' ? record.cloro : '-'}</td>
-                  <td>{record.temperatura || '-'}</td>
-                  <td>{record.ph || '-'}</td>
-                  <td>{record.turbiedad || '-'}</td>
-                  <td>{record.conductividad || '-'}</td>
-                  <td>{record.std || '-'}</td>
+                  <td>{renderValue(record.puntosMonitoreo)}</td>
+                  <td>{renderValue(record.cloro)}</td>
+                  <td>{renderValue(record.temperatura)}</td>
+                  <td>{renderValue(record.ph)}</td>
+                  <td>{renderValue(record.turbiedad)}</td>
+                  <td>{renderValue(record.conductividad)}</td>
+                  <td>{renderValue(record.std)}</td>
                   <td>
                     {record.isSynced ? (
                       <span className="status-badge success"><CheckCircle size={14}/> Sincronizado</span>
