@@ -135,8 +135,15 @@ export const MonitoreoList = () => {
               <tr>
                 <th style={{ width: '50px', textAlign: 'center' }}>Nro.</th>
                 <th>Fecha</th>
-                <th>IPRESS</th>
-                <th>Cloro (mg/L)</th>
+                <th>Unidad Ejecutora</th>
+                <th>Nombre de la IPRESS</th>
+                <th>Puntos de Monitoreo</th>
+                <th>Cloro Residual</th>
+                <th>Temperatura</th>
+                <th>pH</th>
+                <th>Turbiedad</th>
+                <th>Conductividad</th>
+                <th>Valor de STD</th>
                 <th>Estado Sync</th>
                 <th style={{ textAlign: 'right' }}>Acciones</th>
               </tr>
@@ -156,8 +163,15 @@ export const MonitoreoList = () => {
                       return `${parts[2]}/${parts[1]}/${parts[0]}`;
                     })()}
                   </td>
+                  <td style={{ fontWeight: 500 }}>{record.unidadEjecutora}</td>
                   <td style={{ fontWeight: 500 }}>{record.nombreIpress}</td>
+                  <td>{record.puntosMonitoreo || '-'}</td>
                   <td>{record.cloro !== undefined && record.cloro !== null && record.cloro !== '' ? record.cloro : '-'}</td>
+                  <td>{record.temperatura || '-'}</td>
+                  <td>{record.ph || '-'}</td>
+                  <td>{record.turbiedad || '-'}</td>
+                  <td>{record.conductividad || '-'}</td>
+                  <td>{record.std || '-'}</td>
                   <td>
                     {record.isSynced ? (
                       <span className="status-badge success"><CheckCircle size={14}/> Sincronizado</span>
@@ -166,12 +180,14 @@ export const MonitoreoList = () => {
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button onClick={() => navigate(`/monitoreo/editar/${record.id}`)} className="btn-icon" title="Actualizar" style={{ color: 'var(--primary)' }}>
-                      <Edit2 size={18} />
-                    </button>
-                    <button onClick={() => handleDelete(record.id)} className="btn-icon" title="Eliminar" style={{ color: 'var(--danger)' }}>
-                      <Trash2 size={18} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button onClick={() => navigate(`/monitoreo/editar/${record.id}`)} className="btn-icon" title="Actualizar" style={{ color: 'var(--primary)' }}>
+                        <Edit2 size={18} />
+                      </button>
+                      <button onClick={() => handleDelete(record.id)} className="btn-icon" title="Eliminar" style={{ color: 'var(--danger)' }}>
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

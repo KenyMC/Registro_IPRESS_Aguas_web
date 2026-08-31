@@ -84,50 +84,52 @@ export const UserAdmin = () => {
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button onClick={() => handleEdit(user)} className="btn-icon" title="Editar" style={{ color: 'var(--primary)' }}>
-                      <Edit2 size={18} />
-                    </button>
-                    {user.estado === 'Activo' ? (
-                      <button 
-                        onClick={async () => {
-                          if(window.confirm(`¿Desea deshabilitar a ${user.usuario}?`)){
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button onClick={() => handleEdit(user)} className="btn-icon" title="Editar" style={{ color: 'var(--primary)' }} disabled={saving}>
+                        <Edit2 size={18} />
+                      </button>
+                      {user.estado === 'Activo' ? (
+                        <button 
+                          onClick={async () => {
+                            if(window.confirm(`¿Desea deshabilitar a ${user.usuario}?`)){
+                              setSaving(true);
+                              await syncUser({ ...user, estado: 'Inactivo' });
+                              setUsersList(prev => {
+                                 const newList = prev.map(u => u.usuario === user.usuario ? { ...user, estado: 'Inactivo' } : u);
+                                 localStorage.setItem('aguas_auth_list', JSON.stringify(newList));
+                                 return newList;
+                              });
+                              setSaving(false);
+                            }
+                          }} 
+                          className="btn-icon" 
+                          title="Deshabilitar" 
+                          style={{ color: 'var(--danger)' }}
+                          disabled={saving}
+                        >
+                          <UserX size={18} />
+                        </button>
+                      ) : (
+                        <button 
+                          onClick={async () => {
                             setSaving(true);
-                            await syncUser({ ...user, estado: 'Inactivo' });
+                            await syncUser({ ...user, estado: 'Activo' });
                             setUsersList(prev => {
-                               const newList = prev.map(u => u.usuario === user.usuario ? { ...user, estado: 'Inactivo' } : u);
+                               const newList = prev.map(u => u.usuario === user.usuario ? { ...user, estado: 'Activo' } : u);
                                localStorage.setItem('aguas_auth_list', JSON.stringify(newList));
                                return newList;
                             });
                             setSaving(false);
-                          }
-                        }} 
-                        className="btn-icon" 
-                        title="Deshabilitar" 
-                        style={{ color: 'var(--danger)' }}
-                        disabled={saving}
-                      >
-                        <UserX size={18} />
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={async () => {
-                          setSaving(true);
-                          await syncUser({ ...user, estado: 'Activo' });
-                          setUsersList(prev => {
-                             const newList = prev.map(u => u.usuario === user.usuario ? { ...user, estado: 'Activo' } : u);
-                             localStorage.setItem('aguas_auth_list', JSON.stringify(newList));
-                             return newList;
-                          });
-                          setSaving(false);
-                        }} 
-                        className="btn-icon" 
-                        title="Habilitar" 
-                        style={{ color: 'var(--success)' }}
-                        disabled={saving}
-                      >
-                        <CheckCircle size={18} />
-                      </button>
-                    )}
+                          }} 
+                          className="btn-icon" 
+                          title="Habilitar" 
+                          style={{ color: 'var(--success)' }}
+                          disabled={saving}
+                        >
+                          <CheckCircle size={18} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

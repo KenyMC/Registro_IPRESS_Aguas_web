@@ -178,12 +178,14 @@ export const DiagnosticoList = () => {
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <button onClick={() => navigate(`/diagnostico/editar/${record.id}`)} className="btn-icon" title="Actualizar" style={{ color: 'var(--primary)' }}>
-                      <Edit2 size={18} />
-                    </button>
-                    <button onClick={() => handleDelete(record.id)} className="btn-icon" title="Eliminar" style={{ color: 'var(--danger)' }}>
-                      <Trash2 size={18} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button onClick={() => navigate(`/diagnostico/editar/${record.id}`)} className="btn-icon" title="Actualizar" style={{ color: 'var(--primary)' }}>
+                        <Edit2 size={18} />
+                      </button>
+                      <button onClick={() => handleDelete(record.id)} className="btn-icon" title="Eliminar" style={{ color: 'var(--danger)' }}>
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
