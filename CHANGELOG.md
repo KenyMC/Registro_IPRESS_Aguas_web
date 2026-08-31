@@ -1,6 +1,17 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.1.1] - 2026-08-31
+### Añadido
+- **Botón Cancelar en Formularios:** Se agregó el botón "Cancelar" en la parte inferior de los formularios de Diagnóstico y Monitoreo para mejorar la consistencia UX, permitiendo regresar a la lista de registros de forma explícita.
+- **Scroll Segura para Validación Nativa:** Se implementó `scroll-margin-top: 120px` en los elementos `.form-control` (index.css) para evitar que los tooltips nativos de validación de HTML ("Completa este campo") queden ocultos detrás del menú superior flotante.
+
+### Cambiado
+- **Corrección de Formato Numérico "0":** Solucionado un problema en `MonitoreoList.tsx` donde los valores de `0` (ej: 0 en cloro residual o pH) se renderizaban erróneamente como un guión (`-`). Ahora se respetan los ceros ingresados.
+- **Orden Alfabético en Listas Desplegables:** 
+  - Se ordenaron alfabéticamente las opciones estáticas (`UNIDADES_EJECUTORAS`, `FUENTES_AGUA`, `PUNTOS_MONITOREO`) en `Diagnostico.tsx` y `Monitoreo.tsx`, manteniendo "Otro" / "Otros" al final de la lista.
+  - El selector dinámico de "Nombre de la IPRESS" ahora se ordena de forma alfabética al vuelo según la unidad ejecutora seleccionada.
+
 ## [1.1.0] - 2026-08-27
 ### Añadido
 - **Control de Versiones PWA (Forzado de Caché):** Se ha implementado un mecanismo global en `main.tsx` (`APP_VERSION = '1.1.0'`) que detecta automáticamente si el usuario está en una versión antigua de los datos. En ese caso, purga su Storage, elimina cachés obsoletos, y fuerza una recarga en un entorno prístino (deslogueando automáticamente) para prevenir bugs silenciosos.

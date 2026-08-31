@@ -120,6 +120,7 @@ h1, h2, h3 {
   font-size: 1rem;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-sm);
+  /* Previene que la validación nativa del tooltip se oculte debajo del header fijo */
   scroll-margin-top: 120px;
 }
 

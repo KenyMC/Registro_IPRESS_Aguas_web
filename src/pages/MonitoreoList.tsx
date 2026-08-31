@@ -31,6 +31,7 @@ export const MonitoreoList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  // Función para renderizar 0 de forma correcta sin ser evaluado como "falsy" en el || '-'
   const renderValue = (val: any) => {
     return (val !== undefined && val !== null && val !== '') ? val : '-';
   };
