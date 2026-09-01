@@ -11,6 +11,7 @@ export default defineConfig({
         cleanupOutdatedCaches: true,
         skipWaiting: true,
         clientsClaim: true,
+        maximumFileSizeToCacheInBytes: 5000000,
       },
       includeAssets: ['logo-cusco.jpg', 'logo-diresa.png', 'logo-pvcach.png', 'app-icon.png'],
       manifest: {
