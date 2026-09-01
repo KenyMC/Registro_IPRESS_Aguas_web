@@ -14,55 +14,88 @@ export const blobToBase64 = (blob: Blob): Promise<string> => {
 };
 
 /**
- * Convierte una URL a Base64 evadiendo bloqueos de CORS mediante fallbacks sucesivos.
+ * Convierte una URL a Base64 evadiendo bloqueos de CORS.
+ * Utiliza la técnica de previsualización (lh3.googleusercontent.com) dibujando en un canvas.
  */
-export const urlToBase64 = async (url: string): Promise<string> => {
-  if (!url) return '';
-  
-  // Si la url ya es base64, retornarla directamente
-  if (url.startsWith('data:image')) {
-    return url;
-  }
-
-  const getDriveId = (u: string) => {
-    const match = u.match(/id=([^&]+)/);
-    return match ? match[1] : null;
-  };
-
-  try {
-    // Intento 1: Fetch directo (si el servidor lo permite)
-    const response = await fetch(url, { mode: 'cors' });
-    if (!response.ok) throw new Error('Fetch directo falló');
-    const blob = await response.blob();
-    return await blobToBase64(blob);
-  } catch (error) {
-    console.warn('Fetch directo falló (posible CORS). Intentando fallbacks para PDF...', url);
-    
-    const driveId = getDriveId(url);
-
-    try {
-      if (driveId) {
-        // Intento 2: Google Drive Thumbnail API (suele no requerir CORS estricto si es público)
-        const thumbUrl = `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
-        const responseThumb = await fetch(thumbUrl, { mode: 'cors' });
-        if (responseThumb.ok) {
-            const blob = await responseThumb.blob();
-            return await blobToBase64(blob);
-        }
-      }
-
-      // Intento 3: Usar un proxy CORS público como último recurso
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      const proxyResponse = await fetch(proxyUrl);
-      if (!proxyResponse.ok) throw new Error('Proxy falló');
-      const blob = await proxyResponse.blob();
-      return await blobToBase64(blob);
-      
-    } catch (fallbackError) {
-      console.error('Todos los intentos de obtener la imagen fallaron.', fallbackError);
-      // Retornar un string vacío, el PDF simplemente no mostrará esta imagen,
-      // pero no crasheará la generación completa.
-      return '';
+export const urlToBase64 = (url: string): Promise<string> => {
+  return new Promise((resolve) => {
+    if (!url) {
+      resolve('');
+      return;
     }
+    
+    // Si la url ya es base64, retornarla directamente
+    if (url.startsWith('data:image')) {
+      resolve(url);
+      return;
+    }
+
+    const getDriveId = (u: string) => {
+      const match = u.match(/id=([^&]+)/);
+      return match ? match[1] : null;
+    };
+
+    const driveId = getDriveId(url);
+    // Usar el mismo truco de previsualización que en el formulario
+    const previewUrl = driveId ? `https://lh3.googleusercontent.com/d/${driveId}` : url;
+
+    const img = new Image();
+    // NOTA: Para poder hacer toDataURL sin error de "tainted canvas", necesitamos crossOrigin
+    img.crossOrigin = 'Anonymous'; 
+    
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0);
+          const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+          resolve(dataURL);
+        } else {
+          resolve('');
+        }
+      } catch (err) {
+        console.warn('Error de CORS en canvas (Taint). Intentando fallback con Fetch proxy...', err);
+        fallbackFetch(url, driveId, resolve);
+      }
+    };
+
+    img.onerror = () => {
+      console.warn('Error cargando imagen con crossOrigin. Intentando fallback con Fetch proxy...', previewUrl);
+      fallbackFetch(url, driveId, resolve);
+    };
+
+    img.src = previewUrl;
+  });
+};
+
+const fallbackFetch = async (originalUrl: string, driveId: string | null, resolve: (val: string) => void) => {
+  try {
+    if (driveId) {
+      // Fallback 1: Thumbnail API
+      const thumbUrl = `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
+      const response = await fetch(thumbUrl);
+      if (response.ok) {
+        const blob = await response.blob();
+        resolve(await blobToBase64(blob));
+        return;
+      }
+    }
+
+    // Fallback 2: allorigins Proxy (más confiable que corsproxy.io a veces)
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`;
+    const response = await fetch(proxyUrl);
+    if (response.ok) {
+      const blob = await response.blob();
+      resolve(await blobToBase64(blob));
+      return;
+    }
+    
+    resolve(''); // Falla silenciosa para no romper el PDF
+  } catch (error) {
+    console.error('Fallbacks de imagen fallaron:', error);
+    resolve('');
   }
 };
