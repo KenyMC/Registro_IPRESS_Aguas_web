@@ -279,6 +279,19 @@ select.form-control {
   gap: 12px;
 }
 
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .logo-circle {
   width: 50px;
   height: 50px;

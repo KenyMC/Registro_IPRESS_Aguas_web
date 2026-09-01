@@ -1,6 +1,13 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.2.0] - 2026-09-01
+### Añadido
+- **Descarga de Informes en PDF:** Se ha implementado un nuevo botón dorado con icono de descarga (`Download`) en la columna "Acciones" de las listas de Diagnóstico y Monitoreo.
+- **Generación Nativa de PDF (`@react-pdf/renderer`):** Al hacer clic en descargar, la aplicación genera localmente un PDF de estilo ejecutivo profesional. El texto es 100% seleccionable.
+- **Prevención de Bloqueos CORS para Imágenes en PDF:** Se creó la utilidad `imageUtils.ts` que implementa un sistema de triple fallback para capturar las fotos desde Google Drive antes de inyectarlas en el PDF. Si falla la petición directa, usa el Thumbnail API y, en último caso, un Proxy público para asegurar que la descarga no se rompa por restricciones del navegador.
+- **Hook `usePdfDownloader`:** Centraliza la lógica asíncrona de generación del archivo y muestra un spinner de carga (`Loader2`) mientras se procesa.
+
 ## [1.1.1] - 2026-08-31
 ### Añadido
 - **Botón Cancelar en Formularios:** Se agregó el botón "Cancelar" en la parte inferior de los formularios de Diagnóstico y Monitoreo para mejorar la consistencia UX, permitiendo regresar a la lista de registros de forma explícita.

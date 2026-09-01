@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react';
 import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { syncEntry } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { usePdfDownloader } from '../utils/usePdfDownloader';
 
 const extractDate = (val: string | undefined) => {
   if (!val) return null;
@@ -30,6 +31,7 @@ export const DiagnosticoList = () => {
   const recordsPerPage = 50;
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { downloadPdf, downloadingId } = usePdfDownloader();
 
   useEffect(() => {
     loadRecords();
@@ -184,6 +186,15 @@ export const DiagnosticoList = () => {
                       </button>
                       <button onClick={() => handleDelete(record.id)} className="btn-icon" title="Eliminar" style={{ color: 'var(--danger)' }}>
                         <Trash2 size={18} />
+                      </button>
+                      <button 
+                        onClick={() => downloadPdf(record)} 
+                        className="btn-icon" 
+                        title="Descargar Diagnóstico" 
+                        style={{ color: '#d4af37' }}
+                        disabled={downloadingId === record.id}
+                      >
+                        {downloadingId === record.id ? <Loader2 size={18} className="spin" /> : <Download size={18} />}
                       </button>
                     </div>
                   </td>
