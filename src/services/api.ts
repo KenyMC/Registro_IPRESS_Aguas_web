@@ -120,6 +120,14 @@ export const syncEntry = async (data: SyncRequest): Promise<boolean> => {
     if (payload.hora && typeof payload.hora === 'string' && payload.hora.length === 5) {
       payload.hora = `'${payload.hora}:00`;
     }
+
+    // Force ubigeo as text in Google Sheets to preserve leading zeros
+    if (payload.ubigeo && typeof payload.ubigeo === 'string' && !payload.ubigeo.startsWith("'")) {
+      // Ensure it has the leading zero if it is a CCPP ubigeo (9 chars)
+      let u = payload.ubigeo;
+      if (u.length === 9 && !u.startsWith('0')) u = '0' + u;
+      payload.ubigeo = `'${u}`;
+    }
     
     // Format fechaRegistro: ISO -> DD-MM-YYYY HH:mm:ss (force text with ')
     if (payload.fechaRegistro && typeof payload.fechaRegistro === 'string' && !payload.fechaRegistro.startsWith("'")) {

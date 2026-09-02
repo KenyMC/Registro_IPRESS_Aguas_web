@@ -53,10 +53,13 @@ const parseCsv = (csvText: string): CcppRecord[] => {
     const cols = line.split(',');
     
     if (cols.length >= 4) {
+      let u = cols[2].trim();
+      if (u.length === 9) u = '0' + u;
+
       records.push({
         provincia: cols[0].trim(),
         distrito: cols[1].trim(),
-        ubigeo: cols[2].trim(),
+        ubigeo: u,
         centroPoblado: cols[3].trim()
       });
     }

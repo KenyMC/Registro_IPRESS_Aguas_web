@@ -180,7 +180,17 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
               <View style={styles.row}><Text style={styles.label}>Provincia:</Text><Text style={styles.value}>{renderValue(record.provincia)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>Distrito:</Text><Text style={styles.value}>{renderValue(record.distrito)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>Centro Poblado:</Text><Text style={styles.value}>{renderValue(record.centroPoblado)}</Text></View>
-              <View style={styles.row}><Text style={styles.label}>Ubigeo del CCPP:</Text><Text style={styles.value}>{renderValue(record.ubigeo)}</Text></View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Ubigeo del CCPP:</Text>
+                <Text style={styles.value}>
+                  {(() => {
+                    let u = renderValue(record.ubigeo);
+                    if (u.startsWith("'")) u = u.substring(1);
+                    if (u !== '-' && u.length > 0 && !u.startsWith('0')) u = '0' + u;
+                    return u;
+                  })()}
+                </Text>
+              </View>
               <View style={styles.row}><Text style={styles.label}>Coordenadas:</Text><Text style={styles.value}>{renderValue(record.latitud)}, {renderValue(record.longitud)}</Text></View>
             </>
           )}
@@ -242,26 +252,64 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
               <Text style={styles.headerTitle}>ANEXO: EVIDENCIAS FOTOGRÁFICAS</Text>
             </View>
             
-            <View style={styles.imageRow}>
-              {images.foto1 && (
-                <View style={styles.imageBlock}>
-                  <Image src={images.foto1} style={styles.photo} />
-                  <Text style={styles.photoLabel}>Foto 1</Text>
-                </View>
-              )}
-              {images.foto2 && (
-                <View style={styles.imageBlock}>
-                  <Image src={images.foto2} style={styles.photo} />
-                  <Text style={styles.photoLabel}>Foto 2</Text>
-                </View>
-              )}
-              {images.foto3 && (
-                <View style={styles.imageBlock}>
-                  <Image src={images.foto3} style={styles.photo} />
-                  <Text style={styles.photoLabel}>Foto 3</Text>
-                </View>
-              )}
-            </View>
+            {(() => {
+              const validImages = [
+                { src: images.foto1, label: 'Foto 1' },
+                { src: images.foto2, label: 'Foto 2' },
+                { src: images.foto3, label: 'Foto 3' }
+              ].filter(i => i.src);
+
+              if (validImages.length === 1) {
+                return (
+                  <View style={[styles.imageRow, { justifyContent: 'center' }]}>
+                    <View style={styles.imageBlock}>
+                      <Image src={validImages[0].src} style={styles.photo} />
+                      <Text style={styles.photoLabel}>{validImages[0].label}</Text>
+                    </View>
+                  </View>
+                );
+              }
+              
+              if (validImages.length === 2) {
+                return (
+                  <View style={styles.imageRow}>
+                    <View style={styles.imageBlock}>
+                      <Image src={validImages[0].src} style={styles.photo} />
+                      <Text style={styles.photoLabel}>{validImages[0].label}</Text>
+                    </View>
+                    <View style={styles.imageBlock}>
+                      <Image src={validImages[1].src} style={styles.photo} />
+                      <Text style={styles.photoLabel}>{validImages[1].label}</Text>
+                    </View>
+                  </View>
+                );
+              }
+
+              if (validImages.length === 3) {
+                return (
+                  <>
+                    <View style={styles.imageRow}>
+                      <View style={styles.imageBlock}>
+                        <Image src={validImages[0].src} style={styles.photo} />
+                        <Text style={styles.photoLabel}>{validImages[0].label}</Text>
+                      </View>
+                      <View style={styles.imageBlock}>
+                        <Image src={validImages[1].src} style={styles.photo} />
+                        <Text style={styles.photoLabel}>{validImages[1].label}</Text>
+                      </View>
+                    </View>
+                    <View style={[styles.imageRow, { justifyContent: 'center' }]}>
+                      <View style={styles.imageBlock}>
+                        <Image src={validImages[2].src} style={styles.photo} />
+                        <Text style={styles.photoLabel}>{validImages[2].label}</Text>
+                      </View>
+                    </View>
+                  </>
+                );
+              }
+
+              return null;
+            })()}
           </View>
           <Text style={styles.footerText} fixed>Generado por Sistema de Calidad de Agua IPRESS - GERESA Cusco</Text>
         </Page>
