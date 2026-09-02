@@ -11,6 +11,7 @@ const styles = StyleSheet.create({
   },
   borderWrapper: {
     padding: 20,
+    paddingBottom: 40,
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
@@ -33,8 +34,6 @@ const styles = StyleSheet.create({
   },
   headerLogoImg: {
     height: 45,
-    width: 90,
-    objectFit: 'contain',
   },
   titleContainer: {
     alignItems: 'center',
@@ -120,7 +119,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 12,
     left: 30,
     right: 30,
     flexDirection: 'row',
@@ -308,7 +307,7 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
         <Page size="A4" style={styles.page}>
           <View style={styles.borderWrapper}>
             {renderHeaderAndTitle()}
-            <View style={[styles.sectionTitle, { marginTop: 0 }]}><Text>ANEXO: EVIDENCIAS FOTOGRÁFICAS</Text></View>
+            <View style={[styles.sectionTitle, { marginTop: 15 }]}><Text>ANEXO: EVIDENCIAS FOTOGRÁFICAS</Text></View>
             
             {(() => {
               const validImages = [
