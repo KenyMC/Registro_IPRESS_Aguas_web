@@ -10,19 +10,37 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   borderWrapper: {
-    border: '2pt solid #1e3a8a',
     padding: 20,
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
   },
-  header: {
+  headerLogos: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  headerInstitution: {
+    textAlign: 'center',
+    flex: 1,
+  },
+  instText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#0f172a',
+    marginBottom: 2,
+  },
+  headerLogoImg: {
+    height: 45,
+    width: 90,
+    objectFit: 'contain',
+  },
+  titleContainer: {
+    alignItems: 'center',
     marginBottom: 20,
     borderBottomWidth: 1.5,
-    borderBottomColor: '#d4af37', // Dorado
+    borderBottomColor: '#d4af37',
     paddingBottom: 15,
   },
   headerTitle: {
@@ -103,16 +121,34 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  footerText: {
+  footer: {
     position: 'absolute',
-    bottom: 10,
-    left: 20,
-    right: 20,
-    textAlign: 'center',
+    bottom: 20,
+    left: 30,
+    right: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderTopWidth: 0.5,
+    borderTopColor: '#cbd5e1',
+    paddingTop: 10,
+  },
+  footerLogo: {
+    height: 25,
+    width: 25,
+    marginRight: 8,
+    objectFit: 'contain',
+  },
+  footerText: {
     fontSize: 8,
-    color: '#94a3b8',
+    color: '#64748b',
   }
 });
+
+const getAssetUrl = (filename: string) => {
+  const base = import.meta.env.BASE_URL || '/';
+  const path = base.endsWith('/') ? `${base}${filename}` : `${base}/${filename}`;
+  return new URL(path, window.location.origin).href;
+};
 
 interface PdfProps {
   record: LocalRecord;
@@ -157,19 +193,39 @@ const formatTimeStr = (timeStr: any) => {
 export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
   const isDiag = record.tipo === 'diagnostico';
 
+  const renderHeaderAndTitle = () => (
+    <>
+      <View style={styles.headerLogos}>
+        <Image src={getAssetUrl('logo-cusco.jpg')} style={styles.headerLogoImg} />
+        <View style={styles.headerInstitution}>
+          <Text style={styles.instText}>GOBIERNO REGIONAL DEL CUSCO</Text>
+          <Text style={styles.instText}>GERENCIA REGIONAL DE SALUD CUSCO</Text>
+        </View>
+        <Image src={getAssetUrl('logo-diresa.png')} style={styles.headerLogoImg} />
+      </View>
+      <View style={styles.titleContainer}>
+        <Text style={styles.headerTitle}>
+          {isDiag ? 'INFORME DE DIAGNÓSTICO' : 'INFORME DE MONITOREO'}
+        </Text>
+      </View>
+    </>
+  );
+
+  const renderFooter = () => (
+    <View style={styles.footer} fixed>
+      <Image src={getAssetUrl('logo-pvcach.png')} style={styles.footerLogo} />
+      <Text style={styles.footerText}>Generado por Sistema de Calidad de Agua IPRESS - PVCACH Cusco</Text>
+    </View>
+  );
+
   return (
     <Document>
       {/* PÁGINA 1: DATOS */}
       <Page size="A4" style={styles.page}>
         <View style={styles.borderWrapper}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>
-              {isDiag ? 'INFORME EJECUTIVO DE DIAGNÓSTICO' : 'INFORME EJECUTIVO DE MONITOREO'}
-            </Text>
-          </View>
+          {renderHeaderAndTitle()}
 
           <View style={styles.sectionTitle}><Text>1. IDENTIFICACIÓN Y UBICACIÓN</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Nro. Registro / UUID:</Text><Text style={styles.value}>{record.uuid?.split('-')[0] || '-'}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Fecha y Hora:</Text><Text style={styles.value}>{formatDateStr(record.fecha)} {formatTimeStr(record.hora)}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Unidad Ejecutora / Red:</Text><Text style={styles.value}>{renderValue(record.unidadEjecutora)}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Nombre de IPRESS:</Text><Text style={styles.value}>{renderValue(record.nombreIpress)}</Text></View>
@@ -241,16 +297,15 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
             <Text style={{ fontSize: 9, color: '#64748b' }}>Responsable de Inspección</Text>
           </View>
         </View>
-        <Text style={styles.footerText} fixed>Generado por Sistema de Calidad de Agua IPRESS - GERESA Cusco</Text>
+        {renderFooter()}
       </Page>
 
       {/* PÁGINA 2: EVIDENCIAS FOTOGRÁFICAS (solo si hay fotos) */}
       {(images.foto1 || images.foto2 || images.foto3) && (
         <Page size="A4" style={styles.page}>
           <View style={styles.borderWrapper}>
-            <View style={styles.header}>
-              <Text style={styles.headerTitle}>ANEXO: EVIDENCIAS FOTOGRÁFICAS</Text>
-            </View>
+            {renderHeaderAndTitle()}
+            <View style={[styles.sectionTitle, { marginTop: 0 }]}><Text>ANEXO: EVIDENCIAS FOTOGRÁFICAS</Text></View>
             
             {(() => {
               const validImages = [
@@ -311,7 +366,7 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
               return null;
             })()}
           </View>
-          <Text style={styles.footerText} fixed>Generado por Sistema de Calidad de Agua IPRESS - GERESA Cusco</Text>
+          {renderFooter()}
         </Page>
       )}
     </Document>
