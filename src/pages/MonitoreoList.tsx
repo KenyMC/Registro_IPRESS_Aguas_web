@@ -150,8 +150,8 @@ export const MonitoreoList = () => {
                 <th>Turbiedad</th>
                 <th>Conductividad</th>
                 <th>Valor de STD</th>
-                <th>Estado Sync</th>
-                <th style={{ textAlign: 'right' }}>Acciones</th>
+                <th style={{ textAlign: 'center' }}>Estado Registro</th>
+                <th style={{ textAlign: 'center' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -178,15 +178,15 @@ export const MonitoreoList = () => {
                   <td>{renderValue(record.turbiedad)}</td>
                   <td>{renderValue(record.conductividad)}</td>
                   <td>{renderValue(record.std)}</td>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     {record.isSynced ? (
                       <span className="status-badge success"><CheckCircle size={14}/> Sincronizado</span>
                     ) : (
                       <span className="status-badge warning"><XCircle size={14}/> Pendiente</span>
                     )}
                   </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
                       <button onClick={() => navigate(`/monitoreo/editar/${record.id}`)} className="btn-icon" title="Actualizar" style={{ color: 'var(--primary)' }}>
                         <Edit2 size={18} />
                       </button>

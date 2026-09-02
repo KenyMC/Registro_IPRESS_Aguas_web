@@ -146,8 +146,8 @@ export const DiagnosticoList = () => {
                 <th>Tiene Reservorio</th>
                 <th>Tiene Cisterna</th>
                 <th>Tratamiento de Agua</th>
-                <th>Estado Sync</th>
-                <th style={{ textAlign: 'right' }}>Acciones</th>
+                <th style={{ textAlign: 'center' }}>Estado Registro</th>
+                <th style={{ textAlign: 'center' }}>Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -172,15 +172,15 @@ export const DiagnosticoList = () => {
                   <td>{record.reservorio || '-'}</td>
                   <td>{record.cisterna || '-'}</td>
                   <td>{record.tratamientoAgua || '-'}</td>
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     {record.isSynced ? (
                       <span className="status-badge success"><CheckCircle size={14}/> Sincronizado</span>
                     ) : (
                       <span className="status-badge warning"><XCircle size={14}/> Pendiente</span>
                     )}
                   </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
                       <button onClick={() => navigate(`/diagnostico/editar/${record.id}`)} className="btn-icon" title="Actualizar" style={{ color: 'var(--primary)' }}>
                         <Edit2 size={18} />
                       </button>
