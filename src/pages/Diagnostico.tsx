@@ -381,7 +381,7 @@ export const Diagnostico = () => {
 
     let firmaBase64 = formData.firma || '';
     let firmaMime = formData.firmaMime || '';
-    const dynamicFirmaName = `${formData.dni || 'sin_dni'} - ${formData.responsable || 'sin_nombre'}.png`;
+    const dynamicFirmaName = `${formData.dni || 'sin_dni'} - ${formData.responsable || 'sin_nombre'}.jpeg`;
 
     if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
       const trimmedCanvas = sigCanvas.current.getTrimmedCanvas();
