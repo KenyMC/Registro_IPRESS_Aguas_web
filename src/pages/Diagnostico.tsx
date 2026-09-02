@@ -181,7 +181,7 @@ export const Diagnostico = () => {
           setFormData(prev => ({
             ...prev,
             nombreIpress: matched.nombre,
-            codigoRenipress: matched.codigo,
+            codigoRenipress: String(matched.codigo).padStart(8, '0'),
             provincia: matched.provincia,
             distrito: matched.distrito
           }));
@@ -192,7 +192,7 @@ export const Diagnostico = () => {
             setFormData(prev => ({
               ...prev,
               nombreIpress: matchedByName.nombre,
-              codigoRenipress: matchedByName.codigo,
+              codigoRenipress: String(matchedByName.codigo).padStart(8, '0'),
               provincia: matchedByName.provincia,
               distrito: matchedByName.distrito
             }));
@@ -205,7 +205,7 @@ export const Diagnostico = () => {
           setFormData(prev => ({
             ...prev,
             nombreIpress: matchedByName.nombre,
-            codigoRenipress: matchedByName.codigo,
+            codigoRenipress: String(matchedByName.codigo).padStart(8, '0'),
             provincia: matchedByName.provincia,
             distrito: matchedByName.distrito
           }));
@@ -313,7 +313,7 @@ export const Diagnostico = () => {
         setFormData(prev => ({
           ...prev,
           nombreIpress: value,
-          codigoRenipress: selected.codigo,
+          codigoRenipress: String(selected.codigo).padStart(8, '0'),
           provincia: selected.provincia,
           distrito: selected.distrito
         }));

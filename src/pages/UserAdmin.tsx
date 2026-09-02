@@ -172,7 +172,7 @@ export const UserAdmin = () => {
 
             <div className="form-group">
               <label className="form-label">Código RENIPRESS</label>
-              <input type="text" className="form-control" value={editingUser.codigoRenipress} onChange={e => setEditingUser({...editingUser, codigoRenipress: e.target.value})} />
+              <input type="text" className="form-control" value={editingUser.codigoRenipress} onChange={e => setEditingUser({...editingUser, codigoRenipress: String(e.target.value).padStart(8, '0')})} />
             </div>
 
             <div className="form-group">

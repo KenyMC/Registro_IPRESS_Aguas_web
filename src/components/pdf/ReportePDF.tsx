@@ -128,6 +128,32 @@ const renderValue = (val: any) => {
   return (val !== undefined && val !== null && val !== '') ? String(val) : '-';
 };
 
+const formatRenipress = (val: any) => {
+  if (!val || val === '-') return '-';
+  return String(val).padStart(8, '0');
+};
+
+const formatDateStr = (dateStr: any) => {
+  if (!dateStr || dateStr === '-') return '-';
+  const str = String(dateStr);
+  if (str.includes('T')) {
+    const parts = str.split('T')[0].split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  const parts = str.split('-');
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  return str;
+};
+
+const formatTimeStr = (timeStr: any) => {
+  if (!timeStr || timeStr === '-') return '';
+  const str = String(timeStr);
+  if (str.includes('T')) {
+    return str.split('T')[1].substring(0, 5);
+  }
+  return str.substring(0, 5);
+};
+
 export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
   const isDiag = record.tipo === 'diagnostico';
 
@@ -144,16 +170,17 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
 
           <View style={styles.sectionTitle}><Text>1. IDENTIFICACIÓN Y UBICACIÓN</Text></View>
           <View style={styles.row}><Text style={styles.label}>Nro. Registro / UUID:</Text><Text style={styles.value}>{record.uuid?.split('-')[0] || '-'}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Fecha y Hora:</Text><Text style={styles.value}>{renderValue(record.fecha)} {renderValue(record.hora)}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>Fecha y Hora:</Text><Text style={styles.value}>{formatDateStr(record.fecha)} {formatTimeStr(record.hora)}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Unidad Ejecutora / Red:</Text><Text style={styles.value}>{renderValue(record.unidadEjecutora)}</Text></View>
           <View style={styles.row}><Text style={styles.label}>Nombre de IPRESS:</Text><Text style={styles.value}>{renderValue(record.nombreIpress)}</Text></View>
-          <View style={styles.row}><Text style={styles.label}>Código RENIPRESS:</Text><Text style={styles.value}>{renderValue(record.codigoRenipress)}</Text></View>
+          <View style={styles.row}><Text style={styles.label}>Código RENIPRESS:</Text><Text style={styles.value}>{formatRenipress(record.codigoRenipress)}</Text></View>
           
           {isDiag && (
             <>
               <View style={styles.row}><Text style={styles.label}>Provincia:</Text><Text style={styles.value}>{renderValue(record.provincia)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>Distrito:</Text><Text style={styles.value}>{renderValue(record.distrito)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>Centro Poblado:</Text><Text style={styles.value}>{renderValue(record.centroPoblado)}</Text></View>
+              <View style={styles.row}><Text style={styles.label}>Ubigeo del CCPP:</Text><Text style={styles.value}>{renderValue(record.ubigeo)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>Coordenadas:</Text><Text style={styles.value}>{renderValue(record.latitud)}, {renderValue(record.longitud)}</Text></View>
             </>
           )}

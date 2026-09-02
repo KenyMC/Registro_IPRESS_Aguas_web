@@ -51,7 +51,7 @@ export const urlToBase64 = (url: string): Promise<string> => {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0);
-          const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+          const dataURL = canvas.toDataURL('image/png');
           resolve(dataURL);
         } else {
           resolve('');

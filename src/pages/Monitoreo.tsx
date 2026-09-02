@@ -196,7 +196,7 @@ export const Monitoreo = () => {
           setFormData(prev => ({
             ...prev,
             nombreIpress: matched.nombre,
-            codigoRenipress: matched.codigo
+            codigoRenipress: String(matched.codigo).padStart(8, '0')
           }));
         } else {
           // Fallback to username matching
@@ -205,7 +205,7 @@ export const Monitoreo = () => {
             setFormData(prev => ({
               ...prev,
               nombreIpress: matchedByName.nombre,
-              codigoRenipress: matchedByName.codigo
+              codigoRenipress: String(matchedByName.codigo).padStart(8, '0')
             }));
           }
         }
@@ -216,7 +216,7 @@ export const Monitoreo = () => {
           setFormData(prev => ({
             ...prev,
             nombreIpress: matchedByName.nombre,
-            codigoRenipress: matchedByName.codigo
+            codigoRenipress: String(matchedByName.codigo).padStart(8, '0')
           }));
         }
       }
@@ -307,7 +307,7 @@ export const Monitoreo = () => {
         setFormData(prev => ({
           ...prev,
           nombreIpress: value,
-          codigoRenipress: selected.codigo
+          codigoRenipress: String(selected.codigo).padStart(8, '0')
         }));
         return;
       }

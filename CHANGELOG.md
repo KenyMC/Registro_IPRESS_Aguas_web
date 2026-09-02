@@ -8,6 +8,9 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 - **Prevención de Bloqueos CORS para Imágenes en PDF:** Se creó la utilidad `imageUtils.ts` que implementa un sistema de triple fallback para capturar las fotos desde Google Drive antes de inyectarlas en el PDF. Si falla la petición directa, usa el Thumbnail API y, en último caso, un Proxy público para asegurar que la descarga no se rompa por restricciones del navegador.
 - **Hook `usePdfDownloader`:** Centraliza la lógica asíncrona de generación del archivo y muestra un spinner de carga (`Loader2`) mientras se procesa.
 
+### Solucionado
+- **Imágenes invisibles en PDF:** Se implementó una técnica basada en Canvas y un proxy visual (`lh3.googleusercontent.com`) replicando el motor de previsualización para forzar la incrustación a Base64 sin error de Tainted Canvas.
+
 ## [1.1.1] - 2026-08-31
 ### Añadido
 - **Botón Cancelar en Formularios:** Se agregó el botón "Cancelar" en la parte inferior de los formularios de Diagnóstico y Monitoreo para mejorar la consistencia UX, permitiendo regresar a la lista de registros de forma explícita.
