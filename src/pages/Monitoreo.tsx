@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import SignatureCanvas from 'react-signature-canvas';
 import { syncEntry, SyncRequest } from '../services/api';
+import { generateUUID } from '../utils/uuid';
 import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { getCachedIpressList, IpressRecord } from '../services/ipressData';
 import { useAuth } from '../contexts/AuthContext';
@@ -401,7 +402,7 @@ export const Monitoreo = () => {
 
     const payload: SyncRequest = {
       ...(formData as SyncRequest),
-      uuid: formData.uuid || crypto.randomUUID(),
+      uuid: formData.uuid || generateUUID(),
       fechaRegistro: formData.fechaRegistro || new Date().toISOString(),
       firma: firmaBase64,
       firmaName: dynamicFirmaName,
@@ -413,7 +414,7 @@ export const Monitoreo = () => {
     
     const localRecord: LocalRecord = {
       ...payload,
-      id: id || crypto.randomUUID(),
+      id: id || generateUUID(),
       isSynced
     };
     

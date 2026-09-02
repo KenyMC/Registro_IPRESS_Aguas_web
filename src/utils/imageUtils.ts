@@ -36,8 +36,8 @@ export const urlToBase64 = (url: string): Promise<string> => {
     };
 
     const driveId = getDriveId(url);
-    // Usar el mismo truco de previsualización que en el formulario
-    const previewUrl = driveId ? `https://lh3.googleusercontent.com/d/${driveId}` : url;
+    // Usar el mismo truco de previsualización que en el formulario, añadiendo un timestamp para evadir caché y error CORS Taint
+    const previewUrl = driveId ? `https://lh3.googleusercontent.com/d/${driveId}?t=${new Date().getTime()}` : url;
 
     const img = new Image();
     // NOTA: Para poder hacer toDataURL sin error de "tainted canvas", necesitamos crossOrigin

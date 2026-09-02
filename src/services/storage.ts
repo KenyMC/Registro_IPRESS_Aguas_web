@@ -1,4 +1,5 @@
 import { SyncRequest } from './api';
+import { generateUUID } from '../utils/uuid';
 
 export interface LocalRecord extends SyncRequest {
   id: string; // Internal ID for local operations
@@ -86,7 +87,7 @@ export const mergeRecords = (serverData: any[]): void => {
   const finalRecords: LocalRecord[] = serverData.map(item => ({
     ...item,
     uuid: String(item.uuid || ''),
-    id: item.uuid ? `${item.tipo}-${item.uuid}` : crypto.randomUUID(),
+    id: item.uuid ? `${item.tipo}-${item.uuid}` : generateUUID(),
     isSynced: true
   }));
   
