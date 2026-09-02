@@ -617,6 +617,7 @@ export const Diagnostico = () => {
               value={isOtroCcpp ? 'OTRO' : (formData.centroPoblado || '')}
               onChange={handleChange}
               required
+              disabled={!formData.distrito}
             >
               <option value="">Seleccione un Centro Poblado</option>
               {ccppList
