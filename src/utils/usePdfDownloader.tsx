@@ -24,7 +24,7 @@ export const usePdfDownloader = () => {
           : await urlToBase64(record.urlFoto3 || ''),
         firma: record.firma 
           ? `data:${record.firmaMime || 'image/png'};base64,${record.firma}` 
-          : await urlToBase64(record.urlFirma || '')
+          : await urlToBase64(record.urlFirma || '', true)
       };
 
       // Instanciar el documento

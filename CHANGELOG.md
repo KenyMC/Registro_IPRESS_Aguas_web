@@ -10,6 +10,9 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 
 ### Solucionado
 - **Imágenes invisibles en PDF:** Se implementó una técnica basada en Canvas y un proxy visual (`lh3.googleusercontent.com`) replicando el motor de previsualización para forzar la incrustación a Base64 sin error de Tainted Canvas.
+- **Firma invisible en PDF:** Se corrigió el formato de serialización del Canvas (`image/png` en lugar de `image/jpeg`) para preservar la transparencia y asegurar que las firmas con fondo transparente se muestren correctamente sobre la línea de firma.
+- **Formato del Código RENIPRESS:** Se estandarizó el uso de 8 dígitos para el código RENIPRESS (ej. `00002465`), implementando auto-completado con ceros a la izquierda (`padStart`) tanto al crear, editar como al generar PDFs.
+- **Campos y Fechas en PDF:** Se añadió el campo `Ubigeo del CCPP` al reporte de Diagnóstico. Se mejoró el formato visual de la fecha y hora generada en los PDFs, ocultando el ISO string.
 
 ## [1.1.1] - 2026-08-31
 ### Añadido
