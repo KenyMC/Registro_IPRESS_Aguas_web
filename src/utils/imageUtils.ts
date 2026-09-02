@@ -79,10 +79,12 @@ const fallbackFetch = async (originalUrl: string, driveId: string | null, resolv
       urlsToTry.push(`https://drive.google.com/thumbnail?id=${driveId}&sz=w800`);
     }
     
+    const cleanUrl = driveId ? `https://drive.google.com/uc?export=view&id=${driveId}` : originalUrl;
+
     // Multiple proxies to increase success rate on localhost
-    urlsToTry.push(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(originalUrl)}`);
-    urlsToTry.push(`https://corsproxy.io/?${encodeURIComponent(originalUrl)}`);
-    urlsToTry.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`);
+    urlsToTry.push(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(cleanUrl)}`);
+    urlsToTry.push(`https://corsproxy.io/?${encodeURIComponent(cleanUrl)}`);
+    urlsToTry.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(cleanUrl)}`);
 
     for (const fetchUrl of urlsToTry) {
       try {
