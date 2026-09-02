@@ -110,23 +110,23 @@ export const syncEntry = async (data: SyncRequest): Promise<boolean> => {
   try {
     const payload = { ...data };
 
-    // Format fecha: YYYY-MM-DD -> DD-MM-YYYY
+    // Format fecha: YYYY-MM-DD -> DD-MM-YYYY (force text with ')
     if (payload.fecha && typeof payload.fecha === 'string' && payload.fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
       const [y, m, d] = payload.fecha.split('-');
-      payload.fecha = `${d}-${m}-${y}`;
+      payload.fecha = `'${d}-${m}-${y}`;
     }
     
-    // Format hora: HH:mm -> HH:mm:ss
+    // Format hora: HH:mm -> HH:mm:ss (force text with ')
     if (payload.hora && typeof payload.hora === 'string' && payload.hora.length === 5) {
-      payload.hora = `${payload.hora}:00`;
+      payload.hora = `'${payload.hora}:00`;
     }
     
-    // Format fechaRegistro: ISO -> DD-MM-YYYY HH:mm:ss
-    if (payload.fechaRegistro && typeof payload.fechaRegistro === 'string') {
+    // Format fechaRegistro: ISO -> DD-MM-YYYY HH:mm:ss (force text with ')
+    if (payload.fechaRegistro && typeof payload.fechaRegistro === 'string' && !payload.fechaRegistro.startsWith("'")) {
       const d = new Date(payload.fechaRegistro);
       if (!isNaN(d.getTime())) {
         const pad = (n: number) => n.toString().padStart(2, '0');
-        payload.fechaRegistro = `${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        payload.fechaRegistro = `\'${pad(d.getDate())}-${pad(d.getMonth() + 1)}-${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
       }
     }
 
