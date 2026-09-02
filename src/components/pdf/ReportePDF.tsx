@@ -38,10 +38,7 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     alignItems: 'center',
-    marginBottom: 20,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#d4af37',
-    paddingBottom: 15,
+    marginBottom: 15,
   },
   headerTitle: {
     fontSize: 16,
@@ -145,9 +142,13 @@ const styles = StyleSheet.create({
 });
 
 const getAssetUrl = (filename: string) => {
-  const base = import.meta.env.BASE_URL || '/';
-  const path = base.endsWith('/') ? `${base}${filename}` : `${base}/${filename}`;
-  return new URL(path, window.location.origin).href;
+  // En producción (GitHub Pages) el pathname incluye el subdirectorio del repo.
+  // Resolvemos la ruta de la imagen en base a eso para que no de 404.
+  let basePath = window.location.pathname;
+  if (!basePath.endsWith('/')) {
+    basePath += '/';
+  }
+  return new URL(filename, window.location.origin + basePath).href;
 };
 
 interface PdfProps {
@@ -198,14 +199,16 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
       <View style={styles.headerLogos}>
         <Image src={getAssetUrl('logo-cusco.jpg')} style={styles.headerLogoImg} />
         <View style={styles.headerInstitution}>
-          <Text style={styles.instText}>GOBIERNO REGIONAL DEL CUSCO</Text>
-          <Text style={styles.instText}>GERENCIA REGIONAL DE SALUD CUSCO</Text>
+          <View style={{ borderBottomWidth: 1.5, borderBottomColor: '#d4af37', paddingBottom: 4, alignItems: 'center' }}>
+            <Text style={styles.instText}>GOBIERNO REGIONAL DEL CUSCO</Text>
+            <Text style={styles.instText}>GERENCIA REGIONAL DE SALUD CUSCO</Text>
+          </View>
         </View>
         <Image src={getAssetUrl('logo-diresa.png')} style={styles.headerLogoImg} />
       </View>
       <View style={styles.titleContainer}>
         <Text style={styles.headerTitle}>
-          {isDiag ? 'INFORME DE DIAGNÓSTICO' : 'INFORME DE MONITOREO'}
+          {isDiag ? `INFORME DE DIAGNÓSTICO DE LA IPRESS ${record.nombreIpress || ''}`.toUpperCase() : `INFORME DE MONITOREO DE LA IPRESS ${record.nombreIpress || ''}`.toUpperCase()}
         </Text>
       </View>
     </>
