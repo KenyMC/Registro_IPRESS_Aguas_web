@@ -71,6 +71,17 @@ export const urlToBase64 = (url: string): Promise<string> => {
   });
 };
 
+/**
+ * Fallback de seguridad extrema para evadir el bloqueo de CORS al solicitar la imagen.
+ * Especialmente útil en `localhost` donde `lh3.googleusercontent.com` rechaza el acceso cruzado.
+ * Esta función:
+ * 1. Muta la URL original a `drive.google.com/thumbnail` (mucho más tolerante con Proxies).
+ * 2. Prueba de forma secuencial una lista de proxies públicos conocidos y rápidos.
+ * 3. Analiza el tipo de dato devuelto (`blob.type`) para descartar que el proxy haya devuelto 
+ *    una página de error en HTML 403 de Google Drive.
+ * 4. Falla silenciosamente devolviendo `''` en vez de tirar un Error para evitar que
+ *    `react-pdf/renderer` crashee catastróficamente toda la pantalla.
+ */
 const fallbackFetch = async (originalUrl: string, driveId: string | null, resolve: (val: string) => void) => {
   try {
     const urlsToTry = [];

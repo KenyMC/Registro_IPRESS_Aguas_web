@@ -1,6 +1,17 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.2.1] - 2026-09-02
+### Añadido
+- **Cascada Distritos a Centros Poblados (CCPP):** Se agregó una pestaña adicional y lógica para autocompletar la lista de Centros Poblados según el Distrito de la IPRESS seleccionada. El selector de CCPP permanece bloqueado (deshabilitado) hasta que se elija una IPRESS válida.
+- **Normalización de Textos en Búsquedas:** El cruce entre el Distrito de la IPRESS y el Distrito del CCPP ahora ignora mayúsculas, minúsculas y acentos (tildes), lo que evita errores de consistencia (ej: "UNIÓN ASHANINKA" === "UNION ASHANINKA").
+- **Conservación de Ceros a la Izquierda para Ubigeos:** 
+  - Al seleccionar un CCPP desde el CSV, el sistema asegura de rellenar el Ubigeo con ceros a la izquierda (longitud de 10).
+  - Al enviar a la API (Google Sheets), se fuerza como texto anteponiendo un apóstrofe (`'`) para evitar que la hoja de cálculo recorte los ceros (ej: `'0808010001`).
+  - Al imprimir el reporte PDF, se remueve inteligentemente el apóstrofe para limpiar la visualización.
+- **Centrado Dinámico de Fotos en PDF:** La lógica de generación de cuadrículas en el PDF de `ReportePDF.tsx` ahora detecta si la cantidad de fotos es impar (1 o 3 fotos) y centra el bloque inferior para lograr simetría, aplicando perfectamente para los reportes de Monitoreo (1 foto) o los de Diagnóstico que no tengan las 3 completas.
+- **Robustez Extrema contra CORS en `localhost`:** El script `imageUtils.ts` fue modificado para usar la URL directa de la API de Miniaturas de Google Drive (`drive.google.com/thumbnail`) que es más amigable a ser pasada por proxies (`corsproxy.io`, `api.codetabs.com`). Además, se agregó verificación del MIME Type (`blob.type.startsWith('image/')`) para descartar que los proxies estén devolviendo páginas de error de Google, garantizando que el PDF cargue fotos de manera consistente incluso en entornos restringidos locales.
+
 ## [1.2.0] - 2026-09-01
 ### Añadido
 - **Descarga de Informes en PDF:** Se ha implementado un nuevo botón dorado con icono de descarga (`Download`) en la columna "Acciones" de las listas de Diagnóstico y Monitoreo.
