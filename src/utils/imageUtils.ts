@@ -73,29 +73,37 @@ export const urlToBase64 = (url: string): Promise<string> => {
 
 const fallbackFetch = async (originalUrl: string, driveId: string | null, resolve: (val: string) => void) => {
   try {
+    const urlsToTry = [];
+    
     if (driveId) {
-      // Fallback 1: Thumbnail API
-      const thumbUrl = `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
-      const response = await fetch(thumbUrl);
-      if (response.ok) {
-        const blob = await response.blob();
-        resolve(await blobToBase64(blob));
-        return;
-      }
-    }
-
-    // Fallback 2: allorigins Proxy (más confiable que corsproxy.io a veces)
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`;
-    const response = await fetch(proxyUrl);
-    if (response.ok) {
-      const blob = await response.blob();
-      resolve(await blobToBase64(blob));
-      return;
+      urlsToTry.push(`https://drive.google.com/thumbnail?id=${driveId}&sz=w800`);
     }
     
-    resolve(''); // Falla silenciosa para no romper el PDF
+    // Multiple proxies to increase success rate on localhost
+    urlsToTry.push(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(originalUrl)}`);
+    urlsToTry.push(`https://corsproxy.io/?${encodeURIComponent(originalUrl)}`);
+    urlsToTry.push(`https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`);
+
+    for (const fetchUrl of urlsToTry) {
+      try {
+        const response = await fetch(fetchUrl);
+        if (response.ok) {
+          const blob = await response.blob();
+          const base64 = await blobToBase64(blob);
+          if (base64 && base64.length > 100) {
+            resolve(base64);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn(`Proxy falló: ${fetchUrl}`, err);
+      }
+    }
+    
+    // Falla silenciosa para no romper el PDF, mejor que un error fatal de react-pdf
+    resolve(''); 
   } catch (error) {
-    console.error('Fallbacks de imagen fallaron:', error);
+    console.error('Fallbacks de imagen fallaron por completo:', error);
     resolve('');
   }
 };
