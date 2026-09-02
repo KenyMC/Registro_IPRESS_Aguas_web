@@ -58,13 +58,13 @@ export const urlToBase64 = (url: string): Promise<string> => {
         }
       } catch (err) {
         console.warn('Error de CORS en canvas (Taint). Intentando fallback con Fetch proxy...', err);
-        fallbackFetch(url, driveId, resolve);
+        fallbackFetch(previewUrl, driveId, resolve);
       }
     };
 
     img.onerror = () => {
       console.warn('Error cargando imagen con crossOrigin. Intentando fallback con Fetch proxy...', previewUrl);
-      fallbackFetch(url, driveId, resolve);
+      fallbackFetch(previewUrl, driveId, resolve);
     };
 
     img.src = previewUrl;
