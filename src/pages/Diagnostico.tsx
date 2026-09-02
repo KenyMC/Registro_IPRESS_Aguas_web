@@ -68,6 +68,13 @@ const FUENTES_AGUA = [
   "Agua de lluvia", "Camion Cisterna", "La Red Publica", "Manante", "Pozo", "Riachuelo"
 ];
 
+const normalizeString = (str: string | undefined | null) => {
+  if (!str) return '';
+  // Normalize to NFD (decomposes combined graphemes into base + combining chars)
+  // Then remove the combining diacritical marks
+  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+};
+
 const PhotoInput = ({ label, fieldName, formData, handleFileChange }: { label: string, fieldName: 'foto1' | 'foto2' | 'foto3', formData: Partial<SyncRequest>, handleFileChange: (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'foto1' | 'foto2' | 'foto3') => void }) => {
   const base64 = formData[`${fieldName}Base64` as keyof SyncRequest];
   const url = formData[`url${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)}` as keyof SyncRequest] as string | undefined;
@@ -363,7 +370,7 @@ export const Diagnostico = () => {
         } else {
           setIsOtroCcpp(false);
           nextState.centroPoblado = value;
-          const matchedCcpp = ccppList.find(c => c.centroPoblado === value && c.distrito === prev.distrito);
+          const matchedCcpp = ccppList.find(c => c.centroPoblado === value && normalizeString(c.distrito) === normalizeString(prev.distrito));
           if (matchedCcpp) {
             nextState.ubigeo = matchedCcpp.ubigeo;
           }
@@ -621,7 +628,7 @@ export const Diagnostico = () => {
             >
               <option value="">Seleccione un Centro Poblado</option>
               {ccppList
-                .filter(c => c.distrito === formData.distrito)
+                .filter(c => normalizeString(c.distrito) === normalizeString(formData.distrito))
                 .sort((a, b) => a.centroPoblado.localeCompare(b.centroPoblado))
                 .map((ccpp, idx) => (
                   <option key={idx} value={ccpp.centroPoblado}>{ccpp.centroPoblado}</option>
