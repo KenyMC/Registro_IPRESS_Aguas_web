@@ -17,7 +17,7 @@ export const blobToBase64 = (blob: Blob): Promise<string> => {
  * Convierte una URL a Base64 evadiendo bloqueos de CORS.
  * Utiliza la técnica de previsualización (lh3.googleusercontent.com) dibujando en un canvas.
  */
-export const urlToBase64 = (url: string, asPng: boolean = false): Promise<string> => {
+export const urlToBase64 = (url: string): Promise<string> => {
   return new Promise((resolve) => {
     if (!url) {
       resolve('');
@@ -50,31 +50,35 @@ export const urlToBase64 = (url: string, asPng: boolean = false): Promise<string
         canvas.height = img.height;
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          // Llenar con blanco para evitar fondo negro en imágenes transparentes al convertir a JPEG
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          
           ctx.drawImage(img, 0, 0);
-          const dataURL = asPng ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.8);
+          const dataURL = canvas.toDataURL('image/jpeg', 0.8);
           resolve(dataURL);
         } else {
           resolve('');
         }
       } catch (err) {
         console.warn('Error de CORS en canvas (Taint). Intentando fallback con Fetch proxy...', err);
-        fallbackFetch(url, driveId, asPng, resolve);
+        fallbackFetch(url, driveId, resolve);
       }
     };
 
     img.onerror = () => {
       console.warn('Error cargando imagen con crossOrigin. Intentando fallback con Fetch proxy...', previewUrl);
-      fallbackFetch(url, driveId, asPng, resolve);
+      fallbackFetch(url, driveId, resolve);
     };
 
     img.src = previewUrl;
   });
 };
 
-const fallbackFetch = async (originalUrl: string, driveId: string | null, asPng: boolean, resolve: (val: string) => void) => {
+const fallbackFetch = async (originalUrl: string, driveId: string | null, resolve: (val: string) => void) => {
   try {
-    if (driveId && !asPng) {
-      // Fallback 1: Thumbnail API (Solo para JPEGs, ya que arruina las transparencias de los PNGs)
+    if (driveId) {
+      // Fallback 1: Thumbnail API
       const thumbUrl = `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
       const response = await fetch(thumbUrl);
       if (response.ok) {
