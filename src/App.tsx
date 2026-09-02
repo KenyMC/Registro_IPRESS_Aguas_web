@@ -12,6 +12,7 @@ import { UserAdmin } from './pages/UserAdmin';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { fetchRecordsFromServer } from './services/api';
 import { fetchAndCacheIpressList } from './services/ipressData';
+import { fetchAndCacheCcppList } from './services/ccppData';
 import { syncPendingRecords, mergeRecords } from './services/storage';
 
 const SplashManager = ({ children }: { children: React.ReactNode }) => {
@@ -19,6 +20,7 @@ const SplashManager = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     fetchAndCacheIpressList();
+    fetchAndCacheCcppList();
     
     const handleOnline = () => {
       syncPendingRecords();

@@ -5,6 +5,7 @@ import { syncEntry, SyncRequest } from '../services/api';
 import { generateUUID } from '../utils/uuid';
 import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { getCachedIpressList, IpressRecord } from '../services/ipressData';
+import { getCachedCcppList, CcppRecord } from '../services/ccppData';
 import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Save, RefreshCw, ArrowLeft, PenTool, Camera, Upload } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
@@ -160,13 +161,19 @@ export const Diagnostico = () => {
   const [isSignatureDirty, setIsSignatureDirty] = useState(false);
 
   const [ipressList, setIpressList] = useState<IpressRecord[]>([]);
+  const [ccppList, setCcppList] = useState<CcppRecord[]>([]);
   const [isOtroUnidad, setIsOtroUnidad] = useState(false);
+  const [isOtroCcpp, setIsOtroCcpp] = useState(false);
   const [isSignatureEmpty, setIsSignatureEmpty] = useState(true);
   const [hasExistingSignatureUrl, setHasExistingSignatureUrl] = useState(false);
   const [isSignatureLoading, setIsSignatureLoading] = useState(true);
+
   useEffect(() => {
     const list = getCachedIpressList();
     setIpressList(list);
+    
+    const ccpp = getCachedCcppList();
+    setCcppList(ccpp);
 
     // Auto-fill IPRESS for IPRESS/Hospital users on new records
     if (!id && user && (user.rol === 'IPRESS' || user.rol === 'Hospital')) {
@@ -282,47 +289,96 @@ export const Diagnostico = () => {
     }
   }, [id]);
 
+  // Check if the loaded centroPoblado is 'Otro' (not in the list)
+  useEffect(() => {
+    if (id && formData.centroPoblado && formData.distrito && ccppList.length > 0) {
+      const isKnown = ccppList.find(
+        c => c.centroPoblado === formData.centroPoblado && c.distrito === formData.distrito
+      );
+      if (!isKnown) {
+        setIsOtroCcpp(true);
+      }
+    }
+  }, [id, formData.centroPoblado, formData.distrito, ccppList]);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
+    const finalValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+    
+    setFormData(prev => {
+      let nextState = { ...prev, [name]: finalValue };
 
-    if (name === 'latitud' || name === 'longitud') {
-      let val = value;
-      if (val !== '' && !val.startsWith('-')) {
-        val = '-' + val;
+      // Handle Map Coordinates manually
+      if (name === 'latitud' || name === 'longitud') {
+        let val = value;
+        if (val !== '' && !val.startsWith('-')) {
+          val = '-' + val;
+        }
+        nextState[name] = val;
       }
-      setFormData(prev => ({ ...prev, [name]: val }));
-      return;
-    }
 
-    if (name === 'unidadEjecutora') {
-      const isOtro = value === 'Otro' || value === '';
-      setIsOtroUnidad(isOtro);
-      setFormData(prev => ({
-        ...prev,
-        unidadEjecutora: value,
-        nombreIpress: '',
-        codigoRenipress: '',
-        provincia: '',
-        distrito: ''
-      }));
-      return;
-    }
-
-    if (name === 'nombreIpress' && !isOtroUnidad) {
-      const selected = ipressList.find(i => i.nombre === value && i.red === formData.unidadEjecutora);
-      if (selected) {
-        setFormData(prev => ({
-          ...prev,
-          nombreIpress: value,
-          codigoRenipress: String(selected.codigo).padStart(8, '0'),
-          provincia: selected.provincia,
-          distrito: selected.distrito
-        }));
-        return;
+      // Handle Unidad Ejecutora changes
+      if (name === 'unidadEjecutora') {
+        const isOtro = value === 'Otro' || value === '';
+        setIsOtroUnidad(isOtro);
+        nextState.nombreIpress = '';
+        nextState.codigoRenipress = '';
+        nextState.provincia = '';
+        nextState.distrito = '';
+        nextState.centroPoblado = '';
+        nextState.ubigeo = '';
+        setIsOtroCcpp(false);
       }
-    }
 
-    setFormData(prev => ({ ...prev, [name]: value }));
+      // Handle IPRESS selection
+      if (name === 'nombreIpress') {
+        if (value === 'OTRO') {
+          setIsOtroUnidad(true);
+          nextState.nombreIpress = '';
+          nextState.codigoRenipress = '';
+          nextState.provincia = '';
+          nextState.distrito = '';
+          nextState.centroPoblado = '';
+          nextState.ubigeo = '';
+          setIsOtroCcpp(false);
+        } else if (!isOtroUnidad) {
+          const selected = ipressList.find(i => i.nombre === value && i.red === prev.unidadEjecutora);
+          if (selected) {
+            nextState.codigoRenipress = String(selected.codigo).padStart(8, '0');
+            nextState.provincia = selected.provincia;
+            nextState.distrito = selected.distrito;
+            nextState.centroPoblado = '';
+            nextState.ubigeo = '';
+            setIsOtroCcpp(false);
+          }
+        }
+      }
+
+      // Handle CCPP selection
+      if (name === 'centroPobladoSelect') {
+        if (value === 'OTRO') {
+          setIsOtroCcpp(true);
+          nextState.centroPoblado = '';
+          nextState.ubigeo = '';
+        } else {
+          setIsOtroCcpp(false);
+          nextState.centroPoblado = value;
+          const matchedCcpp = ccppList.find(c => c.centroPoblado === value && c.distrito === prev.distrito);
+          if (matchedCcpp) {
+            nextState.ubigeo = matchedCcpp.ubigeo;
+          }
+        }
+      }
+
+      // Format Ubigeo if typed manually (add leading zero if not present and is manual input)
+      if (name === 'ubigeo' && value) {
+        if (value.length > 0 && !value.startsWith('0')) {
+          nextState.ubigeo = '0' + value;
+        }
+      }
+
+      return nextState;
+    });
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fieldName: 'foto1' | 'foto2' | 'foto3') => {
@@ -555,11 +611,34 @@ export const Diagnostico = () => {
           </div>
           <div className="form-group">
             <label className="form-label">Centro Poblado donde esta ubicado la IPRESS</label>
-            <input required type="text" name="centroPoblado" className="form-control" value={formData.centroPoblado || ''} onChange={handleChange} />
+            <select
+              className="form-control"
+              name="centroPobladoSelect"
+              value={isOtroCcpp ? 'OTRO' : (formData.centroPoblado || '')}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Seleccione un Centro Poblado</option>
+              {ccppList
+                .filter(c => c.distrito === formData.distrito)
+                .sort((a, b) => a.centroPoblado.localeCompare(b.centroPoblado))
+                .map((ccpp, idx) => (
+                  <option key={idx} value={ccpp.centroPoblado}>{ccpp.centroPoblado}</option>
+              ))}
+              <option value="OTRO">OTRO</option>
+            </select>
           </div>
+          
+          {isOtroCcpp && (
+            <div className="form-group">
+              <label className="form-label">Especifique el Centro Poblado</label>
+              <input required type="text" name="centroPoblado" className="form-control" value={formData.centroPoblado || ''} onChange={handleChange} />
+            </div>
+          )}
+
           <div className="form-group">
             <label className="form-label">Ubigeo del CCPP</label>
-            <input required type="number" name="ubigeo" className="form-control" value={formData.ubigeo || ''} onChange={handleChange} />
+            <input required type="text" name="ubigeo" className="form-control" value={formData.ubigeo || ''} onChange={handleChange} readOnly={!isOtroCcpp} style={!isOtroCcpp ? { backgroundColor: '#f1f5f9' } : {}} />
           </div>
 
         </div>
