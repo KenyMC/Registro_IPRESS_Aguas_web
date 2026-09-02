@@ -716,7 +716,7 @@ export const Diagnostico = () => {
           <PhotoInput label="Foto Observacion 3" fieldName="foto3" formData={formData} handleFileChange={handleFileChange} />
           <div className="form-group">
             <label className="form-label">Fecha</label>
-            <input required type="date" name="fecha" className="form-control" value={formData.fecha || ''} min={new Date().toISOString().split('T')[0]} onChange={handleChange} />
+            <input required type="date" name="fecha" className="form-control" value={formData.fecha || ''} min={(() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()} onChange={handleChange} />
           </div>
           <div className="form-group">
             <label className="form-label">Hora</label>
