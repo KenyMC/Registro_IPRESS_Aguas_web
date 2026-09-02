@@ -360,72 +360,84 @@ export const Monitoreo = () => {
     }
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
     setErrorMsg('');
     setSignatureError(false);
-    
-    let firmaBase64 = formData.firma || '';
-    let firmaMime = formData.firmaMime || '';
-    const dynamicFirmaName = `${formData.dni || 'sin_dni'} - ${formData.responsable || 'sin_nombre'}.jpeg`;
+    setIsSubmitting(true);
 
-    if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-      const trimmedCanvas = sigCanvas.current.getTrimmedCanvas();
-      const whiteCanvas = document.createElement('canvas');
-      whiteCanvas.width = trimmedCanvas.width;
-      whiteCanvas.height = trimmedCanvas.height;
-      const ctx = whiteCanvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, whiteCanvas.width, whiteCanvas.height);
-        ctx.drawImage(trimmedCanvas, 0, 0);
-        const dataUrl = whiteCanvas.toDataURL('image/jpeg', 0.9);
-        firmaBase64 = dataUrl.split(',')[1];
-        firmaMime = 'image/jpeg';
-      } else {
-        const dataUrl = trimmedCanvas.toDataURL('image/png');
-        firmaBase64 = dataUrl.split(',')[1];
-        firmaMime = 'image/png';
+    try {
+      let firmaBase64 = formData.firma || '';
+      let firmaMime = formData.firmaMime || '';
+      const dynamicFirmaName = `${formData.dni || 'sin_dni'} - ${formData.responsable || 'sin_nombre'}.jpeg`;
+
+      if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
+        let trimmedCanvas;
+        try {
+          trimmedCanvas = sigCanvas.current.getTrimmedCanvas();
+        } catch (e) {
+          console.warn("getTrimmedCanvas falló (error de vite/dev), usando getCanvas", e);
+          trimmedCanvas = sigCanvas.current.getCanvas();
+        }
+        
+        const whiteCanvas = document.createElement('canvas');
+        whiteCanvas.width = trimmedCanvas.width;
+        whiteCanvas.height = trimmedCanvas.height;
+        const ctx = whiteCanvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, whiteCanvas.width, whiteCanvas.height);
+          ctx.drawImage(trimmedCanvas, 0, 0);
+          const dataUrl = whiteCanvas.toDataURL('image/jpeg', 0.9);
+          firmaBase64 = dataUrl.split(',')[1];
+          firmaMime = 'image/jpeg';
+        } else {
+          const dataUrl = trimmedCanvas.toDataURL('image/png');
+          firmaBase64 = dataUrl.split(',')[1];
+          firmaMime = 'image/png';
+        }
+      } else if (hasExistingSignatureUrl) {
+        firmaBase64 = formData.firma || '';
       }
-    } else if (hasExistingSignatureUrl) {
-      firmaBase64 = formData.firma || '';
-    }
-    
-    if (!firmaBase64 && !hasExistingSignatureUrl) {
-      setSignatureError(true);
+      
+      if (!firmaBase64 && !hasExistingSignatureUrl) {
+        setSignatureError(true);
+        setIsSubmitting(false);
+        setTimeout(() => document.querySelector('.signature-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+        return;
+      }
+
+      const payload: SyncRequest = {
+        ...(formData as SyncRequest),
+        uuid: formData.uuid || generateUUID(),
+        fechaRegistro: formData.fechaRegistro || new Date().toISOString(),
+        firma: firmaBase64,
+        firmaName: dynamicFirmaName,
+        firmaMime,
+        foto1Base64: formData.foto1Base64 || formData.urlFoto1 || '',
+      };
+
+      const isSynced = await syncEntry(payload);
+      
+      const localRecord: LocalRecord = {
+        ...payload,
+        id: id || generateUUID(),
+        isSynced
+      };
+      
+      saveRecord(localRecord);
       setIsSubmitting(false);
-      setTimeout(() => document.querySelector('.signature-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
-      return;
+
+      if (!isSynced) {
+        alert('Se guardó localmente, pero hubo un error al sincronizar con el servidor.');
+      }
+
+      navigate('/monitoreo');
+    } catch (err: any) {
+      console.error(err);
+      alert('Error inesperado al guardar: ' + (err.message || String(err)));
+      setIsSubmitting(false);
     }
-
-    const payload: SyncRequest = {
-      ...(formData as SyncRequest),
-      uuid: formData.uuid || generateUUID(),
-      fechaRegistro: formData.fechaRegistro || new Date().toISOString(),
-      firma: firmaBase64,
-      firmaName: dynamicFirmaName,
-      firmaMime,
-      foto1Base64: formData.foto1Base64 || formData.urlFoto1 || '',
-    };
-
-    const isSynced = await syncEntry(payload);
-    
-    const localRecord: LocalRecord = {
-      ...payload,
-      id: id || generateUUID(),
-      isSynced
-    };
-    
-    saveRecord(localRecord);
-    setIsSubmitting(false);
-
-    if (!isSynced) {
-      alert('Se guardó localmente, pero hubo un error al sincronizar con el servidor.');
-    }
-
-    navigate('/monitoreo');
   };
 
   return (
