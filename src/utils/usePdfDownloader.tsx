@@ -13,18 +13,18 @@ export const usePdfDownloader = () => {
 
       // Pre-cargar imágenes y convertirlas a Base64
       const images = {
-        foto1: record.foto1Base64 
+        foto1: (record.foto1Base64 && !record.foto1Base64.startsWith('http'))
           ? `data:${record.foto1Mime || 'image/jpeg'};base64,${record.foto1Base64}` 
-          : await urlToBase64(record.urlFoto1 || ''),
-        foto2: record.foto2Base64 
+          : await urlToBase64(record.foto1Base64?.startsWith('http') ? record.foto1Base64 : (record.urlFoto1 || '')),
+        foto2: (record.foto2Base64 && !record.foto2Base64.startsWith('http'))
           ? `data:${record.foto2Mime || 'image/jpeg'};base64,${record.foto2Base64}` 
-          : await urlToBase64(record.urlFoto2 || ''),
-        foto3: record.foto3Base64 
+          : await urlToBase64(record.foto2Base64?.startsWith('http') ? record.foto2Base64 : (record.urlFoto2 || '')),
+        foto3: (record.foto3Base64 && !record.foto3Base64.startsWith('http'))
           ? `data:${record.foto3Mime || 'image/jpeg'};base64,${record.foto3Base64}` 
-          : await urlToBase64(record.urlFoto3 || ''),
-        firma: record.firma 
+          : await urlToBase64(record.foto3Base64?.startsWith('http') ? record.foto3Base64 : (record.urlFoto3 || '')),
+        firma: (record.firma && !record.firma.startsWith('http'))
           ? `data:${record.firmaMime || 'image/png'};base64,${record.firma}` 
-          : await urlToBase64(record.urlFirma || '')
+          : await urlToBase64(record.firma?.startsWith('http') ? record.firma : (record.urlFirma || ''))
       };
 
       // Instanciar el documento
