@@ -384,9 +384,23 @@ export const Diagnostico = () => {
     const dynamicFirmaName = `${formData.dni || 'sin_dni'} - ${formData.responsable || 'sin_nombre'}.png`;
 
     if (sigCanvas.current && !sigCanvas.current.isEmpty()) {
-      const dataUrl = sigCanvas.current.toDataURL('image/png');
-      firmaBase64 = dataUrl.split(',')[1];
-      firmaMime = 'image/png';
+      const trimmedCanvas = sigCanvas.current.getTrimmedCanvas();
+      const whiteCanvas = document.createElement('canvas');
+      whiteCanvas.width = trimmedCanvas.width;
+      whiteCanvas.height = trimmedCanvas.height;
+      const ctx = whiteCanvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, whiteCanvas.width, whiteCanvas.height);
+        ctx.drawImage(trimmedCanvas, 0, 0);
+        const dataUrl = whiteCanvas.toDataURL('image/jpeg', 0.9);
+        firmaBase64 = dataUrl.split(',')[1];
+        firmaMime = 'image/jpeg';
+      } else {
+        const dataUrl = trimmedCanvas.toDataURL('image/png');
+        firmaBase64 = dataUrl.split(',')[1];
+        firmaMime = 'image/png';
+      }
     } else if (hasExistingSignatureUrl) {
       firmaBase64 = formData.firma || '';
     }
