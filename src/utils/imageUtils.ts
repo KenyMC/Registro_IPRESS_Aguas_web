@@ -75,11 +75,12 @@ const fallbackFetch = async (originalUrl: string, driveId: string | null, resolv
   try {
     const urlsToTry = [];
     
+    let cleanUrl = originalUrl;
     if (driveId) {
-      urlsToTry.push(`https://drive.google.com/thumbnail?id=${driveId}&sz=w800`);
+      // The thumbnail endpoint is much more proxy-friendly than the full view endpoint
+      cleanUrl = `https://drive.google.com/thumbnail?id=${driveId}&sz=w800`;
+      urlsToTry.push(cleanUrl); // Try direct thumbnail first
     }
-    
-    const cleanUrl = driveId ? `https://drive.google.com/uc?export=view&id=${driveId}` : originalUrl;
 
     // Multiple proxies to increase success rate on localhost
     urlsToTry.push(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(cleanUrl)}`);
@@ -91,10 +92,13 @@ const fallbackFetch = async (originalUrl: string, driveId: string | null, resolv
         const response = await fetch(fetchUrl);
         if (response.ok) {
           const blob = await response.blob();
-          const base64 = await blobToBase64(blob);
-          if (base64 && base64.length > 100) {
-            resolve(base64);
-            return;
+          // Verify it's actually an image, because proxies might return 200 with an HTML error page from Google
+          if (blob.type.startsWith('image/')) {
+            const base64 = await blobToBase64(blob);
+            if (base64 && base64.length > 100) {
+              resolve(base64);
+              return;
+            }
           }
         }
       } catch (err) {
