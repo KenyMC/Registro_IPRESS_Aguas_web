@@ -44,7 +44,6 @@ const styles = StyleSheet.create({
     color: '#1e3a8a',
     fontWeight: 'bold',
     textAlign: 'center',
-    flex: 1,
   },
   sectionTitle: {
     fontSize: 12,
@@ -150,6 +149,15 @@ const getAssetUrl = (filename: string) => {
   return new URL(filename, window.location.origin + basePath).href;
 };
 
+const getReportTitle = (tipo: string, ipressName: string) => {
+  const name = (ipressName || '').toUpperCase();
+  const titleBase = tipo === 'diagnostico' ? 'INFORME DE DIAGNÓSTICO' : 'INFORME DE MONITOREO';
+  if (name.includes('HOSPITAL')) {
+    return `${titleBase} DEL ${name}`;
+  }
+  return `${titleBase} DE LA IPRESS ${name}`;
+};
+
 interface PdfProps {
   record: LocalRecord;
   images: {
@@ -207,7 +215,7 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
       </View>
       <View style={styles.titleContainer}>
         <Text style={styles.headerTitle}>
-          {isDiag ? `INFORME DE DIAGNÓSTICO DE LA IPRESS ${record.nombreIpress || ''}`.toUpperCase() : `INFORME DE MONITOREO DE LA IPRESS ${record.nombreIpress || ''}`.toUpperCase()}
+          {getReportTitle(record.tipo, record.nombreIpress)}
         </Text>
       </View>
     </>
