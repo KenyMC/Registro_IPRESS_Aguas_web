@@ -9,8 +9,8 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 - **Hook `usePdfDownloader`:** Centraliza la lógica asíncrona de generación del archivo y muestra un spinner de carga (`Loader2`) mientras se procesa.
 
 ### Solucionado
-- **Imágenes invisibles en PDF:** Se implementó una técnica basada en Canvas y un proxy visual (`lh3.googleusercontent.com`) replicando el motor de previsualización para forzar la incrustación a Base64 sin error de Tainted Canvas.
-- **Firma invisible en PDF:** Se corrigió el formato de serialización del Canvas (`image/png` en lugar de `image/jpeg`) para preservar la transparencia y asegurar que las firmas con fondo transparente se muestren correctamente sobre la línea de firma.
+- **Imágenes invisibles en PDF:** Se refactorizó por completo el sistema de obtención de imágenes para el PDF, usando directamente la API de Miniaturas de Google Drive (`thumbnail`). Esto arregla el problema de carga de fotos en `localhost` y reduce el tiempo de descarga del PDF de más de 1 minuto a solo unos segundos.
+- **Firma invisible en PDF:** La firma ahora se procesa exactamente igual que las fotografías (sin usar canvas intermediario). Si la firma original era transparente, podría mostrarse con fondo oscuro si Drive lo provee así, pero garantiza que la imagen *siempre* se cargue de forma segura y veloz al tamaño de la línea.
 - **Formato del Código RENIPRESS:** Se estandarizó el uso de 8 dígitos para el código RENIPRESS (ej. `00002465`), implementando auto-completado con ceros a la izquierda (`padStart`) tanto al crear, editar como al generar PDFs.
 - **Campos y Fechas en PDF:** Se añadió el campo `Ubigeo del CCPP` al reporte de Diagnóstico. Se mejoró el formato visual de la fecha y hora generada en los PDFs, ocultando el ISO string.
 
