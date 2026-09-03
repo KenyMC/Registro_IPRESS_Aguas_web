@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight, Download, Loader2, FileSpreadsheet } from 'lucide-react';
 import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { syncEntry } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePdfDownloader } from '../utils/usePdfDownloader';
+import { exportRecordsToExcel } from '../utils/excelUtils';
 
 const extractDate = (val: string | undefined) => {
   if (!val) return null;
@@ -123,6 +124,13 @@ export const MonitoreoList = () => {
               </button>
             )}
           </div>
+          <button 
+            onClick={() => exportRecordsToExcel(records, 'Registros_Monitoreo')} 
+            className="btn btn-secondary"
+            style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669' }}
+          >
+            <FileSpreadsheet size={20} /> Exportar Excel
+          </button>
           <button onClick={() => navigate('/monitoreo/nuevo')} className="btn btn-primary">
             <Plus size={18} /> Agregar Registro
           </button>
