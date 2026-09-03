@@ -217,9 +217,9 @@ export const DiagnosticoList = () => {
                       disabled={currentPage === 1} 
                       onClick={(e) => {
                         e.preventDefault();
-                        const scrollY = window.scrollY;
+                        const offsetBottom = document.body.scrollHeight - window.scrollY;
                         setCurrentPage(p => p - 1);
-                        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+                        requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight - offsetBottom));
                       }} 
                       className="btn-icon"
                       style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
@@ -231,9 +231,9 @@ export const DiagnosticoList = () => {
                       disabled={currentPage === Math.ceil(records.length / recordsPerPage)} 
                       onClick={(e) => {
                         e.preventDefault();
-                        const scrollY = window.scrollY;
+                        const offsetBottom = document.body.scrollHeight - window.scrollY;
                         setCurrentPage(p => p + 1);
-                        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+                        requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight - offsetBottom));
                       }} 
                       className="btn-icon"
                       style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === Math.ceil(records.length / recordsPerPage) ? 0.5 : 1, cursor: currentPage === Math.ceil(records.length / recordsPerPage) ? 'not-allowed' : 'pointer' }}
