@@ -1,6 +1,13 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.3.0] - 2026-09-03
+### Añadido
+- **Exportación Masiva a Excel (XLSX):** 
+  - Se implementó un nuevo botón "Exportar Excel" en las cabeceras de las listas de Registros de Diagnóstico y Monitoreo.
+  - La exportación está profundamente integrada con el sistema de Roles (RBAC), garantizando que los usuarios de nivel IPRESS, Hospital o Red solo puedan exportar y descargar los datos que tienen permitidos visualizar.
+  - El archivo resultante extrae y limpia dinámicamente campos técnicos pesados (como cadenas Base64 de las fotos y firmas), produciendo un reporte analítico puro, liviano y listo para tabular.
+
 ## [1.2.2] - 2026-09-02
 ### Añadido / Cambiado
 - **Rediseño Institucional de Informes PDF:** 
