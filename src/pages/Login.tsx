@@ -87,6 +87,12 @@ export const Login = () => {
             )}
           </button>
         </form>
+        
+        <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+          <p className="signature-text" style={{ fontSize: '1.5rem' }}>
+            Versión 1.3.0 - PVCACH Cusco
+          </p>
+        </div>
       </div>
     </div>
   );
