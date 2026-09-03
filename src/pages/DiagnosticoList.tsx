@@ -213,16 +213,28 @@ export const DiagnosticoList = () => {
                 {records.length > recordsPerPage && (
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button 
+                      type="button"
                       disabled={currentPage === 1} 
-                      onClick={() => setCurrentPage(p => p - 1)} 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const scrollY = window.scrollY;
+                        setCurrentPage(p => p - 1);
+                        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+                      }} 
                       className="btn-icon"
                       style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
                     >
                       <ChevronLeft size={20} />
                     </button>
                     <button 
+                      type="button"
                       disabled={currentPage === Math.ceil(records.length / recordsPerPage)} 
-                      onClick={() => setCurrentPage(p => p + 1)} 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const scrollY = window.scrollY;
+                        setCurrentPage(p => p + 1);
+                        requestAnimationFrame(() => window.scrollTo(0, scrollY));
+                      }} 
                       className="btn-icon"
                       style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === Math.ceil(records.length / recordsPerPage) ? 0.5 : 1, cursor: currentPage === Math.ceil(records.length / recordsPerPage) ? 'not-allowed' : 'pointer' }}
                     >
