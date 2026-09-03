@@ -1,6 +1,14 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.2.2] - 2026-09-02
+### Añadido / Cambiado
+- **Rediseño Institucional de Informes PDF:** 
+  - **Cabecera Oficial:** Se eliminó el recuadro azul genérico. Ahora incluye el logo rojo del Gobierno Regional del Cusco (izquierda) y el logo de la Gerencia Regional de Salud (derecha), ocupando dinámicamente todo el ancho disponible. En el centro se muestra el texto institucional subrayado elegantemente en color dorado.
+  - **Pie de Página Oficial:** Se incorporó el logo de PVCACH (gota) junto con el texto "Generado por Sistema de Calidad de Agua IPRESS...", manteniendo una distancia prudente (`paddingBottom`) con la sección de firmas para evitar superposiciones en caso de que el documento crezca.
+  - **Títulos Inteligentes y Adaptables:** Se eliminó la palabra "EJECUTIVO" y ahora los títulos integran el nombre de la IPRESS. Se corrigió un problema visual donde textos muy largos se desbordaban y se implementó lógica inteligente para usar el prefijo gramatical adecuado (ej. *DEL HOSPITAL* en lugar de *DE LA IPRESS HOSPITAL*).
+  - **Remoción de UUID:** Se ocultó el campo interno "Nro. Registro / UUID" en la impresión física del PDF para mayor limpieza visual.
+
 ## [1.2.1] - 2026-09-02
 ### Añadido
 - **Cascada Distritos a Centros Poblados (CCPP):** Se agregó una pestaña adicional y lógica para autocompletar la lista de Centros Poblados según el Distrito de la IPRESS seleccionada. El selector de CCPP permanece bloqueado (deshabilitado) hasta que se elija una IPRESS válida.
