@@ -122,13 +122,6 @@ export const DiagnosticoList = () => {
             )}
           </div>
 
-          <button 
-            onClick={() => exportRecordsToExcel(records, 'Registros_Diagnostico')} 
-            className="btn btn-secondary"
-            style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669' }}
-          >
-            <FileSpreadsheet size={20} /> Exportar Excel
-          </button>
           <Link to="/diagnostico/nuevo" className="btn btn-primary">
             <Plus size={20} /> Agregar Registro
           </Link>
@@ -211,28 +204,39 @@ export const DiagnosticoList = () => {
             </tbody>
           </table>
           
-          {records.length > recordsPerPage && (
+          {records.length > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border)', backgroundColor: 'white', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Mostrando {(currentPage - 1) * recordsPerPage + 1} al {Math.min(currentPage * recordsPerPage, records.length)} de {records.length} registros
               </span>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <button 
-                  disabled={currentPage === 1} 
-                  onClick={() => setCurrentPage(p => p - 1)} 
-                  className="btn-icon"
-                  style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  onClick={() => exportRecordsToExcel(records, 'Registros_Diagnostico', 'Diagnósticos')} 
+                  className="btn btn-secondary"
+                  style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669', padding: '0.25rem 0.75rem', fontSize: '0.875rem', height: '32px' }}
                 >
-                   <ChevronLeft size={20} />
+                  <FileSpreadsheet size={16} /> Exportar Excel
                 </button>
-                <button 
-                  disabled={currentPage === Math.ceil(records.length / recordsPerPage)} 
-                  onClick={() => setCurrentPage(p => p + 1)} 
-                  className="btn-icon"
-                  style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === Math.ceil(records.length / recordsPerPage) ? 0.5 : 1, cursor: currentPage === Math.ceil(records.length / recordsPerPage) ? 'not-allowed' : 'pointer' }}
-                >
-                   <ChevronRight size={20} />
-                </button>
+                {records.length > recordsPerPage && (
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button 
+                      disabled={currentPage === 1} 
+                      onClick={() => setCurrentPage(p => p - 1)} 
+                      className="btn-icon"
+                      style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                      <ChevronLeft size={20} />
+                    </button>
+                    <button 
+                      disabled={currentPage === Math.ceil(records.length / recordsPerPage)} 
+                      onClick={() => setCurrentPage(p => p + 1)} 
+                      className="btn-icon"
+                      style={{ border: '1px solid var(--border)', padding: '0.25rem', opacity: currentPage === Math.ceil(records.length / recordsPerPage) ? 0.5 : 1, cursor: currentPage === Math.ceil(records.length / recordsPerPage) ? 'not-allowed' : 'pointer' }}
+                    >
+                      <ChevronRight size={20} />
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
