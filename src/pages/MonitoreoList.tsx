@@ -211,18 +211,11 @@ export const MonitoreoList = () => {
           </table>
           
           {records.length > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border)', backgroundColor: 'white', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                Mostrando {(currentPage - 1) * recordsPerPage + 1} al {Math.min(currentPage * recordsPerPage, records.length)} de {records.length} registros
-              </span>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <button 
-                  onClick={() => exportRecordsToExcel(records, 'Registros_Monitoreo', 'Monitoreos')} 
-                  className="btn btn-secondary"
-                  style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669', padding: '0.25rem 0.75rem', fontSize: '0.875rem', height: '32px' }}
-                >
-                  <FileSpreadsheet size={16} /> Exportar Excel
-                </button>
+            <div style={{ display: 'flex', flexDirection: 'column', backgroundColor: 'white', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', borderTop: '1px solid var(--border)', flexWrap: 'wrap', gap: '1rem' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                  Mostrando {(currentPage - 1) * recordsPerPage + 1} al {Math.min(currentPage * recordsPerPage, records.length)} de {records.length} registros
+                </span>
                 {records.length > recordsPerPage && (
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <button 
@@ -243,6 +236,15 @@ export const MonitoreoList = () => {
                     </button>
                   </div>
                 )}
+              </div>
+              <div style={{ padding: '1rem', paddingTop: '0', display: 'flex', justifyContent: 'flex-end' }}>
+                <button 
+                  onClick={() => exportRecordsToExcel(records, 'Registros_Monitoreo', 'Monitoreos')} 
+                  className="btn btn-secondary"
+                  style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669' }}
+                >
+                  <FileSpreadsheet size={20} /> Exportar Excel
+                </button>
               </div>
             </div>
           )}
