@@ -223,8 +223,12 @@ export const MonitoreoList = () => {
                       disabled={currentPage === 1} 
                       onClick={(e) => {
                         e.preventDefault();
+                        // SOLUCIÓN A SALTO VISUAL: Medimos la distancia desde el fondo del documento en lugar de desde arriba.
+                        // Así evitamos que la pantalla salte al inicio de la tabla si la nueva página tiene una altura diferente.
                         const offsetBottom = document.body.scrollHeight - window.scrollY;
                         setCurrentPage(p => p - 1);
+                        
+                        // Una vez que React actualiza el DOM y cambia la tabla, restauramos el scroll inmediatamente anclándonos al fondo
                         requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight - offsetBottom));
                       }} 
                       className="btn-icon"
@@ -237,8 +241,12 @@ export const MonitoreoList = () => {
                       disabled={currentPage === Math.ceil(records.length / recordsPerPage)} 
                       onClick={(e) => {
                         e.preventDefault();
+                        // SOLUCIÓN A SALTO VISUAL: Medimos la distancia desde el fondo del documento en lugar de desde arriba.
+                        // Así evitamos que la pantalla salte al inicio de la tabla si la nueva página tiene una altura diferente.
                         const offsetBottom = document.body.scrollHeight - window.scrollY;
                         setCurrentPage(p => p + 1);
+                        
+                        // Una vez que React actualiza el DOM y cambia la tabla, restauramos el scroll inmediatamente anclándonos al fondo
                         requestAnimationFrame(() => window.scrollTo(0, document.body.scrollHeight - offsetBottom));
                       }} 
                       className="btn-icon"
@@ -250,6 +258,8 @@ export const MonitoreoList = () => {
                 )}
               </div>
               <div style={{ padding: '1rem', paddingTop: '0', display: 'flex', justifyContent: 'flex-end' }}>
+                {/* BOTÓN EXPORTAR EXCEL: Movido a la parte inferior y alineado a la derecha
+                    para evitar saturar la cabecera y el paginador, mejorando la responsividad en móviles */}
                 <button 
                   onClick={() => exportRecordsToExcel(records, 'Registros_Monitoreo', 'Monitoreos')} 
                   className="btn btn-secondary"

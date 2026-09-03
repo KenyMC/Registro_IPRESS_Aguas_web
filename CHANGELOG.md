@@ -4,11 +4,14 @@ Todos los cambios notables de este proyecto serán documentados en este archivo.
 ## [1.3.0] - 2026-09-03
 ### Añadido
 - **Exportación Masiva a Excel (XLSX):** 
-  - Se implementó un nuevo botón "Exportar Excel" en las tablas de Diagnóstico y Monitoreo, ubicado estratégicamente junto a la paginación inferior.
+  - Se implementó un nuevo botón "Exportar Excel" en las tablas de Diagnóstico y Monitoreo, ubicado estratégicamente junto a la paginación inferior para un mejor diseño responsivo en móviles.
   - La exportación está profundamente integrada con el sistema de Roles (RBAC), garantizando que los usuarios de nivel IPRESS, Hospital o Red solo puedan exportar y descargar los datos que tienen permitidos visualizar.
   - El archivo resultante extrae y limpia dinámicamente campos técnicos pesados (como cadenas Base64 de las fotos y firmas), omitiendo también columnas redundantes como `tipo` y `estado`, produciendo un reporte analítico puro, liviano y listo para tabular.
   - **Formato Optimizado:** La columna identificadora interna (`uuid`) fue renombrada amigablemente a `id` y fijada como la primera columna del documento.
   - El orden de las filas del Excel se configuró como Cronológico Ascendente y las hojas de cálculo se renombraron dinámicamente a "Diagnósticos" y "Monitoreos".
+
+### Arreglado
+- **Salto Visual en Paginación:** Se corrigió un error molesto que hacía saltar la pantalla hacia arriba o abajo al navegar entre páginas. Ahora, el sistema calcula inteligentemente la distancia de la pantalla desde el fondo (`offsetBottom`) y congela la vista de los controles exactamente donde hiciste clic, logrando una navegación perfectamente fluida.
 
 ## [1.2.2] - 2026-09-02
 ### Añadido / Cambiado
