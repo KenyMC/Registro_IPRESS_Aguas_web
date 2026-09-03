@@ -217,7 +217,7 @@ export const MonitoreoList = () => {
               </span>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <button 
-                  onClick={() => exportRecordsToExcel(records, 'Registros_Monitoreo', 'Monitoreo')} 
+                  onClick={() => exportRecordsToExcel(records, 'Registros_Monitoreo', 'Monitoreos')} 
                   className="btn btn-secondary"
                   style={{ backgroundColor: '#10b981', color: 'white', borderColor: '#059669', padding: '0.25rem 0.75rem', fontSize: '0.875rem', height: '32px' }}
                 >

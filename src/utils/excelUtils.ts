@@ -17,11 +17,14 @@ export const exportRecordsToExcel = (records: LocalRecord[], fileNamePrefix: str
       foto1Base64, foto1Mime, foto1Name, urlFoto1,
       foto2Base64, foto2Mime, foto2Name, urlFoto2,
       foto3Base64, foto3Mime, foto3Name, urlFoto3,
-      id, isSynced, tipo,
+      id: internalId, isSynced, tipo, estado, uuid,
       ...exportableData
     } = record as any;
 
-    return exportableData;
+    return {
+      id: uuid,
+      ...exportableData
+    };
   });
 
   const worksheet = XLSX.utils.json_to_sheet(exportData);
