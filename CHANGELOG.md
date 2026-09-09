@@ -1,6 +1,11 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.3.2] - 2026-09-09
+### Arreglado
+- **Título de Reporte Dinámico para Hospitales:** Se corrigió un detalle estético y formal en la generación de reportes PDF. Si el establecimiento tiene asignada la Unidad Ejecutora "Hospital", pero su nombre registrado no contiene esa palabra (ej. "ANTONIO LORENA"), el sistema ahora antepone inteligentemente la palabra "HOSPITAL" en el título principal del informe (ej. "INFORME DE DIAGNÓSTICO DEL HOSPITAL ANTONIO LORENA...").
+- **Protección del Mapa (Anti-Freeze):** Se implementó un salvaguarda de validación estricta de coordenadas geográficas. Anteriormente, si un usuario ingresaba por error un valor desproporcionado (ej. `-71218978` sin punto decimal), el renderizador del mapa intentaba procesar billones de tiles, lo que provocaba que navegadores en computadoras de menor rendimiento colapsaran y mostraran el mensaje "La página no responde". Ahora el mapa detecta inmediatamente los valores fuera de rango (-90 a 90 Lat, -180 a 180 Lng), omitiendo el renderizado intensivo y mostrando un aviso amigable de error al usuario, garantizando un funcionamiento estable bajo cualquier circunstancia.
+
 ## [1.3.1] - 2026-09-09
 ### Añadido / Cambiado
 - **Equivalencia de Volúmenes en Litros:** Se mejoró la experiencia de usuario (UX) al registrar datos técnicos. Ahora, al ingresar el volumen (en m³) del Reservorio o Cisterna, el formulario calcula y muestra instantáneamente la conversión a litros en color gris tenue al lado de la etiqueta (ej. `20m3 (20.000lt)`). Esta misma información enriquecida fue integrada dentro de la sección "Datos Técnicos" de los reportes PDF impresos.
