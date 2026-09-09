@@ -29,7 +29,9 @@ L.Icon.Default.mergeOptions({
 const RecenterMap = ({ lat, lng }: { lat: number, lng: number }) => {
   const map = useMap();
   useEffect(() => {
-    map.setView([lat, lng], 15);
+    if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+      map.setView([lat, lng], 15);
+    }
   }, [lat, lng, map]);
   return null;
 };
@@ -681,36 +683,54 @@ export const Diagnostico = () => {
             </div>
 
             <div style={{ minHeight: '300px', backgroundColor: '#e2e8f0', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--border)', position: 'relative' }}>
-              {formData.latitud && formData.longitud ? (
-                <MapContainer
-                  center={[parseFloat(formData.latitud) || 0, parseFloat(formData.longitud) || 0]}
-                  zoom={15}
-                  style={{ height: '100%', width: '100%' }}
-                >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  <Marker
-                    draggable={true}
-                    eventHandlers={{
-                      dragend: (e) => {
-                        const marker = e.target;
-                        const position = marker.getLatLng();
-                        setFormData(prev => ({
-                          ...prev,
-                          latitud: position.lat.toFixed(6),
-                          longitud: position.lng.toFixed(6)
-                        }));
-                      }
-                    }}
-                    position={[parseFloat(formData.latitud) || 0, parseFloat(formData.longitud) || 0]}
-                  />
-                  <RecenterMap lat={parseFloat(formData.latitud) || 0} lng={parseFloat(formData.longitud) || 0} />
-                </MapContainer>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
-                  <MapPin size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
-                  <p style={{ textAlign: 'center', padding: '0 2rem' }}>Haga clic en "Obtener Ubicación" o escriba las coordenadas para ver el punto en el mapa</p>
-                </div>
-              )}
+              {(() => {
+                const mapLat = parseFloat(formData.latitud || '');
+                const mapLng = parseFloat(formData.longitud || '');
+                const isValid = !isNaN(mapLat) && !isNaN(mapLng) && mapLat >= -90 && mapLat <= 90 && mapLng >= -180 && mapLng <= 180;
+                const isEmpty = !formData.latitud && !formData.longitud;
+
+                if (isValid) {
+                  return (
+                    <MapContainer
+                      center={[mapLat, mapLng]}
+                      zoom={15}
+                      style={{ height: '100%', width: '100%' }}
+                    >
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <Marker
+                        draggable={true}
+                        eventHandlers={{
+                          dragend: (e) => {
+                            const marker = e.target;
+                            const position = marker.getLatLng();
+                            setFormData(prev => ({
+                              ...prev,
+                              latitud: position.lat.toFixed(6),
+                              longitud: position.lng.toFixed(6)
+                            }));
+                          }
+                        }}
+                        position={[mapLat, mapLng]}
+                      />
+                      <RecenterMap lat={mapLat} lng={mapLng} />
+                    </MapContainer>
+                  );
+                } else if (!isEmpty) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#ef4444' }}>
+                      <MapPin size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                      <p style={{ textAlign: 'center', padding: '0 2rem', fontWeight: 'bold' }}>Coordenadas inválidas. Revise los valores ingresados (ej. -71.23, no -7123).</p>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                      <MapPin size={48} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                      <p style={{ textAlign: 'center', padding: '0 2rem' }}>Haga clic en "Obtener Ubicación" o escriba las coordenadas para ver el punto en el mapa</p>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           </div>
         </div>
