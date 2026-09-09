@@ -1,6 +1,13 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.3.1] - 2026-09-09
+### Añadido / Cambiado
+- **Equivalencia de Volúmenes en Litros:** Se mejoró la experiencia de usuario (UX) al registrar datos técnicos. Ahora, al ingresar el volumen (en m³) del Reservorio o Cisterna, el formulario calcula y muestra instantáneamente la conversión a litros en color gris tenue al lado de la etiqueta (ej. `20m3 (20.000lt)`). Esta misma información enriquecida fue integrada dentro de la sección "Datos Técnicos" de los reportes PDF impresos.
+
+### Arreglado
+- **Validación de Fechas en Modo Edición:** Se corrigió un error crítico que impedía guardar los cambios al actualizar un registro antiguo, dado que el navegador obligaba a que la fecha de evaluación sea igual o posterior al día actual. La solución implementada congela (deshabilita) los campos "Fecha" y "Hora" automáticamente cuando se entra en modo de Edición, protegiendo así la integridad de la bitácora histórica y permitiendo actualizar el resto de la ficha sin errores de validación del calendario.
+
 ## [1.3.0] - 2026-09-03
 ### Añadido
 - **Exportación Masiva a Excel (XLSX):** 
