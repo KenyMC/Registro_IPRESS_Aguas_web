@@ -149,11 +149,14 @@ const getAssetUrl = (filename: string) => {
   return new URL(filename, window.location.origin + basePath).href;
 };
 
-const getReportTitle = (tipo: string, ipressName: string) => {
+const getReportTitle = (tipo: string, ipressName: string, unidadEjecutora?: string) => {
   const name = (ipressName || '').toUpperCase();
   const titleBase = tipo === 'diagnostico' ? 'INFORME DE DIAGNÓSTICO' : 'INFORME DE MONITOREO';
   if (name.includes('HOSPITAL')) {
     return `${titleBase} DEL ${name}`;
+  }
+  if (unidadEjecutora === 'Hospital') {
+    return `${titleBase} DEL HOSPITAL ${name}`;
   }
   return `${titleBase} DE LA IPRESS ${name}`;
 };
@@ -226,7 +229,7 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
       </View>
       <View style={styles.titleContainer}>
         <Text style={styles.headerTitle}>
-          {getReportTitle(record.tipo, record.nombreIpress)}
+          {getReportTitle(record.tipo, record.nombreIpress, record.unidadEjecutora)}
         </Text>
       </View>
     </>
