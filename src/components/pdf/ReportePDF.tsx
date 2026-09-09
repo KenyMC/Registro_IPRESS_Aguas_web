@@ -198,6 +198,17 @@ const formatTimeStr = (timeStr: any) => {
   return str.substring(0, 5);
 };
 
+const renderVolume = (val: any) => {
+  if (val === undefined || val === null || val === '' || val === '-') return '-';
+  const num = parseFloat(val);
+  if (isNaN(num)) return String(val);
+  return (
+    <Text>
+      {val}m3 <Text style={{ color: '#9ca3af' }}>({(num * 1000).toLocaleString('es-PE')}lt)</Text>
+    </Text>
+  );
+};
+
 export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
   const isDiag = record.tipo === 'diagnostico';
 
@@ -270,8 +281,10 @@ export const ReporteDocument: React.FC<PdfProps> = ({ record, images }) => {
               <View style={styles.row}><Text style={styles.label}>¿Están Operativas?:</Text><Text style={styles.value}>{renderValue(record.bombasOperativas)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>¿Tiene Reservorio?:</Text><Text style={styles.value}>{renderValue(record.reservorio)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>Material de Reservorio:</Text><Text style={styles.value}>{renderValue(record.tipoMaterialReservorio)}</Text></View>
+              <View style={styles.row}><Text style={styles.label}>Volumen de Reservorio:</Text><Text style={styles.value}>{renderVolume(record.volumenReservorio)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>¿Reservorio Operativo?:</Text><Text style={styles.value}>{renderValue(record.reservorioOperativo)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>¿Tiene Cisterna?:</Text><Text style={styles.value}>{renderValue(record.cisterna)}</Text></View>
+              <View style={styles.row}><Text style={styles.label}>Volumen de Cisterna:</Text><Text style={styles.value}>{renderVolume(record.volumenCisterna)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>¿Cisterna Operativa?:</Text><Text style={styles.value}>{renderValue(record.cisternaOperativa)}</Text></View>
               <View style={styles.row}><Text style={styles.label}>¿Realiza Tratamiento?:</Text><Text style={styles.value}>{renderValue(record.tratamientoAgua)}</Text></View>
             </>

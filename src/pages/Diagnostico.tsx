@@ -763,7 +763,14 @@ export const Diagnostico = () => {
                 <input required type="text" name="tipoMaterialReservorio" className="form-control" value={formData.tipoMaterialReservorio || ''} onChange={handleChange} placeholder="Ej. Concreto, Geomembrana, etc." />
               </div>
               <div className="form-group">
-                <label className="form-label">Volumen del Reservorio (m3)</label>
+                <label className="form-label">
+                  Volumen del Reservorio (m3)
+                  {formData.volumenReservorio && !isNaN(parseFloat(formData.volumenReservorio)) && (
+                    <span style={{ color: '#9ca3af', fontWeight: 'normal', marginLeft: '8px' }}>
+                      ({(parseFloat(formData.volumenReservorio) * 1000).toLocaleString('es-PE')}lt)
+                    </span>
+                  )}
+                </label>
                 <input required type="number" step="any" name="volumenReservorio" className="form-control" value={formData.volumenReservorio || ''} onChange={handleChange} />
               </div>
               <div className="form-group">
@@ -792,7 +799,14 @@ export const Diagnostico = () => {
           {formData.cisterna === 'Si' && (
             <>
               <div className="form-group">
-                <label className="form-label">Volumen de la Cisterna (m3)</label>
+                <label className="form-label">
+                  Volumen de la Cisterna (m3)
+                  {formData.volumenCisterna && !isNaN(parseFloat(formData.volumenCisterna)) && (
+                    <span style={{ color: '#9ca3af', fontWeight: 'normal', marginLeft: '8px' }}>
+                      ({(parseFloat(formData.volumenCisterna) * 1000).toLocaleString('es-PE')}lt)
+                    </span>
+                  )}
+                </label>
                 <input required type="number" step="any" name="volumenCisterna" className="form-control" value={formData.volumenCisterna || ''} onChange={handleChange} />
               </div>
               <div className="form-group">
