@@ -25,9 +25,15 @@ const extractDate = (val: string | undefined) => {
   return null;
 };
 
+const UNIDADES_EJECUTORAS = [
+  "Hospital", "Red CCE", "Red Chumbivilcas", "Red Cusco Norte", "Red Cusco Sur", 
+  "Red Cusco VRAEM", "Red La Convencion", "Otro"
+];
+
 export const MonitoreoList = () => {
   const [records, setRecords] = useState<LocalRecord[]>([]);
   const [filterDate, setFilterDate] = useState<string>('');
+  const [filterUE, setFilterUE] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const recordsPerPage = 50;
   const navigate = useNavigate();
@@ -53,7 +59,7 @@ export const MonitoreoList = () => {
   // Reset page when filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filterDate]);
+  }, [filterDate, filterUE]);
 
   const loadRecords = () => {
     if (!user) return;
@@ -77,6 +83,10 @@ export const MonitoreoList = () => {
                  (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase());
         });
       }
+    }
+    
+    if (filterUE) {
+      allRecords = allRecords.filter(r => r.unidadEjecutora === filterUE);
     }
     
     if (filterDate) {
@@ -108,6 +118,23 @@ export const MonitoreoList = () => {
         <h2 className="section-title" style={{ margin: 0, border: 'none' }}>Registros de Monitoreo</h2>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {user?.rol === 'Administra todas las Redes' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <Filter size={16} style={{ color: 'var(--text-muted)' }} />
+              <select 
+                className="form-control" 
+                style={{ padding: '0.25rem 0.5rem', width: 'auto', border: 'none', backgroundColor: 'transparent', outline: 'none', fontSize: '0.875rem' }} 
+                value={filterUE} 
+                onChange={(e) => setFilterUE(e.target.value)} 
+              >
+                <option value="">Todas las Unidades</option>
+                {UNIDADES_EJECUTORAS.map((ue, idx) => (
+                  <option key={idx} value={ue}>{ue}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
             <Filter size={16} style={{ color: 'var(--text-muted)' }} />
             <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0, fontWeight: 500 }}>Buscar por Fecha:</label>
