@@ -54,7 +54,7 @@ export const MonitoreoList = () => {
       window.removeEventListener('recordsUpdated', loadRecords);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterDate, user]);
+  }, [filterDate, filterUE, user]);
 
   // Reset page when filter changes
   useEffect(() => {
