@@ -15,10 +15,36 @@ import { fetchAndCacheIpressList } from './services/ipressData';
 import { fetchAndCacheCcppList } from './services/ccppData';
 import { syncPendingRecords, mergeRecords } from './services/storage';
 
+const CURRENT_APP_VERSION = '1.3.3';
+
 const SplashManager = ({ children }: { children: React.ReactNode }) => {
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
+    // ----------------------------------------------------------------------
+    // AUTO-UPDATE & FORCE LOGOUT MECHANISM
+    // ----------------------------------------------------------------------
+    const savedVersion = localStorage.getItem('app_version');
+    if (savedVersion !== CURRENT_APP_VERSION) {
+      console.log("Nueva versión detectada. Limpiando caché y cerrando sesión...");
+      localStorage.removeItem('aguas_auth_user');
+      localStorage.setItem('app_version', CURRENT_APP_VERSION);
+      
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (let registration of registrations) {
+            registration.unregister();
+          }
+        });
+      }
+      
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+      return; // Stop execution until reload
+    }
+    // ----------------------------------------------------------------------
+
     fetchAndCacheIpressList();
     fetchAndCacheCcppList();
     

@@ -1,6 +1,11 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.3.3] - 2026-09-17
+### Añadido
+- **Filtro de Unidad Ejecutora (GERESA):** Se añadió un filtro desplegable en las vistas de registros de Diagnóstico y Monitoreo exclusivamente para el rol "Administra todas las Redes" (GERESA). Este filtro interactúa dinámicamente con el filtro de fechas.
+- **Mecanismo de Auto-Actualización (PWA):** Se implementó un detector de versión en el arranque de la aplicación. Si el dispositivo de una IPRESS tiene una versión antigua cacheada (offline), el sistema automáticamente destruirá los "Service Workers" antiguos, cerrará su sesión por seguridad y forzará una recarga de la página (hard reload) para garantizar que descargue los últimos campos y estructuras, evitando desfasajes de columnas en la base de datos central (Google Sheets).
+
 ## [1.3.2] - 2026-09-09
 ### Arreglado
 - **Título de Reporte Dinámico para Hospitales:** Se corrigió un detalle estético y formal en la generación de reportes PDF. Si el establecimiento tiene asignada la Unidad Ejecutora "Hospital", pero su nombre registrado no contiene esa palabra (ej. "ANTONIO LORENA"), el sistema ahora antepone inteligentemente la palabra "HOSPITAL" en el título principal del informe (ej. "INFORME DE DIAGNÓSTICO DEL HOSPITAL ANTONIO LORENA...").
