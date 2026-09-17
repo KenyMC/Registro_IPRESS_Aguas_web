@@ -14,6 +14,8 @@ import { fetchRecordsFromServer } from './services/api';
 import { fetchAndCacheIpressList } from './services/ipressData';
 import { fetchAndCacheCcppList } from './services/ccppData';
 import { syncPendingRecords, mergeRecords } from './services/storage';
+// @ts-ignore
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 const CURRENT_APP_VERSION = '1.3.3';
 
@@ -159,4 +161,35 @@ function App() {
   );
 }
 
-export default App;
+// ----------------------------------------------------------------------
+// PWA AUTO-REFRESH WRAPPER
+// ----------------------------------------------------------------------
+function AppWithPWA() {
+  const {
+    needRefresh: [needRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r: any) {
+      // Force checking for updates periodically
+      if (r) {
+        setInterval(() => {
+          r.update();
+        }, 60 * 60 * 1000); // Check every hour
+      }
+    },
+    onRegisterError(error: any) {
+      console.error('SW registration error', error);
+    },
+  });
+
+  useEffect(() => {
+    // Si hay una actualización lista, recargar la página inmediatamente de forma invisible
+    if (needRefresh) {
+      updateServiceWorker(true);
+    }
+  }, [needRefresh, updateServiceWorker]);
+
+  return <App />;
+}
+
+export default AppWithPWA;
