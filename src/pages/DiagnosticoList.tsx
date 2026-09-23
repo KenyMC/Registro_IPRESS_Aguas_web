@@ -92,8 +92,18 @@ export const DiagnosticoList = () => {
       });
     }
 
-    // Sort by date descending
-    allRecords.sort((a, b) => new Date(b.fechaRegistro).getTime() - new Date(a.fechaRegistro).getTime());
+    // Sort by evaluation date (descending: newest first)
+    allRecords.sort((a, b) => {
+      const dateA = extractDate(a.fecha) || extractDate(a.fechaRegistro) || '';
+      const dateB = extractDate(b.fecha) || extractDate(b.fechaRegistro) || '';
+      // We can use localeCompare since extractDate returns YYYY-MM-DD
+      // dateB.localeCompare(dateA) gives descending order
+      if (dateA === dateB) {
+        // If dates are the same, fallback to UUID to maintain stable sort
+        return (b.uuid || '').localeCompare(a.uuid || '');
+      }
+      return dateB.localeCompare(dateA);
+    });
     setRecords(allRecords);
   };
 
