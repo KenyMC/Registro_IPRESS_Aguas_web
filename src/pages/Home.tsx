@@ -286,13 +286,13 @@ export const Home: React.FC = () => {
             </div>
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Filtrar por Red:</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Filtrar por Unidad Ejecutora:</span>
               <select 
                 value={dashboardRedFilter} 
                 onChange={(e) => setDashboardRedFilter(e.target.value)}
                 style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none' }}
               >
-                <option value="Todas">Todas las Redes</option>
+                <option value="Todas">Todas</option>
                 {redesOptions.map(red => (
                   <option key={red} value={red}>{red}</option>
                 ))}
@@ -302,7 +302,9 @@ export const Home: React.FC = () => {
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Total IPRESS Región Cusco</p>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                {dashboardRedFilter === 'Todas' ? 'Total IPRESS Región Cusco' : `Total IPRESS ${dashboardRedFilter}`}
+              </p>
               <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: 'var(--primary-dark)' }}>{geresaStats.totalIpress}</h3>
             </div>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
@@ -318,14 +320,14 @@ export const Home: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             {/* IPRESS POR RED CHART */}
             <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>IPRESS por Red (Unidad Ejecutora)</h4>
+              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>IPRESS por Unidad Ejecutora</h4>
               <div style={{ height: '300px', width: '100%' }}>
                 {geresaStats.ipressPorRed.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={geresaStats.ipressPorRed} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
                       <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
-                      <YAxis dataKey="red" type="category" width={120} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis dataKey="red" type="category" width={140} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                       <Tooltip 
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         cursor={{ fill: '#f1f5f9' }}
