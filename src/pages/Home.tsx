@@ -19,11 +19,17 @@ export const Home: React.FC = () => {
     totalIpress: 0,
     monitoreoSemanal: 0,
     faltanDiagnostico: 0,
-    ipressPorRed: [] as { red: string; cantidad: number }[],
+    ipressPorRed: [] as { red: string; cantidad: number; monitoreos: number }[],
     coberturaData: [] as { name: string; value: number }[]
   });
 
   const { user, usersList } = useAuth();
+  const [dashboardRedFilter, setDashboardRedFilter] = useState<string>('Todas');
+  
+  // Obtener lista de redes para el filtro GERESA
+  const redesOptions = Array.from(new Set(
+    usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital' || u.rol === 'Red').map(u => u.red).filter(Boolean)
+  )).sort();
 
   useEffect(() => {
     const loadData = () => {
@@ -49,8 +55,22 @@ export const Home: React.FC = () => {
         }
       }
       
-      const diagnosticos = records.filter(r => r.tipo === 'diagnostico');
-      const monitoreos = records.filter(r => r.tipo === 'monitoreo');
+      let diagnosticos = records.filter(r => r.tipo === 'diagnostico');
+      let monitoreos = records.filter(r => r.tipo === 'monitoreo');
+
+      // Aplicar filtro de Red para GERESA
+      if (user.rol === 'Administra todas las Redes' && dashboardRedFilter !== 'Todas') {
+        const filterByRed = (r: any) => {
+          const userObj = usersList.find(u => 
+            (u.codigoRenipress && r.codigoRenipress && String(u.codigoRenipress).trim() === String(r.codigoRenipress).trim()) ||
+            (u.usuario && r.nombreIpress && String(u.usuario).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase())
+          );
+          const rRed = userObj?.red || r.unidadEjecutora;
+          return rRed === dashboardRedFilter;
+        };
+        diagnosticos = diagnosticos.filter(filterByRed);
+        monitoreos = monitoreos.filter(filterByRed);
+      }
       
       // Contar establecimientos únicos (por nombre de IPRESS)
       const ipressSet = new Set();
@@ -61,17 +81,10 @@ export const Home: React.FC = () => {
         if (m.nombreIpress) ipressSet.add(m.nombreIpress);
       });
 
-      let uniqueEstablecimientos = ipressSet.size;
-      
-      // Para GERESA, usar el total real de usuarios IPRESS para evitar confusión
-      if (user.rol === 'Administra todas las Redes' && usersList && usersList.length > 0) {
-        uniqueEstablecimientos = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital').length;
-      }
-
       setStats({
         totalDiagnosticos: diagnosticos.length,
         totalMonitoreos: monitoreos.length,
-        establecimientosUnicos: uniqueEstablecimientos,
+        establecimientosUnicos: ipressSet.size,
       });
 
       // Preparar datos para el gráfico (agrupados por fecha)
@@ -107,7 +120,11 @@ export const Home: React.FC = () => {
       // -------------------------------------------------------------
       if (user.rol === 'Administra todas las Redes' && usersList && usersList.length > 0) {
         // 1. Filtrar solo los usuarios que son IPRESS u Hospital
-        const allIpress = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital');
+        let allIpress = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital');
+        if (dashboardRedFilter !== 'Todas') {
+          allIpress = allIpress.filter(u => u.red === dashboardRedFilter);
+        }
+        
         const totalIpressCount = allIpress.length;
 
         // 2. IPRESS por Red
@@ -117,10 +134,14 @@ export const Home: React.FC = () => {
           redCounts[redName] = (redCounts[redName] || 0) + 1;
         });
         
-        // Contar monitoreos por Red
+        // Contar monitoreos por Red cruzando con la base de datos de usuarios
         const monitoreosPorRed: Record<string, number> = {};
         monitoreos.forEach(m => {
-          const redName = m.unidadEjecutora || 'Sin Red';
+          const userForM = usersList.find(u => 
+            (u.codigoRenipress && m.codigoRenipress && String(u.codigoRenipress).trim() === String(m.codigoRenipress).trim()) ||
+            (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
+          );
+          const redName = userForM?.red || m.unidadEjecutora || 'Sin Red';
           monitoreosPorRed[redName] = (monitoreosPorRed[redName] || 0) + 1;
         });
 
@@ -182,7 +203,7 @@ export const Home: React.FC = () => {
     window.addEventListener('recordsUpdated', loadData);
     return () => window.removeEventListener('recordsUpdated', loadData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, dashboardRedFilter]);
 
   return (
     <div className="container animate-fade-in">
@@ -258,14 +279,30 @@ export const Home: React.FC = () => {
       {/* GERESA ADVANCED DASHBOARD */}
       {user?.rol === 'Administra todas las Redes' && (
         <div style={{ marginBottom: '3rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
-            <BarChart3 size={20} color="var(--primary)" />
-            <h3 style={{ margin: 0, color: 'var(--primary-dark)' }}>Estadísticas de Gestión (GERESA)</h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BarChart3 size={20} color="var(--primary)" />
+              <h3 style={{ margin: 0, color: 'var(--primary-dark)' }}>Estadísticas de Gestión (GERESA)</h3>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Filtrar por Red:</span>
+              <select 
+                value={dashboardRedFilter} 
+                onChange={(e) => setDashboardRedFilter(e.target.value)}
+                style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none' }}
+              >
+                <option value="Todas">Todas las Redes</option>
+                {redesOptions.map(red => (
+                  <option key={red} value={red}>{red}</option>
+                ))}
+              </select>
+            </div>
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Total IPRESS Registradas</p>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Total IPRESS Región Cusco</p>
               <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: 'var(--primary-dark)' }}>{geresaStats.totalIpress}</h3>
             </div>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
@@ -317,12 +354,12 @@ export const Home: React.FC = () => {
                         data={geresaStats.coberturaData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
+                        innerRadius={50}
+                        outerRadius={85}
                         paddingAngle={5}
                         dataKey="value"
                         label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                        labelLine={false}
+                        labelLine={true}
                       >
                         <Cell key="cell-0" fill="#10b981" />
                         <Cell key="cell-1" fill="#ef4444" />
