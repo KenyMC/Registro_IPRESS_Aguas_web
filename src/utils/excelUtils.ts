@@ -35,6 +35,28 @@ export const exportRecordsToExcel = (records: LocalRecord[], fileNamePrefix: str
       }
     }
 
+    // Formatear fecha a DD-MM-YYYY
+    if (exportableData.fecha && typeof exportableData.fecha === 'string' && exportableData.fecha.includes('T')) {
+      const dateObj = new Date(exportableData.fecha);
+      if (!isNaN(dateObj.getTime())) {
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        exportableData.fecha = `${day}-${month}-${year}`;
+      }
+    }
+
+    // Formatear hora a HH:mm:ss
+    if (exportableData.hora && typeof exportableData.hora === 'string' && exportableData.hora.includes('T')) {
+      const horaObj = new Date(exportableData.hora);
+      if (!isNaN(horaObj.getTime())) {
+        const hours = String(horaObj.getHours()).padStart(2, '0');
+        const minutes = String(horaObj.getMinutes()).padStart(2, '0');
+        const seconds = String(horaObj.getSeconds()).padStart(2, '0');
+        exportableData.hora = `${hours}:${minutes}:${seconds}`;
+      }
+    }
+
     return {
       id: uuid,
       ...exportableData
