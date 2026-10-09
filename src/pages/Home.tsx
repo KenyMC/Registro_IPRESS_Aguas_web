@@ -3,7 +3,7 @@ import { ClipboardList, Droplet, Building2, FileText, BarChart3 } from 'lucide-r
 import { useEffect, useState } from 'react';
 import { getRecords } from '../services/storage';
 import { useAuth } from '../contexts/AuthContext';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 
 export const Home: React.FC = () => {
   const [stats, setStats] = useState({
@@ -13,7 +13,17 @@ export const Home: React.FC = () => {
   });
 
   const [chartData, setChartData] = useState<{ date: string; Diagnósticos: number; Monitoreos: number }[]>([]);
-  const { user } = useAuth();
+  
+  // GERESA advanced stats
+  const [geresaStats, setGeresaStats] = useState({
+    totalIpress: 0,
+    monitoreoSemanal: 0,
+    faltanDiagnostico: 0,
+    ipressPorRed: [] as { red: string; cantidad: number }[],
+    coberturaData: [] as { name: string; value: number }[]
+  });
+
+  const { user, usersList } = useAuth();
 
   useEffect(() => {
     const loadData = () => {
@@ -83,8 +93,67 @@ export const Home: React.FC = () => {
 
       // Convertir a array y ordenar por fecha
       const sortedData = Object.values(dateGroups).sort((a, b) => a.date.localeCompare(b.date));
-      // Mostrar solo los últimos 7 días con datos
       setChartData(sortedData.slice(-7));
+
+      // -------------------------------------------------------------
+      // CÁLCULOS AVANZADOS PARA GERESA
+      // -------------------------------------------------------------
+      if (user.rol === 'Administra todas las Redes' && usersList && usersList.length > 0) {
+        // 1. Filtrar solo los usuarios que son IPRESS u Hospital
+        const allIpress = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital');
+        const totalIpressCount = allIpress.length;
+
+        // 2. IPRESS por Red
+        const redCounts: Record<string, number> = {};
+        allIpress.forEach(u => {
+          const redName = u.red || 'Sin Red';
+          redCounts[redName] = (redCounts[redName] || 0) + 1;
+        });
+        const ipressPorRedArr = Object.keys(redCounts)
+          .map(red => ({ red, cantidad: redCounts[red] }))
+          .sort((a, b) => b.cantidad - a.cantidad);
+
+        // 3. Monitoreo Semanal (IPRESS únicas que enviaron monitoreo en últimos 7 días)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const ipressConMonitoreoSemanal = new Set();
+        monitoreos.forEach(m => {
+          if (!m.fechaRegistro) return;
+          const mDate = new Date(m.fechaRegistro);
+          if (mDate >= sevenDaysAgo && m.codigoRenipress) {
+            ipressConMonitoreoSemanal.add(String(m.codigoRenipress).trim());
+          }
+        });
+
+        // 4. Falta Diagnóstico
+        const ipressConDiagnostico = new Set();
+        diagnosticos.forEach(d => {
+          if (d.codigoRenipress) {
+            ipressConDiagnostico.add(String(d.codigoRenipress).trim());
+          }
+        });
+        
+        // Some IPRESS in records might not be in usersList (rare, but possible), so we calculate mathematically:
+        let conDiag = 0;
+        allIpress.forEach(u => {
+          if (ipressConDiagnostico.has(String(u.codigoRenipress).trim())) {
+            conDiag++;
+          }
+        });
+        const faltanDiag = totalIpressCount - conDiag;
+
+        setGeresaStats({
+          totalIpress: totalIpressCount,
+          monitoreoSemanal: ipressConMonitoreoSemanal.size,
+          faltanDiagnostico: faltanDiag,
+          ipressPorRed: ipressPorRedArr,
+          coberturaData: [
+            { name: 'Con Diagnóstico', value: conDiag },
+            { name: 'Falta Diagnóstico', value: faltanDiag }
+          ]
+        });
+      }
     };
 
     loadData();
@@ -164,6 +233,90 @@ export const Home: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* GERESA ADVANCED DASHBOARD */}
+      {user?.rol === 'Administra todas las Redes' && (
+        <div style={{ marginBottom: '3rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem' }}>
+            <BarChart3 size={20} color="var(--primary)" />
+            <h3 style={{ margin: 0, color: 'var(--primary-dark)' }}>Estadísticas de Gestión (GERESA)</h3>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+            <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Total IPRESS Registradas</p>
+              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: 'var(--primary-dark)' }}>{geresaStats.totalIpress}</h3>
+            </div>
+            <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Monitoreos (Últimos 7 días)</p>
+              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: '#10b981' }}>{geresaStats.monitoreoSemanal} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>IPRESS</span></h3>
+            </div>
+            <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Falta Diagnóstico</p>
+              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: '#ef4444' }}>{geresaStats.faltanDiagnostico} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>IPRESS</span></h3>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {/* IPRESS POR RED CHART */}
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>IPRESS por Red (Unidad Ejecutora)</h4>
+              <div style={{ height: '300px', width: '100%' }}>
+                {geresaStats.ipressPorRed.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={geresaStats.ipressPorRed} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                      <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <YAxis dataKey="red" type="category" width={120} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        cursor={{ fill: '#f1f5f9' }}
+                      />
+                      <Bar dataKey="cantidad" name="Cant. IPRESS" fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={20} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                    Cargando usuarios...
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* COBERTURA PIE CHART */}
+            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>Cobertura de Diagnósticos</h4>
+              <div style={{ height: '300px', width: '100%' }}>
+                {geresaStats.totalIpress > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={geresaStats.coberturaData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        <Cell key="cell-0" fill="#10b981" />
+                        <Cell key="cell-1" fill="#ef4444" />
+                      </Pie>
+                      <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                    Cargando estadísticas...
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ACTION BUTTONS */}
       <h3 style={{ textAlign: 'center', color: 'var(--primary-dark)', marginBottom: '1.5rem' }}>Operaciones</h3>
