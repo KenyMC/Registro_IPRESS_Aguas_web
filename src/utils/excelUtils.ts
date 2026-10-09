@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { LocalRecord } from '../services/storage';
+import { generateUUID } from './uuid';
 
 export const exportRecordsToExcel = (records: LocalRecord[], fileNamePrefix: string, sheetName: string = 'Registros') => {
   if (!records || records.length === 0) {
@@ -72,4 +73,82 @@ export const exportRecordsToExcel = (records: LocalRecord[], fileNamePrefix: str
   const timeStr = now.toTimeString().split(' ')[0].replace(/:/g, '-');
   
   XLSX.writeFile(workbook, `${fileNamePrefix}_${dateStr}_${timeStr}.xlsx`);
+};
+
+function parseImportDate(dateStr: any): string {
+  if (typeof dateStr === 'number') {
+    const jsDate = new Date(Math.round((dateStr - 25569) * 86400 * 1000));
+    return jsDate.toISOString();
+  }
+  if (!dateStr || typeof dateStr !== 'string') return dateStr;
+  
+  let d = dateStr;
+  if (d.includes('/')) {
+    const parts = d.split(' ');
+    const dateParts = parts[0].split('/');
+    if (dateParts.length === 3) {
+      let isoStr = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
+      if (parts[1]) {
+        isoStr += `T${parts[1]}.000Z`;
+      } else {
+        isoStr += `T00:00:00.000Z`;
+      }
+      return isoStr;
+    }
+  }
+  if (d.includes('-') && d.length === 10) {
+    const parts = d.split('-');
+    if (parts[2] && parts[2].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00.000Z`;
+    }
+  }
+  return dateStr;
+}
+
+export const importRecordsFromExcel = (file: File, tipo: 'diagnostico' | 'monitoreo'): Promise<LocalRecord[]> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json<any>(worksheet, { defval: "" });
+        
+        const records: LocalRecord[] = json.map(row => {
+          const rowId = row.id ? String(row.id) : '';
+          const newUuid = rowId || generateUUID();
+          
+          const parsedRecord = {
+            ...row,
+            uuid: newUuid,
+            id: `${tipo}-${newUuid}`,
+            tipo,
+            isSynced: false,
+            estado: row.estado || 'Activo'
+          };
+          
+          if (parsedRecord.fechaRegistro) parsedRecord.fechaRegistro = parseImportDate(parsedRecord.fechaRegistro);
+          if (parsedRecord.fecha) parsedRecord.fecha = parseImportDate(parsedRecord.fecha);
+          if (parsedRecord.hora) {
+            if (typeof parsedRecord.hora === 'number') {
+               const totalSeconds = Math.round(parsedRecord.hora * 86400);
+               const hours = Math.floor(totalSeconds / 3600);
+               const minutes = Math.floor((totalSeconds % 3600) / 60);
+               const seconds = totalSeconds % 60;
+               parsedRecord.hora = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+            }
+          }
+          
+          return parsedRecord as LocalRecord;
+        });
+        resolve(records);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsBinaryString(file);
+  });
 };

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight, Download, Loader2, FileSpreadsheet } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight, Download, Loader2, FileSpreadsheet, Upload } from 'lucide-react';
 import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
 import { syncEntry } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePdfDownloader } from '../utils/usePdfDownloader';
-import { exportRecordsToExcel } from '../utils/excelUtils';
+import { exportRecordsToExcel, importRecordsFromExcel } from '../utils/excelUtils';
 
 const extractDate = (val: string | undefined) => {
   if (!val) return null;
@@ -39,6 +39,8 @@ export const MonitoreoList = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { downloadPdf, downloadingId } = usePdfDownloader();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   // Función para renderizar 0 de forma correcta sin ser evaluado como "falsy" en el || '-'
   const renderValue = (val: any) => {
@@ -123,6 +125,35 @@ export const MonitoreoList = () => {
     }
   };
 
+  const handleExportExcel = () => {
+    exportRecordsToExcel(records, 'Monitoreos');
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      setIsImporting(true);
+      try {
+        const importedRecords = await importRecordsFromExcel(file, 'monitoreo');
+        for (const record of importedRecords) {
+          saveRecord(record);
+        }
+        alert(`Se importaron ${importedRecords.length} registros exitosamente. Presione Aceptar para continuar.`);
+        for (const record of importedRecords) {
+          syncEntry(record).catch(() => {});
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Hubo un error al importar el archivo Excel. Verifique que el formato sea el correcto.');
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    }
+  };
+
   return (
     <div className="container-fluid animate-fade-in">
       <div className="flex-between" style={{ marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -162,6 +193,29 @@ export const MonitoreoList = () => {
               </button>
             )}
           </div>
+          
+          <button onClick={handleExportExcel} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <FileSpreadsheet size={20} style={{ color: '#10b981' }} />
+            Exportar
+          </button>
+
+          <input 
+            type="file" 
+            accept=".xlsx, .xls" 
+            ref={fileInputRef} 
+            onChange={handleImportExcel} 
+            style={{ display: 'none' }} 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()} 
+            className="btn btn-outline" 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            disabled={isImporting}
+          >
+            {isImporting ? <Loader2 size={20} className="spin" /> : <Upload size={20} style={{ color: '#3b82f6' }} />}
+            Importar
+          </button>
+          
           <button onClick={() => navigate('/monitoreo/nuevo')} className="btn btn-primary">
             <Plus size={18} /> Agregar Registro
           </button>
