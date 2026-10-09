@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ClipboardList, Droplet, Building2, FileText, BarChart3 } from 'lucide-react';
+import { ClipboardList, Droplet, Building2, FileText, BarChart3, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getRecords } from '../services/storage';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,11 +20,13 @@ export const Home: React.FC = () => {
     monitoreoSemanal: 0,
     faltanDiagnostico: 0,
     ipressPorRed: [] as { red: string; cantidad: number; monitoreos: number }[],
-    coberturaData: [] as { name: string; value: number }[]
+    coberturaData: [] as { name: string; value: number }[],
+    detalleList: [] as { ipress: string; red: string; tieneDiag: boolean }[]
   });
 
   const { user, usersList } = useAuth();
   const [dashboardRedFilter, setDashboardRedFilter] = useState<string>('Todas');
+  const [showDetalleModal, setShowDetalleModal] = useState(false);
   
   // Obtener lista de redes para el filtro GERESA
   const redesOptions = Array.from(new Set(
@@ -178,14 +180,29 @@ export const Home: React.FC = () => {
         
         // Some IPRESS in records might not be in usersList (rare, but possible), so we calculate mathematically:
         let conDiag = 0;
+        const tempDetalleList: { ipress: string; red: string; tieneDiag: boolean }[] = [];
+        
         allIpress.forEach(u => {
           const codeMatch = (u.codigoRenipress && u.codigoRenipress !== 'S/N') ? ipressConDiagnostico.has(String(u.codigoRenipress).trim()) : false;
           const nameMatch = u.usuario ? ipressConDiagnostico.has(String(u.usuario).trim().toLowerCase()) : false;
           const fullNameMatch = u.nombreIpress ? ipressConDiagnostico.has(String(u.nombreIpress).trim().toLowerCase()) : false;
-          if (codeMatch || nameMatch || fullNameMatch) {
+          const tieneDiag = codeMatch || nameMatch || fullNameMatch;
+          if (tieneDiag) {
             conDiag++;
           }
+          tempDetalleList.push({
+            ipress: u.nombreIpress || u.usuario || 'Sin Nombre',
+            red: u.red || 'Sin Red',
+            tieneDiag
+          });
         });
+        
+        tempDetalleList.sort((a, b) => {
+          if (a.tieneDiag && !b.tieneDiag) return -1;
+          if (!a.tieneDiag && b.tieneDiag) return 1;
+          return a.ipress.localeCompare(b.ipress);
+        });
+
         const faltanDiag = totalIpressCount - conDiag;
 
         setGeresaStats({
@@ -196,7 +213,8 @@ export const Home: React.FC = () => {
           coberturaData: [
             { name: 'Con Diagnóstico', value: conDiag },
             { name: 'Falta Diagnóstico', value: faltanDiag }
-          ]
+          ],
+          detalleList: tempDetalleList
         });
       }
     };
@@ -400,8 +418,79 @@ export const Home: React.FC = () => {
                   </div>
                 )}
               </div>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                <button
+                  onClick={() => setShowDetalleModal(true)}
+                  style={{
+                    padding: '0.4rem 1rem',
+                    backgroundColor: 'var(--primary-light)',
+                    color: 'var(--primary-dark)',
+                    border: '1px solid var(--primary)',
+                    borderRadius: '6px',
+                    fontSize: '0.875rem',
+                    cursor: 'pointer',
+                    fontWeight: 500
+                  }}
+                >
+                  Ver Detalle
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* MODAL DETALLE COBERTURA */}
+          {showDetalleModal && (
+            <div style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem'
+            }}>
+              <div style={{
+                backgroundColor: 'white', borderRadius: '12px', width: '100%', maxWidth: '600px',
+                maxHeight: '90vh', display: 'flex', flexDirection: 'column',
+                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
+              }}>
+                <div style={{ padding: '1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.2rem' }}>Detalle de Diagnósticos</h3>
+                  <button onClick={() => setShowDetalleModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                    <X size={24} />
+                  </button>
+                </div>
+                <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
+                      <tr style={{ borderBottom: '2px solid #e2e8f0', textAlign: 'left' }}>
+                        <th style={{ padding: '0.75rem', color: '#64748b', fontWeight: 600 }}>Unidad Ejecutora</th>
+                        <th style={{ padding: '0.75rem', color: '#64748b', fontWeight: 600 }}>IPRESS</th>
+                        <th style={{ padding: '0.75rem', color: '#64748b', fontWeight: 600, textAlign: 'center' }}>¿Tiene Diagnóstico?</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {geresaStats.detalleList.map((item, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td style={{ padding: '0.75rem', color: 'var(--text)' }}>{item.red}</td>
+                          <td style={{ padding: '0.75rem', color: 'var(--text)' }}>{item.ipress}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            {item.tieneDiag ? (
+                              <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '0.2rem 0.5rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 600 }}>Sí</span>
+                            ) : (
+                              <span style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '0.2rem 0.5rem', borderRadius: '1rem', fontSize: '0.75rem', fontWeight: 600 }}>No</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {geresaStats.detalleList.length === 0 && (
+                        <tr>
+                          <td colSpan={3} style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>No hay registros para mostrar.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
         );
       })()}
