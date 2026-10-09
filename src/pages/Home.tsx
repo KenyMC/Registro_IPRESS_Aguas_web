@@ -366,16 +366,16 @@ export const Home: React.FC = () => {
                     <PieChart>
                       <Pie
                         data={geresaStats.coberturaData}
-                        cx="55%"
+                        cx="50%"
                         cy="50%"
                         innerRadius={45}
-                        outerRadius={75}
+                        outerRadius={70}
                         paddingAngle={5}
                         dataKey="value"
                         label={(props: any) => {
                           const { cx, cy, midAngle, outerRadius, name, percent } = props;
                           const RADIAN = Math.PI / 180;
-                          const radius = outerRadius + 15;
+                          const radius = outerRadius + 12;
                           const x = cx + radius * Math.cos(-midAngle * RADIAN);
                           const y = cy + radius * Math.sin(-midAngle * RADIAN);
                           return (
