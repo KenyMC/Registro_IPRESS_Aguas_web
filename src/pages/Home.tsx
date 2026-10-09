@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getRecords } from '../services/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
+import * as XLSX from 'xlsx';
 
 export const Home: React.FC = () => {
   const [stats, setStats] = useState({
@@ -225,6 +226,19 @@ export const Home: React.FC = () => {
     return () => window.removeEventListener('recordsUpdated', loadData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dashboardRedFilter]);
+
+  const exportarDetalleExcel = () => {
+    const data = geresaStats.detalleList.map(item => ({
+      'Unidad Ejecutora': item.red,
+      'IPRESS': item.ipress,
+      '¿Tiene Diagnóstico?': item.tieneDiag ? 'Sí' : 'No'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Detalle de Diagnósticos');
+    XLSX.writeFile(wb, 'Detalle_Diagnosticos.xlsx');
+  };
 
   return (
     <div className="container animate-fade-in">
@@ -452,9 +466,29 @@ export const Home: React.FC = () => {
               }}>
                 <div style={{ padding: '1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.2rem' }}>Detalle de Diagnósticos</h3>
-                  <button onClick={() => setShowDetalleModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                    <X size={24} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <button 
+                      onClick={exportarDetalleExcel}
+                      style={{
+                        padding: '0.4rem 0.8rem',
+                        backgroundColor: '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '0.875rem',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.4rem'
+                      }}
+                    >
+                      Exportar Excel
+                    </button>
+                    <button onClick={() => setShowDetalleModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex' }}>
+                      <X size={24} />
+                    </button>
+                  </div>
                 </div>
                 <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
