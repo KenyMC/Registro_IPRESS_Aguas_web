@@ -62,8 +62,9 @@ export const Home: React.FC = () => {
       if (user.rol === 'Administra todas las Redes' && dashboardRedFilter !== 'Todas') {
         const filterByRed = (r: any) => {
           const userObj = usersList.find(u => 
-            (u.codigoRenipress && r.codigoRenipress && String(u.codigoRenipress).trim() === String(r.codigoRenipress).trim()) ||
-            (u.usuario && r.nombreIpress && String(u.usuario).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase())
+            (u.codigoRenipress && r.codigoRenipress && u.codigoRenipress !== 'S/N' && String(u.codigoRenipress).trim() === String(r.codigoRenipress).trim()) ||
+            (u.usuario && r.nombreIpress && String(u.usuario).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase()) ||
+            (u.nombreIpress && r.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase())
           );
           const rRed = userObj?.red || r.unidadEjecutora;
           return rRed === dashboardRedFilter;
@@ -138,8 +139,9 @@ export const Home: React.FC = () => {
         const monitoreosPorRed: Record<string, number> = {};
         monitoreos.forEach(m => {
           const userForM = usersList.find(u => 
-            (u.codigoRenipress && m.codigoRenipress && String(u.codigoRenipress).trim() === String(m.codigoRenipress).trim()) ||
-            (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
+            (u.codigoRenipress && m.codigoRenipress && u.codigoRenipress !== 'S/N' && String(u.codigoRenipress).trim() === String(m.codigoRenipress).trim()) ||
+            (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
+            (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
           );
           const redName = userForM?.red || m.unidadEjecutora || 'Sin Red';
           monitoreosPorRed[redName] = (monitoreosPorRed[redName] || 0) + 1;
@@ -177,9 +179,10 @@ export const Home: React.FC = () => {
         // Some IPRESS in records might not be in usersList (rare, but possible), so we calculate mathematically:
         let conDiag = 0;
         allIpress.forEach(u => {
-          const codeMatch = u.codigoRenipress ? ipressConDiagnostico.has(String(u.codigoRenipress).trim()) : false;
+          const codeMatch = (u.codigoRenipress && u.codigoRenipress !== 'S/N') ? ipressConDiagnostico.has(String(u.codigoRenipress).trim()) : false;
           const nameMatch = u.usuario ? ipressConDiagnostico.has(String(u.usuario).trim().toLowerCase()) : false;
-          if (codeMatch || nameMatch) {
+          const fullNameMatch = u.nombreIpress ? ipressConDiagnostico.has(String(u.nombreIpress).trim().toLowerCase()) : false;
+          if (codeMatch || nameMatch || fullNameMatch) {
             conDiag++;
           }
         });
@@ -277,7 +280,11 @@ export const Home: React.FC = () => {
       </div>
 
       {/* GERESA ADVANCED DASHBOARD */}
-      {user?.rol === 'Administra todas las Redes' && (
+      {user?.rol === 'Administra todas las Redes' && (() => {
+        const isHospital = dashboardRedFilter === 'Hospital';
+        const unitName = isHospital ? 'Hospitales' : 'IPRESS';
+        
+        return (
         <div style={{ marginBottom: '3rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -303,17 +310,18 @@ export const Home: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                {dashboardRedFilter === 'Todas' ? 'Total IPRESS Región Cusco' : `Total IPRESS ${dashboardRedFilter}`}
+                {dashboardRedFilter === 'Todas' ? 'Total IPRESS Región Cusco' : 
+                 isHospital ? 'Total Hospitales' : `Total IPRESS ${dashboardRedFilter}`}
               </p>
               <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: 'var(--primary-dark)' }}>{geresaStats.totalIpress}</h3>
             </div>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Monitoreos (Últimos 7 días)</p>
-              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: '#10b981' }}>{geresaStats.monitoreoSemanal} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>IPRESS</span></h3>
+              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: '#10b981' }}>{geresaStats.monitoreoSemanal} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>{unitName}</span></h3>
             </div>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Falta Diagnóstico</p>
-              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: '#ef4444' }}>{geresaStats.faltanDiagnostico} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>IPRESS</span></h3>
+              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: '#ef4444' }}>{geresaStats.faltanDiagnostico} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>{unitName}</span></h3>
             </div>
           </div>
 
@@ -333,7 +341,7 @@ export const Home: React.FC = () => {
                         cursor={{ fill: '#f1f5f9' }}
                       />
                       <Legend />
-                      <Bar dataKey="cantidad" name="Cant. IPRESS" fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={15} />
+                      <Bar dataKey="cantidad" name={`Cant. ${unitName}`} fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={15} />
                       <Bar dataKey="monitoreos" name="Monitoreos Totales" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={15} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -354,13 +362,13 @@ export const Home: React.FC = () => {
                     <PieChart>
                       <Pie
                         data={geresaStats.coberturaData}
-                        cx="50%"
+                        cx="55%"
                         cy="50%"
-                        innerRadius={50}
-                        outerRadius={85}
+                        innerRadius={45}
+                        outerRadius={75}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                        label={({ name, value, percent }) => `${name} ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
                         labelLine={true}
                       >
                         <Cell key="cell-0" fill="#10b981" />
@@ -378,7 +386,8 @@ export const Home: React.FC = () => {
             </div>
           </div>
         </div>
-      )}
+        );
+      })}
 
       {/* ACTION BUTTONS */}
       <h3 style={{ textAlign: 'center', color: 'var(--primary-dark)', marginBottom: '1.5rem' }}>Operaciones</h3>

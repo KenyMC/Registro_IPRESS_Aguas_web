@@ -30,7 +30,8 @@ const parseCSV = (csvText: string): User[] => {
         codigoRenipress: parts[2].trim(),
         red: parts[3].trim(),
         rol: parts[4].trim(),
-        estado: parts[5].trim()
+        estado: parts[5].trim(),
+        nombreIpress: parts[6] ? parts[6].trim() : undefined
       });
     }
   }

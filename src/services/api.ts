@@ -77,6 +77,7 @@ export interface User {
   red: string;
   rol: string;
   estado: string;
+  nombreIpress?: string;
 }
 
 export const syncUser = async (userPayload: Partial<User>): Promise<boolean> => {
