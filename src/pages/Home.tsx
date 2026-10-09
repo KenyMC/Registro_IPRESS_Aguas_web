@@ -380,7 +380,8 @@ export const Home: React.FC = () => {
                           const y = cy + radius * Math.sin(-midAngle * RADIAN);
                           return (
                             <text x={x} y={y} fill="#64748b" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={11}>
-                              {`${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                              <tspan x={x} dy="-0.4em">{name}</tspan>
+                              <tspan x={x} dy="1.2em">{`(${((percent || 0) * 100).toFixed(0)}%)`}</tspan>
                             </text>
                           );
                         }}
