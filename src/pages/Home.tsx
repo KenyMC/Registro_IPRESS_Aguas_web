@@ -61,10 +61,17 @@ export const Home: React.FC = () => {
         if (m.nombreIpress) ipressSet.add(m.nombreIpress);
       });
 
+      let uniqueEstablecimientos = ipressSet.size;
+      
+      // Para GERESA, usar el total real de usuarios IPRESS para evitar confusión
+      if (user.rol === 'Administra todas las Redes' && usersList && usersList.length > 0) {
+        uniqueEstablecimientos = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital').length;
+      }
+
       setStats({
         totalDiagnosticos: diagnosticos.length,
         totalMonitoreos: monitoreos.length,
-        establecimientosUnicos: ipressSet.size,
+        establecimientosUnicos: uniqueEstablecimientos,
       });
 
       // Preparar datos para el gráfico (agrupados por fecha)
@@ -109,9 +116,21 @@ export const Home: React.FC = () => {
           const redName = u.red || 'Sin Red';
           redCounts[redName] = (redCounts[redName] || 0) + 1;
         });
-        const ipressPorRedArr = Object.keys(redCounts)
-          .map(red => ({ red, cantidad: redCounts[red] }))
-          .sort((a, b) => b.cantidad - a.cantidad);
+        
+        // Contar monitoreos por Red
+        const monitoreosPorRed: Record<string, number> = {};
+        monitoreos.forEach(m => {
+          const redName = m.unidadEjecutora || 'Sin Red';
+          monitoreosPorRed[redName] = (monitoreosPorRed[redName] || 0) + 1;
+        });
+
+        const allRedes = new Set([...Object.keys(redCounts), ...Object.keys(monitoreosPorRed)]);
+        
+        const ipressPorRedArr = Array.from(allRedes).map(red => ({
+          red,
+          cantidad: redCounts[red] || 0,
+          monitoreos: monitoreosPorRed[red] || 0
+        })).sort((a, b) => b.cantidad - a.cantidad);
 
         // 3. Monitoreo Semanal (IPRESS únicas que enviaron monitoreo en últimos 7 días)
         const sevenDaysAgo = new Date();
@@ -121,23 +140,25 @@ export const Home: React.FC = () => {
         monitoreos.forEach(m => {
           if (!m.fechaRegistro) return;
           const mDate = new Date(m.fechaRegistro);
-          if (mDate >= sevenDaysAgo && m.codigoRenipress) {
-            ipressConMonitoreoSemanal.add(String(m.codigoRenipress).trim());
+          if (mDate >= sevenDaysAgo) {
+            if (m.codigoRenipress) ipressConMonitoreoSemanal.add(String(m.codigoRenipress).trim());
+            else if (m.nombreIpress) ipressConMonitoreoSemanal.add(String(m.nombreIpress).trim().toLowerCase());
           }
         });
 
         // 4. Falta Diagnóstico
         const ipressConDiagnostico = new Set();
         diagnosticos.forEach(d => {
-          if (d.codigoRenipress) {
-            ipressConDiagnostico.add(String(d.codigoRenipress).trim());
-          }
+          if (d.codigoRenipress) ipressConDiagnostico.add(String(d.codigoRenipress).trim());
+          if (d.nombreIpress) ipressConDiagnostico.add(String(d.nombreIpress).trim().toLowerCase());
         });
         
         // Some IPRESS in records might not be in usersList (rare, but possible), so we calculate mathematically:
         let conDiag = 0;
         allIpress.forEach(u => {
-          if (ipressConDiagnostico.has(String(u.codigoRenipress).trim())) {
+          const codeMatch = u.codigoRenipress ? ipressConDiagnostico.has(String(u.codigoRenipress).trim()) : false;
+          const nameMatch = u.usuario ? ipressConDiagnostico.has(String(u.usuario).trim().toLowerCase()) : false;
+          if (codeMatch || nameMatch) {
             conDiag++;
           }
         });
@@ -272,7 +293,9 @@ export const Home: React.FC = () => {
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                         cursor={{ fill: '#f1f5f9' }}
                       />
-                      <Bar dataKey="cantidad" name="Cant. IPRESS" fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={20} />
+                      <Legend />
+                      <Bar dataKey="cantidad" name="Cant. IPRESS" fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={15} />
+                      <Bar dataKey="monitoreos" name="Monitoreos Totales" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={15} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
