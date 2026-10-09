@@ -387,7 +387,7 @@ export const Home: React.FC = () => {
           </div>
         </div>
         );
-      })}
+      })()}
 
       {/* ACTION BUTTONS */}
       <h3 style={{ textAlign: 'center', color: 'var(--primary-dark)', marginBottom: '1.5rem' }}>Operaciones</h3>
