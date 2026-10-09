@@ -3,7 +3,7 @@ import { ClipboardList, Droplet, Building2, FileText, BarChart3 } from 'lucide-r
 import { useEffect, useState } from 'react';
 import { getRecords } from '../services/storage';
 import { useAuth } from '../contexts/AuthContext';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 
 export const Home: React.FC = () => {
   const [stats, setStats] = useState({
@@ -332,7 +332,7 @@ export const Home: React.FC = () => {
               <div style={{ height: '300px', width: '100%' }}>
                 {geresaStats.ipressPorRed.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={geresaStats.ipressPorRed} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <BarChart data={geresaStats.ipressPorRed} layout="vertical" margin={{ top: 5, right: 40, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
                       <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
                       <YAxis dataKey="red" type="category" width={140} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -341,8 +341,12 @@ export const Home: React.FC = () => {
                         cursor={{ fill: '#f1f5f9' }}
                       />
                       <Legend />
-                      <Bar dataKey="cantidad" name={`Cant. ${unitName}`} fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={15} />
-                      <Bar dataKey="monitoreos" name="Monitoreos Totales" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={15} />
+                      <Bar dataKey="cantidad" name={`Cant. ${unitName}`} fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={15}>
+                        <LabelList dataKey="cantidad" position="right" fill="#64748b" fontSize={11} fontWeight={500} />
+                      </Bar>
+                      <Bar dataKey="monitoreos" name="Monitoreos Totales" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={15}>
+                        <LabelList dataKey="monitoreos" position="right" fill="#64748b" fontSize={11} fontWeight={500} />
+                      </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -368,11 +372,23 @@ export const Home: React.FC = () => {
                         outerRadius={75}
                         paddingAngle={5}
                         dataKey="value"
-                        label={({ name, value, percent }) => `${name} ${value} (${((percent || 0) * 100).toFixed(0)}%)`}
+                        label={(props: any) => {
+                          const { cx, cy, midAngle, outerRadius, name, percent } = props;
+                          const RADIAN = Math.PI / 180;
+                          const radius = outerRadius + 15;
+                          const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                          const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                          return (
+                            <text x={x} y={y} fill="#64748b" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={11}>
+                              {`${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                            </text>
+                          );
+                        }}
                         labelLine={true}
                       >
                         <Cell key="cell-0" fill="#10b981" />
                         <Cell key="cell-1" fill="#ef4444" />
+                        <LabelList dataKey="value" position="inside" fill="#ffffff" fontSize={12} fontWeight={600} />
                       </Pie>
                       <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                     </PieChart>
