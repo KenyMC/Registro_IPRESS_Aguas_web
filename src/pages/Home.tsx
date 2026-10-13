@@ -6,15 +6,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import * as XLSX from 'xlsx';
 
-const matchRedName = (a?: string, b?: string) => {
-  if (!a || !b) return false;
-  return a.trim().toLowerCase() === b.trim().toLowerCase();
+const matchRedName = (a?: any, b?: any): boolean => {
+  if (a === null || a === undefined || b === null || b === undefined) return false;
+  const strA = String(a).trim().toLowerCase();
+  const strB = String(b).trim().toLowerCase();
+  return strA !== '' && strA === strB;
 };
 
-const getUserRed = (u: { red?: string; rol?: string } | null | undefined): string => {
+const getUserRed = (u: any): string => {
   if (!u) return '';
-  if (u.red && u.red.trim()) return u.red.trim();
-  const rol = u.rol || '';
+  if (u.red !== undefined && u.red !== null) {
+    const r = String(u.red).trim();
+    if (r) return r;
+  }
+  const rol = String(u.rol || '');
   if (rol.includes('Norte')) return 'Red Cusco Norte';
   if (rol.includes('Sur')) return 'Red Cusco Sur';
   if (rol.includes('CCE')) return 'Red CCE';
@@ -68,6 +73,7 @@ export const Home: React.FC = () => {
         if (user.rol.includes('Red')) {
           const uRed = getUserRed(user);
           records = records.filter(r => {
+            if (user.red && r.unidadEjecutora === user.red) return true;
             if (r.unidadEjecutora && matchRedName(r.unidadEjecutora, uRed)) return true;
             const userObj = usersList.find(u => 
               (u.codigoRenipress && r.codigoRenipress && u.codigoRenipress !== 'S/N' && String(u.codigoRenipress).trim() === String(r.codigoRenipress).trim()) ||
@@ -238,7 +244,7 @@ export const Home: React.FC = () => {
         tempDetalleList.sort((a, b) => {
           if (a.tieneDiag && !b.tieneDiag) return -1;
           if (!a.tieneDiag && b.tieneDiag) return 1;
-          return a.ipress.localeCompare(b.ipress);
+          return String(a.ipress).localeCompare(String(b.ipress));
         });
 
         const faltanDiag = Math.max(0, totalIpressCount - conDiag);
