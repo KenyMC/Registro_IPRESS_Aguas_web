@@ -17,7 +17,7 @@ import { syncPendingRecords, mergeRecords } from './services/storage';
 // @ts-ignore
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
-const CURRENT_APP_VERSION = '1.3.3';
+const CURRENT_APP_VERSION = '1.4.0';
 
 const SplashManager = ({ children }: { children: React.ReactNode }) => {
   const [showSplash, setShowSplash] = useState(true);
@@ -32,6 +32,12 @@ const SplashManager = ({ children }: { children: React.ReactNode }) => {
       localStorage.removeItem('aguas_auth_user');
       localStorage.setItem('app_version', CURRENT_APP_VERSION);
       
+      if ('caches' in window) {
+        caches.keys().then((names) => {
+          names.forEach((name) => caches.delete(name));
+        });
+      }
+
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           for (let registration of registrations) {
@@ -172,9 +178,10 @@ function AppWithPWA() {
     onRegistered(r: any) {
       // Force checking for updates periodically
       if (r) {
+        r.update();
         setInterval(() => {
           r.update();
-        }, 60 * 60 * 1000); // Check every hour
+        }, 5 * 60 * 1000); // Check every 5 minutes
       }
     },
     onRegisterError(error: any) {
