@@ -1,6 +1,16 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.4.0] - 2026-10-13
+### Añadido
+- **Estadísticas de Gestión para Redes:** Se habilitó el módulo gerencial de estadísticas en la pantalla de Inicio para los usuarios con roles de Red (`Administra todas las IPRESS de la Red...`). Los datos (total de IPRESS, monitoreos semanales, falta de diagnósticos, gráficos y modal de detalle) se restringen estrictamente a su propia red sin permitir la selección de otras redes.
+- **Componente ErrorBoundary y Auto-Recuperación:** Se incorporó un límite de errores global en React (`ErrorBoundary.tsx`) que intercepta cualquier fallo inesperado, previene la pantalla en blanco, limpia la memoria caché y ofrece un botón de actualización limpia con auto-reintento.
+- **Forzado Automático de Actualización PWA:** Se sincronizó el versionamiento global a `1.4.0` en `main.tsx` y `App.tsx`. Ante cambios de versión, la aplicación purga automáticamente `CacheStorage`, desregistra Service Workers obsoletos conservando los registros locales pendientes, y acelera la verificación de nuevas versiones en el servidor de 60 a 5 minutos (además de comprobar inmediatamente al inicio).
+- **Documentación Oficial:** Se creó la guía `VERSIONAMIENTO_Y_ACTUALIZACIONES.md` con los lineamientos para actualizar versiones y forzar la recarga en dispositivos móviles y de escritorio.
+
+### Arreglado
+- **Validación de Tipos en Filtro de Redes:** Se blindó la comparación de nombres de red con conversión segura `String(...)` y saneamiento de espacios antes de `.trim()`, resolviendo el error `TypeError: e.trim is not a function` que ocurría al procesar registros con tipos de datos inesperados.
+
 ## [1.3.3] - 2026-09-17
 ### Añadido
 - **Filtro de Unidad Ejecutora (GERESA):** Se añadió un filtro desplegable en las vistas de registros de Diagnóstico y Monitoreo exclusivamente para el rol "Administra todas las Redes" (GERESA). Este filtro interactúa dinámicamente con el filtro de fechas.

@@ -1,11 +1,29 @@
-# React + TypeScript + Vite
+# Sistema de Control de Calidad de Agua en IPRESS
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicativo web progresivo (PWA) para el registro, diagnóstico y monitoreo de la calidad de agua en las Instituciones Prestadoras de Servicios de Salud (IPRESS), Hospitales y Redes de Salud de la Región Cusco.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Documentación Clave
+- **[Guía de Versionamiento y Actualización Forzada de la Aplicación](VERSIONAMIENTO_Y_ACTUALIZACIONES.md)**: Procedimiento obligatorio ante cambios significativos para garantizar que los dispositivos de los usuarios descarguen la versión más reciente y purguen la caché automáticamente.
+- **[Historial de Cambios (CHANGELOG.md)](CHANGELOG.md)**: Bitácora de versiones, nuevas funciones y correcciones aplicadas.
+
+---
+
+## Desarrollo local
+
+```bash
+npm install
+npm run dev
+```
+
+Para desplegar a producción (GitHub Pages):
+```bash
+npm run deploy
+git add .
+git commit -m "mensaje del cambio"
+git push origin main
+```
 
 ## Expanding the ESLint configuration
 
