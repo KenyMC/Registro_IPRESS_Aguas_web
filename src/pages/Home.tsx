@@ -6,6 +6,24 @@ import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import * as XLSX from 'xlsx';
 
+const matchRedName = (a?: string, b?: string) => {
+  if (!a || !b) return false;
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+};
+
+const getUserRed = (u: { red?: string; rol?: string } | null | undefined): string => {
+  if (!u) return '';
+  if (u.red && u.red.trim()) return u.red.trim();
+  const rol = u.rol || '';
+  if (rol.includes('Norte')) return 'Red Cusco Norte';
+  if (rol.includes('Sur')) return 'Red Cusco Sur';
+  if (rol.includes('CCE')) return 'Red CCE';
+  if (rol.includes('Chumbivilcas')) return 'Red Chumbivilcas';
+  if (rol.includes('La Convencion')) return 'Red La Convencion';
+  if (rol.includes('Vraem') || rol.includes('VRAEM')) return 'Red Cusco VRAEM';
+  return '';
+};
+
 export const Home: React.FC = () => {
   const [stats, setStats] = useState({
     totalDiagnosticos: 0,
@@ -15,7 +33,7 @@ export const Home: React.FC = () => {
 
   const [chartData, setChartData] = useState<{ date: string; Diagnósticos: number; Monitoreos: number }[]>([]);
   
-  // GERESA advanced stats
+  // Advanced management stats (GERESA and Redes)
   const [geresaStats, setGeresaStats] = useState({
     totalIpress: 0,
     monitoreoSemanal: 0,
@@ -29,6 +47,11 @@ export const Home: React.FC = () => {
   const [dashboardRedFilter, setDashboardRedFilter] = useState<string>('Todas');
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   
+  const isGeresaAdmin = user?.rol === 'Administra todas las Redes';
+  const isRedAdmin = !isGeresaAdmin && (Boolean(user?.rol?.includes('Red')) || user?.rol === 'Red');
+  const canViewGestionStats = isGeresaAdmin || isRedAdmin;
+  const targetRed = isGeresaAdmin ? dashboardRedFilter : (getUserRed(user) || 'Sin Red');
+
   // Obtener lista de redes para el filtro GERESA
   const redesOptions = Array.from(new Set(
     usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital' || u.rol === 'Red').map(u => u.red).filter(Boolean)
@@ -41,9 +64,18 @@ export const Home: React.FC = () => {
       let records = getRecords().filter(r => r.estado !== 'Inactivo');
       
       // Filtro por Rol (RBAC)
-      if (user.rol !== 'Administra todas las Redes') {
+      if (!isGeresaAdmin) {
         if (user.rol.includes('Red')) {
-          records = records.filter(r => r.unidadEjecutora === user.red);
+          const uRed = getUserRed(user);
+          records = records.filter(r => {
+            if (r.unidadEjecutora && matchRedName(r.unidadEjecutora, uRed)) return true;
+            const userObj = usersList.find(u => 
+              (u.codigoRenipress && r.codigoRenipress && u.codigoRenipress !== 'S/N' && String(u.codigoRenipress).trim() === String(r.codigoRenipress).trim()) ||
+              (u.usuario && r.nombreIpress && String(u.usuario).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase()) ||
+              (u.nombreIpress && r.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase())
+            );
+            return userObj?.red && matchRedName(userObj.red, uRed);
+          });
         } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
           records = records.filter(r => {
             if (!user.codigoRenipress) return String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase();
@@ -62,7 +94,7 @@ export const Home: React.FC = () => {
       let monitoreos = records.filter(r => r.tipo === 'monitoreo');
 
       // Aplicar filtro de Red para GERESA
-      if (user.rol === 'Administra todas las Redes' && dashboardRedFilter !== 'Todas') {
+      if (isGeresaAdmin && dashboardRedFilter !== 'Todas') {
         const filterByRed = (r: any) => {
           const userObj = usersList.find(u => 
             (u.codigoRenipress && r.codigoRenipress && u.codigoRenipress !== 'S/N' && String(u.codigoRenipress).trim() === String(r.codigoRenipress).trim()) ||
@@ -70,7 +102,7 @@ export const Home: React.FC = () => {
             (u.nombreIpress && r.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase())
           );
           const rRed = userObj?.red || r.unidadEjecutora;
-          return rRed === dashboardRedFilter;
+          return matchRedName(rRed, dashboardRedFilter);
         };
         diagnosticos = diagnosticos.filter(filterByRed);
         monitoreos = monitoreos.filter(filterByRed);
@@ -93,8 +125,11 @@ export const Home: React.FC = () => {
 
       // Preparar datos para el gráfico (agrupados por fecha)
       const dateGroups: Record<string, { date: string, Diagnósticos: number, Monitoreos: number }> = {};
+      const activeRecords = (isGeresaAdmin && dashboardRedFilter !== 'Todas') 
+        ? [...diagnosticos, ...monitoreos] 
+        : records;
       
-      records.forEach(r => {
+      activeRecords.forEach(r => {
         if (!r.fechaRegistro) return;
         
         // Parse date safely
@@ -120,18 +155,20 @@ export const Home: React.FC = () => {
       setChartData(sortedData.slice(-7));
 
       // -------------------------------------------------------------
-      // CÁLCULOS AVANZADOS PARA GERESA
+      // CÁLCULOS AVANZADOS PARA GERESA Y REDES
       // -------------------------------------------------------------
-      if (user.rol === 'Administra todas las Redes' && usersList && usersList.length > 0) {
+      if (canViewGestionStats && usersList && usersList.length > 0) {
+        const currentTargetRed = isGeresaAdmin ? dashboardRedFilter : (getUserRed(user) || 'Sin Red');
+
         // 1. Filtrar solo los usuarios que son IPRESS u Hospital
         let allIpress = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital');
-        if (dashboardRedFilter !== 'Todas') {
-          allIpress = allIpress.filter(u => u.red === dashboardRedFilter);
+        if (currentTargetRed !== 'Todas') {
+          allIpress = allIpress.filter(u => matchRedName(u.red, currentTargetRed));
         }
         
         const totalIpressCount = allIpress.length;
 
-        // 2. IPRESS por Red
+        // 2. IPRESS por Red / Unidad Ejecutora
         const redCounts: Record<string, number> = {};
         allIpress.forEach(u => {
           const redName = u.red || 'Sin Red';
@@ -179,7 +216,7 @@ export const Home: React.FC = () => {
           if (d.nombreIpress) ipressConDiagnostico.add(String(d.nombreIpress).trim().toLowerCase());
         });
         
-        // Some IPRESS in records might not be in usersList (rare, but possible), so we calculate mathematically:
+        // Calcular IPRESS con o sin diagnóstico
         let conDiag = 0;
         const tempDetalleList: { ipress: string; red: string; tieneDiag: boolean }[] = [];
         
@@ -204,7 +241,7 @@ export const Home: React.FC = () => {
           return a.ipress.localeCompare(b.ipress);
         });
 
-        const faltanDiag = totalIpressCount - conDiag;
+        const faltanDiag = Math.max(0, totalIpressCount - conDiag);
 
         setGeresaStats({
           totalIpress: totalIpressCount,
@@ -225,7 +262,7 @@ export const Home: React.FC = () => {
     window.addEventListener('recordsUpdated', loadData);
     return () => window.removeEventListener('recordsUpdated', loadData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, dashboardRedFilter]);
+  }, [user, dashboardRedFilter, usersList]);
 
   const exportarDetalleExcel = () => {
     const data = geresaStats.detalleList.map(item => ({
@@ -237,7 +274,8 @@ export const Home: React.FC = () => {
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Detalle de Diagnósticos');
-    XLSX.writeFile(wb, 'Detalle_Diagnosticos.xlsx');
+    const safeRedName = (targetRed || 'General').replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(wb, `Detalle_Diagnosticos_${safeRedName}.xlsx`);
   };
 
   return (
@@ -311,39 +349,57 @@ export const Home: React.FC = () => {
         </div>
       </div>
 
-      {/* GERESA ADVANCED DASHBOARD */}
-      {user?.rol === 'Administra todas las Redes' && (() => {
-        const isHospital = dashboardRedFilter === 'Hospital';
+      {/* GERESA / REDES ADVANCED DASHBOARD */}
+      {canViewGestionStats && (() => {
+        const isHospital = targetRed === 'Hospital';
         const unitName = isHospital ? 'Hospitales' : 'IPRESS';
+        const titleText = isGeresaAdmin ? 'Estadísticas de Gestión (GERESA)' : `Estadísticas de Gestión (${targetRed})`;
         
         return (
         <div style={{ marginBottom: '3rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <BarChart3 size={20} color="var(--primary)" />
-              <h3 style={{ margin: 0, color: 'var(--primary-dark)' }}>Estadísticas de Gestión (GERESA)</h3>
+              <h3 style={{ margin: 0, color: 'var(--primary-dark)' }}>{titleText}</h3>
             </div>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Filtrar por Unidad Ejecutora:</span>
-              <select 
-                value={dashboardRedFilter} 
-                onChange={(e) => setDashboardRedFilter(e.target.value)}
-                style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none' }}
-              >
-                <option value="Todas">Todas</option>
-                {redesOptions.map(red => (
-                  <option key={red} value={red}>{red}</option>
-                ))}
-              </select>
-            </div>
+            {isGeresaAdmin ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Filtrar por Unidad Ejecutora:</span>
+                <select 
+                  value={dashboardRedFilter} 
+                  onChange={(e) => setDashboardRedFilter(e.target.value)}
+                  style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid #e2e8f0', outline: 'none' }}
+                >
+                  <option value="Todas">Todas</option>
+                  {redesOptions.map(red => (
+                    <option key={red} value={red}>{red}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Unidad Ejecutora:</span>
+                <span style={{ 
+                  fontSize: '0.875rem', 
+                  fontWeight: 600, 
+                  color: 'var(--primary-dark)', 
+                  backgroundColor: '#eff6ff', 
+                  padding: '0.35rem 0.75rem', 
+                  borderRadius: '6px',
+                  border: '1px solid #bfdbfe'
+                }}>
+                  {targetRed}
+                </span>
+              </div>
+            )}
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                {dashboardRedFilter === 'Todas' ? 'Total IPRESS Región Cusco' : 
-                 isHospital ? 'Total Hospitales' : `Total IPRESS ${dashboardRedFilter}`}
+                {targetRed === 'Todas' ? 'Total IPRESS Región Cusco' : 
+                 isHospital ? 'Total Hospitales' : `Total IPRESS ${targetRed}`}
               </p>
               <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: 'var(--primary-dark)' }}>{geresaStats.totalIpress}</h3>
             </div>
@@ -465,7 +521,9 @@ export const Home: React.FC = () => {
                 boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
               }}>
                 <div style={{ padding: '1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.2rem' }}>Detalle de Diagnósticos</h3>
+                  <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.2rem' }}>
+                    Detalle de Diagnósticos {isGeresaAdmin ? (dashboardRedFilter === 'Todas' ? '(Región Cusco)' : `(${dashboardRedFilter})`) : `(${targetRed})`}
+                  </h3>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <button 
                       onClick={exportarDetalleExcel}
