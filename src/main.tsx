@@ -9,15 +9,27 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 /**
  * SISTEMA DE CONTROL DE VERSIONES PWA Y FORZADO DE CACHÉ
  */
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.4.1';
 const localVersion = localStorage.getItem('APP_VERSION');
 
 if (localVersion !== APP_VERSION) {
-  // Conservar registros pendientes de sincronización
-  const records = localStorage.getItem('aguas_ipress_records');
+  // Conservar únicamente registros pendientes válidos (filtrar cualquier registro en blanco o fantasma)
+  const rawRecords = localStorage.getItem('aguas_ipress_records');
+  let cleanPendingRecords: any[] = [];
+  if (rawRecords) {
+    try {
+      const parsed = JSON.parse(rawRecords);
+      cleanPendingRecords = (parsed || []).filter((r: any) => 
+        r && 
+        !r.isSynced && 
+        ((r.nombreIpress && String(r.nombreIpress).trim() !== '') || 
+         (r.codigoRenipress && String(r.codigoRenipress).trim() !== ''))
+      );
+    } catch (e) {}
+  }
   localStorage.clear();
-  if (records) {
-    localStorage.setItem('aguas_ipress_records', records);
+  if (cleanPendingRecords.length > 0) {
+    localStorage.setItem('aguas_ipress_records', JSON.stringify(cleanPendingRecords));
   }
   localStorage.setItem('APP_VERSION', APP_VERSION);
   localStorage.setItem('app_version', APP_VERSION);

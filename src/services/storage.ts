@@ -8,10 +8,27 @@ export interface LocalRecord extends SyncRequest {
 
 const STORAGE_KEY = 'aguas_ipress_records';
 
+export const isValidRecord = (r: any): boolean => {
+  if (!r) return false;
+  const hasName = r.nombreIpress !== undefined && r.nombreIpress !== null && String(r.nombreIpress).trim() !== '';
+  const hasCode = r.codigoRenipress !== undefined && r.codigoRenipress !== null && String(r.codigoRenipress).trim() !== '';
+  return hasName || hasCode;
+};
+
 export const getRecords = (): LocalRecord[] => {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    if (!data) return [];
+    const parsed: LocalRecord[] = JSON.parse(data);
+    
+    // Filtro estricto: Todo registro DEBE tener nombreIpress o codigoRenipress válido
+    const valid = parsed.filter(isValidRecord);
+    
+    // Si habían registros corruptos o en blanco, eliminarlos del almacenamiento local inmediatamente
+    if (valid.length !== parsed.length) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
+    }
+    return valid;
   } catch (error) {
     console.error("Error reading from local storage", error);
     return [];
@@ -19,6 +36,11 @@ export const getRecords = (): LocalRecord[] => {
 };
 
 export const saveRecord = (record: LocalRecord): void => {
+  if (!isValidRecord(record)) {
+    console.warn("Intento de guardar registro sin IPRESS ni RENIPRESS ignorado:", record);
+    return;
+  }
+
   const records = getRecords();
   
   // Find matching local record by UUID and type (backend assigns UUIDs to new records)
@@ -70,31 +92,36 @@ export const getRecordById = (id: string): LocalRecord | undefined => {
  * Esta función es el corazón del comportamiento "Offline-first" interactivo.
  * Su lógica principal es:
  * 1. El servidor (Google Sheets) es la FUENTE ABSOLUTA DE LA VERDAD para los registros sincronizados.
- * 2. El cliente retiene temporalmente sus registros "pendientes de sincronización".
- * 3. Descarta COMPLETAMENTE los registros sincronizados locales y adopta los que vienen del servidor.
+ * 2. Se filtran estrictamente filas vacías que puedan provenir del servidor o de importaciones previas.
+ * 3. Descarta COMPLETAMENTE los registros locales que ya están sincronizados a favor de la lista del servidor.
+ * 4. Solo conserva registros locales válidos que estén PENDIENTES de sincronización (isSynced = false).
  * 
- * BENEFICIO CLAVE (Sincronización de Eliminaciones):
- * Como los registros sincronizados locales se descartan a favor de la lista del servidor, si
- * un registro fue eliminado en Google Sheets (ya no viene en la petición), automáticamente
- * desaparecerá del almacenamiento local del usuario (y de la pantalla, en combinación con el polleo de App.tsx).
+ * BENEFICIO CLAVE:
+ * Elimina inmediatamente cualquier registro en blanco o fantasma y sincroniza exactamente con Google Sheets.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const mergeRecords = (serverData: any[]): void => {
-  const localRecords = getRecords();
+  // 1. Filtrar registros válidos del servidor (ignorar filas vacías de Google Sheets)
+  const validServerData = (serverData || []).filter(isValidRecord);
   
-  // Create a new array that will hold the merged result
-  // Start with server records, marked as synced. Avoid ID collisions between tipos.
-  const finalRecords: LocalRecord[] = serverData.map(item => ({
+  // 2. Establecer la lista base con los registros oficiales de Google Sheets
+  const finalRecords: LocalRecord[] = validServerData.map(item => ({
     ...item,
     uuid: String(item.uuid || ''),
     id: item.uuid ? `${item.tipo}-${item.uuid}` : generateUUID(),
     isSynced: true
   }));
   
-  // Now, add any local records that have NOT been synced yet (isSynced = false)
-  // or that are not present in the server data.
+  // 3. Obtener los registros locales
+  const localRecords = getRecords();
+  
+  // 4. Solo conservar registros locales válidos que ESTÉN PENDIENTES DE ENVÍO (isSynced === false)
   localRecords.forEach(localRecord => {
-    // Check if this local record is already in the server data
+    // Si ya está sincronizado localmente, no lo conservamos porque el servidor es la fuente de la verdad
+    if (localRecord.isSynced) return;
+    if (!isValidRecord(localRecord)) return;
+    
+    // Verificar si por casualidad ya llegó al servidor
     const isAlreadyOnServer = finalRecords.some(serverRecord => {
       if (String(localRecord.uuid) === String(serverRecord.uuid) && serverRecord.uuid !== '' && localRecord.tipo === serverRecord.tipo) return true;
       if (localRecord.fechaRegistro && serverRecord.fechaRegistro) {
@@ -104,16 +131,16 @@ export const mergeRecords = (serverData: any[]): void => {
           if (!isNaN(localDate.getTime()) && !isNaN(serverDate.getTime())) {
             const timeDiff = Math.abs(localDate.getTime() - serverDate.getTime());
             if (timeDiff < 120000) { // within 2 minutes
-              return localRecord.nombreIpress === serverRecord.nombreIpress && localRecord.tipo === serverRecord.tipo;
+              return String(localRecord.nombreIpress).trim().toLowerCase() === String(serverRecord.nombreIpress).trim().toLowerCase() && localRecord.tipo === serverRecord.tipo;
             }
           }
         } catch (e) {}
-        return localRecord.fechaRegistro === serverRecord.fechaRegistro && localRecord.nombreIpress === serverRecord.nombreIpress && localRecord.tipo === serverRecord.tipo;
+        return localRecord.fechaRegistro === serverRecord.fechaRegistro && String(localRecord.nombreIpress).trim().toLowerCase() === String(serverRecord.nombreIpress).trim().toLowerCase() && localRecord.tipo === serverRecord.tipo;
       }
       return false;
     });
     
-    // If it's NOT on the server, we keep it as pending!
+    // Si no está en el servidor aún, mantenerlo pendiente
     if (!isAlreadyOnServer) {
       finalRecords.push(localRecord);
     }

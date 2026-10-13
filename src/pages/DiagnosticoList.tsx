@@ -132,10 +132,15 @@ export const DiagnosticoList = () => {
       setIsImporting(true);
       try {
         const importedRecords = await importRecordsFromExcel(file, 'diagnostico');
+        if (importedRecords.length === 0) {
+          alert('No se encontraron registros válidos para importar en el archivo. Verifique que contenga nombres o códigos de IPRESS.');
+          return;
+        }
         for (const record of importedRecords) {
           saveRecord(record);
         }
-        alert(`Se importaron ${importedRecords.length} registros exitosamente. Presione Aceptar para continuar.`);
+        loadRecords();
+        alert(`Se importaron ${importedRecords.length} registros válidos exitosamente.`);
         // Sync imported records
         for (const record of importedRecords) {
           syncEntry(record).catch(() => {});
