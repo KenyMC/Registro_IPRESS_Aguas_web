@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx';
 import { LocalRecord, isValidRecord } from '../services/storage';
 import { generateUUID } from './uuid';
+import { normalizeRenipress } from '../services/ipressData';
 
 export const exportRecordsToExcel = (records: LocalRecord[], fileNamePrefix: string, sheetName: string = 'Registros') => {
   const validRecords = (records || []).filter(isValidRecord);
@@ -131,7 +132,8 @@ export const importRecordsFromExcel = (file: File, tipo: 'diagnostico' | 'monito
         for (const row of json) {
           // Extraer nombre y código con soporte para encabezados tanto en inglés/código como en español de Google Sheets
           const nombreIpress = String(getVal(row, 'nombreIpress', 'Nombre de la IPRESS', 'NOMBRE DE LA IPRESS', 'IPRESS', 'Nombre IPRESS')).trim();
-          const codigoRenipress = String(getVal(row, 'codigoRenipress', 'Código RENIPRESS', 'Codigo RENIPRESS', 'CODIGO RENIPRESS', 'RENIPRESS')).trim();
+          const rawRenipress = getVal(row, 'codigoRenipress', 'Código RENIPRESS', 'Codigo RENIPRESS', 'CODIGO RENIPRESS', 'RENIPRESS');
+          const codigoRenipress = normalizeRenipress(rawRenipress) || String(rawRenipress || '').trim();
           
           // FILTRO ESTRICTO: Descartar filas vacías de Excel que no tengan IPRESS ni RENIPRESS
           if (!nombreIpress && !codigoRenipress) {

@@ -17,7 +17,7 @@ import { syncPendingRecords, mergeRecords } from './services/storage';
 // @ts-ignore
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
-const CURRENT_APP_VERSION = '1.4.1';
+const CURRENT_APP_VERSION = '1.4.2';
 
 const SplashManager = ({ children }: { children: React.ReactNode }) => {
   const [showSplash, setShowSplash] = useState(true);

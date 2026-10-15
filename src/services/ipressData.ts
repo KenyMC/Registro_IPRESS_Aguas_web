@@ -9,6 +9,44 @@ export interface IpressRecord {
 const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRG1HXPR7diMfcx8yKjmJ4zCFp41pWpamWO_6a0pyUDPxgnWmjhwKI5VpIt2Mhi5nLL9zdmko1Fgs0E/pub?gid=750939278&single=true&output=csv";
 const STORAGE_KEY = "ipress_list_cache";
 
+/**
+ * Normaliza un código RENIPRESS al estándar de 8 dígitos con ceros iniciales.
+ * Ejemplos: "2314" -> "00002314", "00002314" -> "00002314", 2314 -> "00002314"
+ */
+export const normalizeRenipress = (code?: any): string => {
+  if (code === undefined || code === null || code === '' || code === 'S/N') return '';
+  const str = String(code).trim();
+  if (!str || str === 'S/N') return '';
+  // Si contiene solo dígitos, completar con ceros a la izquierda hasta 8 dígitos
+  if (/^\d+$/.test(str)) {
+    return str.padStart(8, '0');
+  }
+  return str;
+};
+
+/**
+ * Compara dos códigos RENIPRESS de forma segura, ignorando si tienen ceros iniciales o son numéricos.
+ * Retorna true si representan la misma IPRESS.
+ */
+export const matchRenipress = (codeA?: any, codeB?: any): boolean => {
+  if (!codeA || !codeB || codeA === 'S/N' || codeB === 'S/N') return false;
+  const strA = String(codeA).trim();
+  const strB = String(codeB).trim();
+  if (!strA || !strB) return false;
+  
+  if (strA === strB) return true;
+  
+  const normA = normalizeRenipress(strA);
+  const normB = normalizeRenipress(strB);
+  if (normA && normB && normA === normB) return true;
+  
+  const numA = Number(strA);
+  const numB = Number(strB);
+  if (!isNaN(numA) && !isNaN(numB) && numA === numB) return true;
+  
+  return false;
+};
+
 export const fetchAndCacheIpressList = async (): Promise<void> => {
   try {
     if (!navigator.onLine) return; // Don't attempt to fetch if offline

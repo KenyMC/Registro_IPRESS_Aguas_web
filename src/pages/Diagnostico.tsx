@@ -4,7 +4,7 @@ import SignatureCanvas from 'react-signature-canvas';
 import { syncEntry, SyncRequest } from '../services/api';
 import { generateUUID } from '../utils/uuid';
 import { saveRecord, getRecordById, LocalRecord } from '../services/storage';
-import { getCachedIpressList, IpressRecord } from '../services/ipressData';
+import { getCachedIpressList, IpressRecord, matchRenipress } from '../services/ipressData';
 import { getCachedCcppList, CcppRecord } from '../services/ccppData';
 import { useAuth } from '../contexts/AuthContext';
 import { MapPin, Save, RefreshCw, ArrowLeft, PenTool, Camera, Upload } from 'lucide-react';
@@ -188,11 +188,7 @@ export const Diagnostico = () => {
     if (!id && user && (user.rol === 'IPRESS' || user.rol === 'Hospital')) {
       if (user.codigoRenipress) {
         // Try to match by codigoRenipress (numeric or string)
-        const uCode = String(user.codigoRenipress).trim();
-        const matched = list.find(i => {
-          const rCode = String(i.codigo || '').trim();
-          return uCode === rCode || (uCode !== '' && rCode !== '' && !isNaN(Number(uCode)) && !isNaN(Number(rCode)) && Number(uCode) === Number(rCode));
-        });
+        const matched = list.find(i => matchRenipress(user.codigoRenipress, i.codigo));
         
         if (matched) {
           setFormData(prev => ({

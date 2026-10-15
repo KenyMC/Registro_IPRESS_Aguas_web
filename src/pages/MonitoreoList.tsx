@@ -6,6 +6,7 @@ import { syncEntry } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePdfDownloader } from '../utils/usePdfDownloader';
 import { exportRecordsToExcel, importRecordsFromExcel } from '../utils/excelUtils';
+import { matchRenipress } from '../services/ipressData';
 
 const extractDate = (val: string | undefined) => {
   if (!val) return null;
@@ -76,12 +77,7 @@ export const MonitoreoList = () => {
         // IPRESS/Hospital User
         allRecords = allRecords.filter(r => {
           if (!user.codigoRenipress) return String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase();
-          
-          const uCode = String(user.codigoRenipress).trim();
-          const rCode = String(r.codigoRenipress || '').trim();
-          
-          return uCode === rCode || 
-                 (uCode !== '' && rCode !== '' && !isNaN(Number(uCode)) && !isNaN(Number(rCode)) && Number(uCode) === Number(rCode)) ||
+          return matchRenipress(user.codigoRenipress, r.codigoRenipress) ||
                  (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase());
         });
       }

@@ -9,7 +9,7 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 /**
  * SISTEMA DE CONTROL DE VERSIONES PWA Y FORZADO DE CACHÉ
  */
-const APP_VERSION = '1.4.1';
+const APP_VERSION = '1.4.2';
 const localVersion = localStorage.getItem('APP_VERSION');
 
 if (localVersion !== APP_VERSION) {

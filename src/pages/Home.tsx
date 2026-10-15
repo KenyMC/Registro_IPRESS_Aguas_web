@@ -5,6 +5,7 @@ import { getRecords } from '../services/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, LabelList } from 'recharts';
 import * as XLSX from 'xlsx';
+import { matchRenipress, normalizeRenipress } from '../services/ipressData';
 
 const matchRedName = (a?: any, b?: any): boolean => {
   if (a === null || a === undefined || b === null || b === undefined) return false;
@@ -76,7 +77,7 @@ export const Home: React.FC = () => {
             if (user.red && r.unidadEjecutora === user.red) return true;
             if (r.unidadEjecutora && matchRedName(r.unidadEjecutora, uRed)) return true;
             const userObj = usersList.find(u => 
-              (u.codigoRenipress && r.codigoRenipress && u.codigoRenipress !== 'S/N' && String(u.codigoRenipress).trim() === String(r.codigoRenipress).trim()) ||
+              (u.codigoRenipress && r.codigoRenipress && matchRenipress(u.codigoRenipress, r.codigoRenipress)) ||
               (u.usuario && r.nombreIpress && String(u.usuario).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase()) ||
               (u.nombreIpress && r.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase())
             );
@@ -85,12 +86,7 @@ export const Home: React.FC = () => {
         } else if (user.rol === 'IPRESS' || user.rol === 'Hospital') {
           records = records.filter(r => {
             if (!user.codigoRenipress) return String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase();
-            
-            const uCode = String(user.codigoRenipress).trim();
-            const rCode = String(r.codigoRenipress || '').trim();
-            
-            return uCode === rCode || 
-                   (uCode !== '' && rCode !== '' && !isNaN(Number(uCode)) && !isNaN(Number(rCode)) && Number(uCode) === Number(rCode)) ||
+            return matchRenipress(user.codigoRenipress, r.codigoRenipress) ||
                    (String(r.nombreIpress).trim().toLowerCase() === String(user.usuario).trim().toLowerCase());
           });
         }
@@ -103,7 +99,7 @@ export const Home: React.FC = () => {
       if (isGeresaAdmin && dashboardRedFilter !== 'Todas') {
         const filterByRed = (r: any) => {
           const userObj = usersList.find(u => 
-            (u.codigoRenipress && r.codigoRenipress && u.codigoRenipress !== 'S/N' && String(u.codigoRenipress).trim() === String(r.codigoRenipress).trim()) ||
+            (u.codigoRenipress && r.codigoRenipress && matchRenipress(u.codigoRenipress, r.codigoRenipress)) ||
             (u.usuario && r.nombreIpress && String(u.usuario).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase()) ||
             (u.nombreIpress && r.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase())
           );
@@ -185,7 +181,7 @@ export const Home: React.FC = () => {
         const monitoreosPorRed: Record<string, number> = {};
         monitoreos.forEach(m => {
           const userForM = usersList.find(u => 
-            (u.codigoRenipress && m.codigoRenipress && u.codigoRenipress !== 'S/N' && String(u.codigoRenipress).trim() === String(m.codigoRenipress).trim()) ||
+            (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
             (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
             (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
           );
@@ -210,15 +206,23 @@ export const Home: React.FC = () => {
           if (!m.fechaRegistro) return;
           const mDate = new Date(m.fechaRegistro);
           if (mDate >= sevenDaysAgo) {
-            if (m.codigoRenipress) ipressConMonitoreoSemanal.add(String(m.codigoRenipress).trim());
-            else if (m.nombreIpress) ipressConMonitoreoSemanal.add(String(m.nombreIpress).trim().toLowerCase());
+            if (m.codigoRenipress) {
+              ipressConMonitoreoSemanal.add(String(m.codigoRenipress).trim());
+              const norm = normalizeRenipress(m.codigoRenipress);
+              if (norm) ipressConMonitoreoSemanal.add(norm);
+            }
+            if (m.nombreIpress) ipressConMonitoreoSemanal.add(String(m.nombreIpress).trim().toLowerCase());
           }
         });
 
         // 4. Falta Diagnóstico
         const ipressConDiagnostico = new Set();
         diagnosticos.forEach(d => {
-          if (d.codigoRenipress) ipressConDiagnostico.add(String(d.codigoRenipress).trim());
+          if (d.codigoRenipress) {
+            ipressConDiagnostico.add(String(d.codigoRenipress).trim());
+            const norm = normalizeRenipress(d.codigoRenipress);
+            if (norm) ipressConDiagnostico.add(norm);
+          }
           if (d.nombreIpress) ipressConDiagnostico.add(String(d.nombreIpress).trim().toLowerCase());
         });
         
@@ -227,7 +231,10 @@ export const Home: React.FC = () => {
         const tempDetalleList: { ipress: string; red: string; tieneDiag: boolean }[] = [];
         
         allIpress.forEach(u => {
-          const codeMatch = (u.codigoRenipress && u.codigoRenipress !== 'S/N') ? ipressConDiagnostico.has(String(u.codigoRenipress).trim()) : false;
+          const normUCode = normalizeRenipress(u.codigoRenipress);
+          const codeMatch = (u.codigoRenipress && u.codigoRenipress !== 'S/N') 
+            ? (ipressConDiagnostico.has(String(u.codigoRenipress).trim()) || (normUCode ? ipressConDiagnostico.has(normUCode) : false)) 
+            : false;
           const nameMatch = u.usuario ? ipressConDiagnostico.has(String(u.usuario).trim().toLowerCase()) : false;
           const fullNameMatch = u.nombreIpress ? ipressConDiagnostico.has(String(u.nombreIpress).trim().toLowerCase()) : false;
           const tieneDiag = codeMatch || nameMatch || fullNameMatch;
