@@ -29,9 +29,20 @@
         }
       });
     </script>
+    <script>
+      // En localhost (desarrollo), desactivar cualquier Service Worker previo que pueda bloquear el CSS
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/index.css" />
     <title>Calidad Agua IPRESS</title>
   </head>
   <body>
