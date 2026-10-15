@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, Edit2, Trash2, CheckCircle, XCircle, Filter, ChevronLeft, ChevronRight, Download, Loader2, FileSpreadsheet, Upload } from 'lucide-react';
-import { getRecords, saveRecord, getRecordById, LocalRecord } from '../services/storage';
+import { getRecords, saveRecord, getRecordById, LocalRecord, syncPendingRecords } from '../services/storage';
 import { syncEntry } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { usePdfDownloader } from '../utils/usePdfDownloader';
@@ -137,10 +137,8 @@ export const DiagnosticoList = () => {
         }
         loadRecords();
         alert(`Se importaron ${importedRecords.length} registros válidos exitosamente.`);
-        // Sync imported records
-        for (const record of importedRecords) {
-          syncEntry(record).catch(() => {});
-        }
+        // Iniciar sincronización ordenada hacia Google Sheets en segundo plano
+        syncPendingRecords().catch(console.error);
       } catch (error) {
         console.error(error);
         alert('Hubo un error al importar el archivo Excel. Verifique que el formato sea el correcto.');

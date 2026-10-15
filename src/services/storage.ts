@@ -168,6 +168,8 @@ export const syncPendingRecords = async (): Promise<void> => {
       record.isSynced = true;
       updated = true;
     }
+    // Pequeña pausa de 300ms para evitar bloqueos por cuota concurrente en Google Apps Script
+    await new Promise(res => setTimeout(res, 300));
   }
   
   if (updated) {
