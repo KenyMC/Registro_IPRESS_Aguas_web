@@ -1,6 +1,17 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.4.3] - 2026-10-15
+### Añadido
+- **Cerrojo de Concurrencia (*Mutex Lock*) en Sincronización:** Se implementó una bandera de bloqueo atómico (`isSyncing`) en `storage.ts` para la función `syncPendingRecords`. Esto impide que procesos paralelos (por ejemplo, el bucle post-importación de Excel junto al evento `online` o el temporizador en segundo plano) envíen solicitudes simultáneas a Google Apps Script, eliminando de raíz la duplicación de filas.
+- **Persistencia Inmediata por Registro Sincronizado:** En la sincronización por lotes, cada registro confirmado se actualiza inmediatamente como `isSynced = true` en `localStorage` tras cada llamada exitosa, en lugar de esperar al final de todo el lote (70+ ítems). Esto evita que una recarga o interrupción de red reenvíe registros que ya fueron creados en el servidor.
+- **Deduplicación Preventiva en Tiempo Real (`mergeRecords`):** El motor de fusión local con Google Sheets agrupa y deduplica registros activos que compartan el mismo tipo, IPRESS y fecha de evaluación. Si existieran filas gemelas en la hoja de cálculo, la interfaz gráfica descarta las copias excedentes y renderiza un único registro consolidado.
+- **Filtro Estricto Anti-Registros Fantasma (`isValidRecord`):** Validación estricta que exige obligatoriamente un nombre de IPRESS o código RENIPRESS válido para considerar un registro como legítimo. Se aplica tanto en `getRecords`, al importar archivos Excel (`importRecordsFromExcel`), como al fusionar datos del servidor (`mergeRecords`), purgando filas en blanco de manera automática.
+
+### Arreglado
+- **Depuración y Saneamiento de Base de Datos (Red Cusco Norte):** Se realizó un proceso automatizado de limpieza en Google Sheets que inactivó 72 filas duplicadas generadas durante la importación masiva de la Red Cusco Norte, restaurando la base de datos a sus 71 registros oficiales y únicos sin alterar fórmulas ni correlativos.
+- **Aislamiento de Service Worker en Desarrollo Local:** Se deshabilitó el Service Worker para `localhost` en `vite.config.ts` (`devOptions: { enabled: false }`) y se incorporó un desregistrador automático en `index.html`, evitando que las pruebas en desarrollo queden atrapadas en cachés obsoletas.
+
 ## [1.4.0] - 2026-10-13
 ### Añadido
 - **Estadísticas de Gestión para Redes:** Se habilitó el módulo gerencial de estadísticas en la pantalla de Inicio para los usuarios con roles de Red (`Administra todas las IPRESS de la Red...`). Los datos (total de IPRESS, monitoreos semanales, falta de diagnósticos, gráficos y modal de detalle) se restringen estrictamente a su propia red sin permitir la selección de otras redes.
