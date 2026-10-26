@@ -58,27 +58,45 @@ const getUserRed = (u: any): string => {
   return '';
 };
 
+// Extractor robusto de fecha con saneamiento anti-fechas corruptas (ej. 1899)
 const extractDateHelper = (val: string | undefined): string | null => {
   if (!val) return null;
   if (typeof val !== 'string') {
-    try { return new Date(val).toISOString().split('T')[0]; } catch(e) { return null; }
+    try { 
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        const iso = d.toISOString().split('T')[0];
+        const yr = parseInt(iso.substring(0, 4), 10);
+        if (yr >= 2020 && yr <= 2035) return iso;
+      }
+      return null;
+    } catch(e) { return null; }
   }
   const cleanVal = val.startsWith("'") ? val.substring(1).trim() : val.trim();
-  if (cleanVal.match(/^\d{4}-\d{2}-\d{2}/)) return cleanVal.substring(0, 10);
-  if (cleanVal.match(/^\d{2}-\d{2}-\d{4}/)) {
+  let result: string | null = null;
+  if (cleanVal.match(/^\d{4}-\d{2}-\d{2}/)) {
+    result = cleanVal.substring(0, 10);
+  } else if (cleanVal.match(/^\d{2}-\d{2}-\d{4}/)) {
     const parts = cleanVal.split(' ')[0].split('-');
-    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  if (cleanVal.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+    if (parts.length === 3) result = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  } else if (cleanVal.match(/^\d{2}\/\d{2}\/\d{4}/)) {
     const parts = cleanVal.split(' ')[0].split('/');
-    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    if (parts.length === 3) result = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  } else if (cleanVal.includes('T')) {
+    result = cleanVal.split('T')[0];
+  } else {
+    try {
+      const d = new Date(cleanVal);
+      if (!isNaN(d.getTime())) result = d.toISOString().split('T')[0];
+    } catch(e) {}
   }
-  if (cleanVal.includes('T')) return cleanVal.split('T')[0];
-  try {
-    const d = new Date(cleanVal);
-    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
-  } catch(e) {}
-  return null;
+  
+  if (result) {
+    const yr = parseInt(result.substring(0, 4), 10);
+    // Filtrar fechas anómalas previas al 2020 (como el 1899 de celdas vacías en Excel)
+    if (yr < 2020 || yr > 2035) return null;
+  }
+  return result;
 };
 
 // Tooltip personalizado para IPRESS por Unidad Ejecutora
@@ -149,27 +167,15 @@ const CustomWeeklyTooltip = ({ active, payload, unitName }: any) => {
   return null;
 };
 
-const getInitialDates = () => {
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, '0');
-  const lastDay = new Date(y, today.getMonth() + 1, 0).getDate();
-  return {
-    month: `${y}-${m}`,
-    from: `${y}-${m}-01`,
-    to: `${y}-${m}-${String(lastDay).padStart(2, '0')}`
-  };
-};
-
 export const Home: React.FC = () => {
   const { user, usersList } = useAuth();
-  const initialDates = getInitialDates();
 
   const [dashboardRedFilter, setDashboardRedFilter] = useState<string>('Todas');
-  const [selectedMonth, setSelectedMonth] = useState<string>(initialDates.month);
-  const [dateFrom, setDateFrom] = useState<string>(initialDates.from);
-  const [dateTo, setDateTo] = useState<string>(initialDates.to);
-  const [monthOptions, setMonthOptions] = useState<{ value: string; label: string }[]>([]);
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [dbMinDate, setDbMinDate] = useState<string>('');
+  const [dbMaxDate, setDbMaxDate] = useState<string>('');
+  const [datesInitialized, setDatesInitialized] = useState<boolean>(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
 
   // Estadísticas consolidadas
@@ -180,6 +186,7 @@ export const Home: React.FC = () => {
     monitoreoSemanal: 0,
     diagnosticosTotal: 0,
     faltanDiagnostico: 0,
+    chartMonthTitle: '',
     ipressPorRed: [] as { red: string; cantidad: number; monitoreos: number }[],
     coberturaData: [] as { name: string; value: number }[],
     detalleList: [] as { ipress: string; red: string; tieneDiag: boolean }[],
@@ -204,15 +211,36 @@ export const Home: React.FC = () => {
     usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital' || u.rol === 'Red').map(u => u.red).filter(Boolean)
   )).sort();
 
-  // Cambio de mes en selector
-  const handleMonthChange = (val: string) => {
-    setSelectedMonth(val);
-    if (val !== 'custom') {
-      const [y, m] = val.split('-').map(Number);
-      const lastDay = new Date(y, m, 0).getDate();
-      setDateFrom(`${y}-${String(m).padStart(2, '0')}-01`);
-      setDateTo(`${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`);
+  // Controladores de fecha con validación estricta
+  const handleDateFromChange = (val: string) => {
+    if (!val) {
+      setDateFrom('');
+      return;
     }
+    let safeVal = val;
+    if (dbMinDate && safeVal < dbMinDate) {
+      safeVal = dbMinDate;
+    }
+    setDateFrom(safeVal);
+    if (dateTo && safeVal > dateTo) {
+      setDateTo(safeVal);
+    }
+  };
+
+  const handleDateToChange = (val: string) => {
+    if (!val) {
+      setDateTo('');
+      return;
+    }
+    // Validación: como mínimo se puede filtrar hasta la fecha más antigua de la base de datos
+    let safeVal = val;
+    if (dbMinDate && safeVal < dbMinDate) {
+      safeVal = dbMinDate;
+    }
+    if (dateFrom && safeVal < dateFrom) {
+      setDateFrom(safeVal);
+    }
+    setDateTo(safeVal);
   };
 
   useEffect(() => {
@@ -221,39 +249,36 @@ export const Home: React.FC = () => {
       
       let records = getRecords().filter(r => r.estado !== 'Inactivo');
 
-      // Generar opciones de meses disponibles basados en fechas reales de registros
-      const today = new Date();
-      const curY = today.getFullYear();
-      const curM = String(today.getMonth() + 1).padStart(2, '0');
-      const curYM = `${curY}-${curM}`;
-
-      const setYM = new Set<string>();
-      setYM.add(curYM);
-
-      for (let i = 1; i <= 3; i++) {
-        const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-        setYM.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-      }
+      // 1. Detectar fecha más antigua y más actual registradas en la base de datos (válidas >= 2020)
+      let minDateFound: string | null = null;
+      let maxDateFound: string | null = null;
 
       records.forEach(r => {
         const dStr = extractDateHelper(r.fecha) || extractDateHelper(r.fechaRegistro);
-        if (dStr && dStr.length >= 7) {
-          setYM.add(dStr.substring(0, 7));
+        if (dStr) {
+          if (!minDateFound || dStr < minDateFound) minDateFound = dStr;
+          if (!maxDateFound || dStr > maxDateFound) maxDateFound = dStr;
         }
       });
 
-      const sortedYM = Array.from(setYM).sort().reverse();
-      const opts = sortedYM.map(ym => {
-        const [y, m] = ym.split('-');
-        const idx = parseInt(m, 10) - 1;
-        const name = monthNamesFull[idx] || ym;
-        const isCur = ym === curYM;
-        return {
-          value: ym,
-          label: `${name} ${y}${isCur ? ' (Mes Actual)' : ''}`
-        };
-      });
-      setMonthOptions(opts);
+      const todayStr = new Date().toISOString().split('T')[0];
+      const earliest = minDateFound || `${new Date().getFullYear()}-01-01`;
+      const latest = maxDateFound || todayStr;
+
+      setDbMinDate(earliest);
+      setDbMaxDate(latest);
+
+      // Si es la primera carga, inicializar el rango con [fecha más antigua, fecha más actual]
+      let activeDateFrom = dateFrom;
+      let activeDateTo = dateTo;
+
+      if (!datesInitialized) {
+        activeDateFrom = earliest;
+        activeDateTo = latest;
+        setDateFrom(earliest);
+        setDateTo(latest);
+        setDatesInitialized(true);
+      }
 
       // Filtro por Rol (RBAC)
       if (!isGeresaAdmin) {
@@ -296,16 +321,16 @@ export const Home: React.FC = () => {
         monitoreos = monitoreos.filter(filterByRed);
       }
 
-      // Total histórico de monitoreos
+      // Total histórico de monitoreos para la Red seleccionada
       const totalMonitoreosHistorico = monitoreos.length;
 
-      // Filtrar registros por Rango de Fechas (Desde / Hasta)
+      // Filtrar registros por Rango de Fechas (Inicio / Fin)
       const isDateInRange = (r: any) => {
-        if (!dateFrom && !dateTo) return true;
+        if (!activeDateFrom && !activeDateTo) return true;
         const dStr = extractDateHelper(r.fecha) || extractDateHelper(r.fechaRegistro);
         if (!dStr) return false;
-        if (dateFrom && dStr < dateFrom) return false;
-        if (dateTo && dStr > dateTo) return false;
+        if (activeDateFrom && dStr < activeDateFrom) return false;
+        if (activeDateTo && dStr > activeDateTo) return false;
         return true;
       };
 
@@ -317,14 +342,14 @@ export const Home: React.FC = () => {
       // -------------------------------------------------------------
       const currentTargetRed = isGeresaAdmin ? dashboardRedFilter : (getUserRed(user) || 'Sin Red');
 
-      // 1. Población total de IPRESS u Hospitales objetivo
+      // Población total de IPRESS u Hospitales objetivo
       let allIpress = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital');
       if (currentTargetRed !== 'Todas') {
         allIpress = allIpress.filter(u => matchRedName(u.red, currentTargetRed));
       }
       const totalIpressCount = allIpress.length;
 
-      // 2. IPRESS por Red / Unidad Ejecutora (Conteo total y monitoreos)
+      // IPRESS por Red / Unidad Ejecutora (Conteo total y monitoreos)
       const redCounts: Record<string, number> = {};
       const targetUsersList = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital');
       targetUsersList.forEach(u => {
@@ -350,7 +375,7 @@ export const Home: React.FC = () => {
         monitoreos: monitoreosPorRed[red] || 0
       })).sort((a, b) => b.cantidad - a.cantidad);
 
-      // 3. Monitoreos Totales en los Últimos 7 Días
+      // Monitoreos Totales en los Últimos 7 Días
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -371,7 +396,7 @@ export const Home: React.FC = () => {
         }
       });
 
-      // 4. Cobertura de Diagnósticos & Falta Diagnóstico
+      // Cobertura de Diagnósticos & Falta Diagnóstico
       const ipressConDiagnostico = new Set();
       diagnosticos.forEach(d => {
         if (d.codigoRenipress) {
@@ -411,92 +436,81 @@ export const Home: React.FC = () => {
 
       const faltanDiag = Math.max(0, totalIpressCount - conDiag);
 
-      // 5. CÁLCULO DE CUMPLIMIENTO SEMANAL DE MONITOREO (Gráfico Actividad Reciente MES)
-      const weekDataList: any[] = [];
-      if (dateFrom && dateTo) {
-        const startD = new Date(dateFrom + 'T00:00:00');
-        const endD = new Date(dateTo + 'T23:59:59');
+      // -------------------------------------------------------------
+      // CÁLCULO DE CUMPLIMIENTO SEMANAL DE MONITOREO
+      // Regla: Se enfoca siempre en el mes más actual del rango de fechas seleccionado
+      // (evitando desconfiguración por abarcar múltiples meses en el gráfico semanal)
+      // -------------------------------------------------------------
+      const referenceDateStr = activeDateTo || activeDateFrom || latest;
+      const [tYearStr, tMonthStr] = referenceDateStr.split('-');
+      const targetYear = parseInt(tYearStr, 10);
+      const targetMonth = parseInt(tMonthStr, 10); // 1-12
+
+      const targetMonthName = monthNamesFull[targetMonth - 1] || tMonthStr;
+      const targetMonthShort = monthNamesShort[targetMonth - 1] || tMonthStr;
+      const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+
+      const targetMonthWeeks = [
+        { wNum: 1, startDay: 1, endDay: 7 },
+        { wNum: 2, startDay: 8, endDay: 14 },
+        { wNum: 3, startDay: 15, endDay: 21 },
+        { wNum: 4, startDay: 22, endDay: 28 },
+        { wNum: 5, startDay: 29, endDay: daysInTargetMonth }
+      ];
+
+      const weekDataList = targetMonthWeeks.map(w => {
+        const sStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(w.startDay).padStart(2, '0')}`;
+        const eStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(w.endDay).padStart(2, '0')}`;
         
-        if (!isNaN(startD.getTime()) && !isNaN(endD.getTime()) && startD <= endD) {
-          let currD = new Date(startD);
-          let wIdx = 1;
-          
-          while (currD <= endD) {
-            let nextD = new Date(currD);
-            nextD.setDate(nextD.getDate() + 6);
-            if (nextD > endD) {
-              nextD = new Date(endD);
+        const shortLabel = `Sem. ${w.wNum} (${w.startDay}-${w.endDay} ${targetMonthShort})`;
+        const fullLabel = `Semana ${w.wNum} (${String(w.startDay).padStart(2, '0')} al ${String(w.endDay).padStart(2, '0')} de ${targetMonthName} ${targetYear})`;
+
+        const uniqueMonitoredIpress = new Set<string>();
+        let samplesCount = 0;
+
+        monitoreos.forEach(m => {
+          const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
+          if (mDate && mDate >= sStr && mDate <= eStr) {
+            samplesCount++;
+
+            const matchedUser = allIpress.find(u =>
+              (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
+              (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
+              (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
+            );
+
+            if (matchedUser) {
+              const key = String(matchedUser.codigoRenipress || matchedUser.usuario || matchedUser.nombreIpress || 'ipress-item');
+              uniqueMonitoredIpress.add(key);
+            } else if (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed))) {
+              uniqueMonitoredIpress.add(m.codigoRenipress || m.nombreIpress || `rec-${samplesCount}`);
             }
-            
-            const sStr = currD.toISOString().split('T')[0];
-            const eStr = nextD.toISOString().split('T')[0];
-            
-            const sDay = currD.getDate();
-            const eDay = nextD.getDate();
-            const sMShort = monthNamesShort[currD.getMonth()];
-            const eMShort = monthNamesShort[nextD.getMonth()];
-            
-            const shortLabel = sMShort === eMShort
-              ? `Sem. ${wIdx} (${sDay}-${eDay} ${sMShort})`
-              : `Sem. ${wIdx} (${sDay} ${sMShort} - ${eDay} ${eMShort})`;
-              
-            const fullLabel = sMShort === eMShort
-              ? `Semana ${wIdx} (${sDay} al ${eDay} de ${monthNamesFull[currD.getMonth()]})`
-              : `Semana ${wIdx} (${sDay} ${sMShort} al ${eDay} ${eMShort})`;
-            
-            // Contar IPRESS únicas que cumplieron monitoreo en esta semana
-            const uniqueMonitoredIpress = new Set<string>();
-            let samplesCount = 0;
-            
-            monitoreos.forEach(m => {
-              const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
-              if (mDate && mDate >= sStr && mDate <= eStr) {
-                samplesCount++;
-                
-                const matchedUser = allIpress.find(u =>
-                  (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
-                  (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
-                  (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
-                );
-                
-                if (matchedUser) {
-                  const key = String(matchedUser.codigoRenipress || matchedUser.usuario || matchedUser.nombreIpress || 'ipress-item');
-                  uniqueMonitoredIpress.add(key);
-                } else if (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed))) {
-                  uniqueMonitoredIpress.add(m.codigoRenipress || m.nombreIpress || `rec-${samplesCount}`);
-                }
-              }
-            });
-            
-            const monitoredCount = Math.min(totalIpressCount, uniqueMonitoredIpress.size);
-            const faltanCount = Math.max(0, totalIpressCount - monitoredCount);
-            const pct = totalIpressCount > 0 ? Math.round((monitoredCount / totalIpressCount) * 100) : 0;
-            
-            weekDataList.push({
-              name: shortLabel,
-              fullName: fullLabel,
-              Monitoreadas: monitoredCount,
-              Faltantes: faltanCount,
-              Meta: totalIpressCount,
-              Porcentaje: pct,
-              TotalMuestras: samplesCount
-            });
-            
-            const advance = new Date(nextD);
-            advance.setDate(advance.getDate() + 1);
-            currD = advance;
-            wIdx++;
           }
-        }
-      }
+        });
+
+        const monitoredCount = Math.min(totalIpressCount, uniqueMonitoredIpress.size);
+        const faltanCount = Math.max(0, totalIpressCount - monitoredCount);
+        const pct = totalIpressCount > 0 ? Math.round((monitoredCount / totalIpressCount) * 100) : 0;
+
+        return {
+          name: shortLabel,
+          fullName: fullLabel,
+          Monitoreadas: monitoredCount,
+          Faltantes: faltanCount,
+          Meta: totalIpressCount,
+          Porcentaje: pct,
+          TotalMuestras: samplesCount
+        };
+      });
 
       setGestionStats({
         totalIpress: totalIpressCount,
         monitoreosTotal: monitoreosEnPeriodo.length,
         monitoreosHistoricos: totalMonitoreosHistorico,
         monitoreoSemanal: totalMonitoreosSemanal,
-        diagnosticosTotal: (dateFrom || dateTo) ? diagnosticosEnPeriodo.length : diagnosticos.length,
+        diagnosticosTotal: (activeDateFrom || activeDateTo) ? diagnosticosEnPeriodo.length : diagnosticos.length,
         faltanDiagnostico: faltanDiag,
+        chartMonthTitle: `${targetMonthName} ${targetYear}`,
         ipressPorRed: ipressPorRedArr,
         coberturaData: [
           { name: 'Con Diagnóstico', value: conDiag },
@@ -512,7 +526,7 @@ export const Home: React.FC = () => {
     window.addEventListener('recordsUpdated', loadData);
     return () => window.removeEventListener('recordsUpdated', loadData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, dashboardRedFilter, dateFrom, dateTo, usersList]);
+  }, [user, dashboardRedFilter, dateFrom, dateTo, usersList, datesInitialized]);
 
   const exportarDetalleExcel = () => {
     const data = gestionStats.detalleList.map(item => ({
@@ -552,7 +566,7 @@ export const Home: React.FC = () => {
     : 0;
 
   return (
-    <div className="container animate-fade-in">
+    <div className="dashboard-fullwidth animate-fade-in">
       {/* HEADER PRINCIPAL */}
       <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: 'var(--primary)', marginBottom: '0.5rem' }}>Sistema de Control IPRESS</h1>
@@ -561,23 +575,24 @@ export const Home: React.FC = () => {
 
       {/* SECCIÓN ESTADÍSTICAS DE GESTIÓN (GERESA / REDES) */}
       <div style={{ marginBottom: '3rem' }}>
-        {/* BARRA DE FILTROS: Unidad Ejecutora y Rango de Fecha */}
+        {/* BARRA DE FILTROS EN UNA SOLA LÍNEA */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
           flexWrap: 'wrap',
-          gap: '1rem',
+          gap: '1.25rem',
           marginBottom: '1.5rem',
-          padding: '1rem 1.25rem',
+          padding: '1rem 1.5rem',
           backgroundColor: '#ffffff',
           borderRadius: '12px',
           boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
-          border: '1px solid #e2e8f0'
+          border: '1px solid #e2e8f0',
+          width: '100%'
         }}>
           {/* TÍTULO DE LA SECCIÓN */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-            <div style={{ padding: '0.45rem', backgroundColor: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', color: 'var(--primary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 'fit-content' }}>
+            <div style={{ padding: '0.45rem', backgroundColor: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
               <BarChart3 size={22} />
             </div>
             <div>
@@ -590,11 +605,11 @@ export const Home: React.FC = () => {
             </div>
           </div>
 
-          {/* CONTENEDOR DE FILTROS */}
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          {/* CONTENEDOR DE FILTROS EN LÍNEA */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1.25rem' }}>
             {/* FILTRO 1: UNIDAD EJECUTORA */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 Filtrar por Unidad Ejecutora:
               </span>
               {isGeresaAdmin ? (
@@ -606,7 +621,7 @@ export const Home: React.FC = () => {
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     outline: 'none',
-                    fontSize: '0.85rem',
+                    fontSize: '0.875rem',
                     backgroundColor: '#ffffff',
                     color: 'var(--text)',
                     cursor: 'pointer',
@@ -620,7 +635,7 @@ export const Home: React.FC = () => {
                 </select>
               ) : (
                 <span style={{
-                  fontSize: '0.85rem',
+                  fontSize: '0.875rem',
                   fontWeight: 600,
                   color: 'var(--primary-dark)',
                   backgroundColor: '#eff6ff',
@@ -633,79 +648,53 @@ export const Home: React.FC = () => {
               )}
             </div>
 
-            {/* FILTRO 2: RANGO DE FECHA */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+            {/* FILTRO 2: RANGO DE FECHA (SOLO INICIO Y FIN, CON VALIDACIÓN MÍNIMA DE DB) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 Rango de fecha:
               </span>
-              <select
-                value={selectedMonth}
-                onChange={(e) => handleMonthChange(e.target.value)}
-                style={{
-                  padding: '0.45rem 0.75rem',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  outline: 'none',
-                  fontSize: '0.85rem',
-                  backgroundColor: '#ffffff',
-                  color: 'var(--text)',
-                  cursor: 'pointer',
-                  fontWeight: 500
-                }}
-              >
-                {monthOptions.map(m => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-                <option value="custom">📅 Personalizado...</option>
-              </select>
-
-              {/* INPUTS DE FECHA DESDE / HASTA */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#f8fafc', padding: '0.3rem 0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Inicio:</span>
                 <input
                   type="date"
                   value={dateFrom}
-                  onChange={(e) => {
-                    setDateFrom(e.target.value);
-                    setSelectedMonth('custom');
-                  }}
+                  min={dbMinDate}
+                  max={dateTo || dbMaxDate || '2030-12-31'}
+                  onChange={(e) => handleDateFromChange(e.target.value)}
                   style={{
-                    padding: '0.4rem 0.5rem',
+                    padding: '0.35rem 0.5rem',
                     borderRadius: '6px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.8rem',
-                    outline: 'none'
+                    fontSize: '0.825rem',
+                    outline: 'none',
+                    backgroundColor: '#ffffff'
                   }}
-                  title="Fecha de inicio"
+                  title={`Fecha inicial (Mínima registrada: ${dbMinDate})`}
                 />
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>al</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, margin: '0 0.15rem' }}>Fin:</span>
                 <input
                   type="date"
                   value={dateTo}
-                  onChange={(e) => {
-                    setDateTo(e.target.value);
-                    setSelectedMonth('custom');
-                  }}
+                  min={dbMinDate}
+                  max={dbMaxDate || '2030-12-31'}
+                  onChange={(e) => handleDateToChange(e.target.value)}
                   style={{
-                    padding: '0.4rem 0.5rem',
+                    padding: '0.35rem 0.5rem',
                     borderRadius: '6px',
                     border: '1px solid #cbd5e1',
-                    fontSize: '0.8rem',
-                    outline: 'none'
+                    fontSize: '0.825rem',
+                    outline: 'none',
+                    backgroundColor: '#ffffff'
                   }}
-                  title="Fecha de fin"
+                  title={`Fecha final (No puede ser menor a la fecha más antigua registrada: ${dbMinDate})`}
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* 5 TARJETAS KPI CON ICONOS REPRESENTATIVOS */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-          gap: '1rem', 
-          marginBottom: '2rem' 
-        }}>
+        {/* 5 TARJETAS KPI EN UNA SOLA LÍNEA HORIZONTAL COMPLETA */}
+        <div className="dashboard-kpi-row">
           {/* 1. Establecimientos Región Cusco */}
           <div className="glass-panel" style={{ 
             padding: '1.25rem', 
@@ -765,6 +754,11 @@ export const Home: React.FC = () => {
               <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', color: 'var(--primary-dark)', fontWeight: 700 }}>
                 {gestionStats.monitoreosTotal}
               </h3>
+              {gestionStats.monitoreosHistoricos !== gestionStats.monitoreosTotal && (
+                <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  Total histórico: {gestionStats.monitoreosHistoricos}
+                </p>
+              )}
             </div>
           </div>
 
@@ -862,18 +856,18 @@ export const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* GRÁFICO 1: ACTIVIDAD RECIENTE (MES) - CUMPLIMIENTO SEMANAL DE MONITOREO */}
+        {/* GRÁFICO 1: ACTIVIDAD RECIENTE (MES MÁS ACTUAL) - CUMPLIMIENTO SEMANAL DE MONITOREO */}
         <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <BarChart3 size={20} color="var(--primary)" />
                 <h3 style={{ margin: 0, color: 'var(--primary-dark)', fontSize: '1.15rem' }}>
-                  Actividad Reciente (MES) - Cumplimiento Semanal de Monitoreo
+                  Actividad Reciente ({gestionStats.chartMonthTitle}) - Cumplimiento Semanal de Monitoreo
                 </h3>
               </div>
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Seguimiento semanal por IPRESS: {targetRed === 'Todas' ? 'Toda la Región Cusco' : targetRed} (Meta: {gestionStats.totalIpress} {unitName} semanales)
+                Evaluación mensual por semanas de {gestionStats.chartMonthTitle} en {targetRed === 'Todas' ? 'toda la Región Cusco' : targetRed} (Meta: {gestionStats.totalIpress} {unitName} semanales)
               </p>
             </div>
 

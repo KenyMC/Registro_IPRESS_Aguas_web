@@ -1,7 +1,19 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
-## [1.4.5] - 2026-10-26
+## [1.4.6] - 2026-10-26
+### Añadido / Optimizado
+- **Diseño a Ancho Completo (*Full Window Width*):**
+  - Se extendió el contenedor del Inicio a todo el ancho de la ventana (`dashboard-fullwidth`), permitiendo que el panel superior de filtros entre perfectamente en una sola línea horizontal.
+  - Se estructuraron las 5 tarjetas de totales KPI (`dashboard-kpi-row`) para que en pantallas de escritorio se distribuyan equitativamente (20% cada una) en **una sola línea horizontal**, ofreciendo una vista ejecutiva pulcra y profesional.
+- **Simplificación del Filtro Rango de Fecha:**
+  - Se eliminó el menú desplegable de meses y se reemplazó por campos directos y limpios de **Inicio** y **Fin**.
+  - **Saneamiento de Fechas Corruptas:** Se filtraron fechas inválidas procedentes de celdas vacías en Excel (como el valor erróneo de 1899), restringiendo el análisis estrictamente a años válidos contemporáneos (>= 2020).
+  - **Inicialización Automática Extrema:** Al cargar el Inicio, el rango de fechas se inicializa por defecto desde la **fecha más antigua registrada en la base de datos** hasta la **fecha más actual registrada**.
+  - **Validación Estricta de Fecha Fin:** Se implementó una validación en la fecha Fin (`min={dbMinDate}`) que restringe que el usuario no pueda seleccionar una fecha anterior a la más antigua existente en la base de datos, garantizando coherencia temporal.
+- **Enfoque Mensual Estable en Gráfico Semanal:**
+  - Al filtrar rangos amplios de fechas (ej. desde agosto hasta octubre), el gráfico *Actividad Reciente (MES) - Cumplimiento Semanal de Monitoreo* se enfoca de manera automática e inteligente en el **mes más actual del rango seleccionado** (ej. Octubre).
+  - Esto evita la desconfiguración o saturación de columnas por intentar agrupar múltiples meses en un único gráfico semanal, preservando la visualización clara de las 5 semanas exactas del mes objetivo con su meta y porcentaje de cumplimiento.
 ### Añadido / Reorganizado
 - **Reestructuración Integral del Dashboard Principal (Inicio):**
   - Se eliminó la redundancia de las 3 tarjetas superiores antiguas y el gráfico diario no informativo, unificando la pantalla directamente bajo el encabezado *Sistema de Control IPRESS / Dashboard y Resumen de Operaciones*.

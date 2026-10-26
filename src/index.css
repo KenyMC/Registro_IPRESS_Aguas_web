@@ -962,3 +962,25 @@ tr:hover td {
   animation: pulseButtonHighlight 2.5s infinite;
 }
 
+/* Dashboard Fullwidth Layout y 5 KPIs en una sola línea */
+.dashboard-fullwidth {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.5rem 1.75rem 2.5rem 1.75rem;
+  box-sizing: border-box;
+}
+
+.dashboard-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+  width: 100%;
+}
+
+@media (max-width: 1180px) {
+  .dashboard-kpi-row {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
