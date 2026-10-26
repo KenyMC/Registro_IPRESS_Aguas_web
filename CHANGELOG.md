@@ -1,7 +1,27 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
-## [1.4.4] - 2026-10-26
+## [1.4.5] - 2026-10-26
+### Añadido / Reorganizado
+- **Reestructuración Integral del Dashboard Principal (Inicio):**
+  - Se eliminó la redundancia de las 3 tarjetas superiores antiguas y el gráfico diario no informativo, unificando la pantalla directamente bajo el encabezado *Sistema de Control IPRESS / Dashboard y Resumen de Operaciones*.
+  - Se implementó la sección **Estadísticas de Gestión (GERESA / Redes)** con un panel superior de controles que incluye:
+    - **Filtro por Unidad Ejecutora:** Selección ágil de "Todas" (Región Cusco) o de cualquier Red específica / Hospitales.
+    - **Filtro de Rango de Fecha / Selector Mensual:** Selector de mes en 1 clic (Mes actual, meses anteriores detectados en la base de datos) combinado con selectores de fechas *Desde* y *Hasta* para intervalos personalizados.
+  - **5 Tarjetas KPI Consolidadas con Iconografía Representativa:**
+    1. `Establecimientos Región Cusco` (o nombre de la Red/Hospital seleccionada) con icono institucional `Building2` en tono azul.
+    2. `Monitoreos` con icono de gota `Droplet` en tono ámbar (mostrando la cantidad en el período seleccionado y el acumulado histórico).
+    3. `Monitoreos (Últimos 7 días)` con icono de reloj de calendario `CalendarClock` en tono esmeralda.
+    4. `Diagnósticos` con icono de lista `ClipboardList` en tono violeta.
+    5. `Falta Diagnóstico` con icono de alerta `AlertTriangle` en tono rojo, indicando la cantidad exacta de establecimientos pendientes.
+- **Nuevo Gráfico de Cumplimiento Semanal de Monitoreo (Actividad Reciente MES):**
+  - Gráfico de barras verticales por semanas del mes (Semana 1: 1-7, Semana 2: 8-14, Semana 3: 15-21, Semana 4: 22-28, Semana 5: 29 a fin de mes).
+  - Permite verificar si cada Red o la región completa cumplió con el monitoreo semanal de todas sus IPRESS.
+  - Muestra barras comparativas por semana: **IPRESS Monitoreadas** (verde esmeralda) vs. **Faltan Monitorear** (rojo alerta), con etiquetas de valores directas sobre cada barra.
+  - Línea de referencia horizontal (*ReferenceLine*) con la **Meta** exacta de establecimientos de la Red (ej. 51 IPRESS para Red Chumbivilcas, 371 para Región Cusco).
+  - Indicador superior de cumplimiento promedio mensual y tooltip interactivo detallado con meta semanal, porcentaje de cumplimiento y total de registros de calidad de agua.
+- **Reordenamiento Secuencial de Gráficos:**
+  - Debajo del gráfico de cumplimiento semanal se ubican en cuadrícula balanceada los gráficos de **IPRESS por Unidad Ejecutora** y **Cobertura de Diagnósticos** (con su respectiva flecha animada y acceso al modal de detalle con exportación a Excel).
 ### Añadido
 - **Botón de Inicio en Barra de Navegación Principal:** Se agregó el enlace directo **Inicio** con icono institucional (`Home`) a la izquierda de "Diagnóstico" en la barra de navegación de escritorio (`Header.tsx`). Esto permite a los usuarios regresar de forma inmediata y clara al Dashboard principal desde cualquier sección.
 - **Flecha y Guía Animada en Cobertura de Diagnósticos:** Se incorporó una flecha curva animada con trazo de flujo (`dash-flow-arrow`), un indicador visual interactivo (`Ver quiénes faltan`) y un efecto de pulso en el botón **Ver Detalle**. La animación se origina directamente desde el sector rojo "Falta Diagnóstico" del gráfico hacia el botón, guiando de forma intuitiva al usuario a consultar el listado detallado de establecimientos pendientes.
