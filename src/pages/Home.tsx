@@ -30,6 +30,55 @@ const getUserRed = (u: any): string => {
   return '';
 };
 
+const extractDateHelper = (val: string | undefined): string | null => {
+  if (!val) return null;
+  if (typeof val !== 'string') {
+    try { return new Date(val).toISOString().split('T')[0]; } catch(e) { return null; }
+  }
+  if (val.match(/^\d{4}-\d{2}-\d{2}/)) return val.substring(0, 10);
+  if (val.match(/^\d{2}-\d{2}-\d{4}/)) {
+    const parts = val.split(' ')[0].split('-');
+    if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  if (val.includes('T')) return val.split('T')[0];
+  try {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  } catch(e) {}
+  return null;
+};
+
+// Tooltip personalizado para IPRESS por Unidad Ejecutora (Muestra 'Cant. Hospitales' cuando corresponda)
+const CustomBarTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const isHospitalRow = String(label).trim().toLowerCase() === 'hospital' || String(label).toLowerCase().includes('hospital');
+    return (
+      <div style={{
+        backgroundColor: '#fff',
+        padding: '0.6rem 0.9rem',
+        borderRadius: '8px',
+        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+        border: '1px solid #e2e8f0',
+        fontSize: '0.875rem'
+      }}>
+        <p style={{ margin: '0 0 0.4rem 0', fontWeight: 600, color: 'var(--text)' }}>{label}</p>
+        {payload.map((entry: any, index: number) => {
+          const isCantidad = entry.dataKey === 'cantidad';
+          const title = isCantidad 
+            ? (isHospitalRow ? 'Cant. Hospitales' : 'Cant. IPRESS') 
+            : entry.name;
+          return (
+            <p key={`tooltip-item-${index}`} style={{ margin: '0.25rem 0', color: entry.color, fontWeight: 500 }}>
+              {title} : {entry.value}
+            </p>
+          );
+        })}
+      </div>
+    );
+  }
+  return null;
+};
+
 export const Home: React.FC = () => {
   const [stats, setStats] = useState({
     totalDiagnosticos: 0,
@@ -197,21 +246,24 @@ export const Home: React.FC = () => {
           monitoreos: monitoreosPorRed[red] || 0
         })).sort((a, b) => b.cantidad - a.cantidad);
 
-        // 3. Monitoreo Semanal (IPRESS únicas que enviaron monitoreo en últimos 7 días)
+        // 3. Monitoreos Totales en los Últimos 7 Días
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
         
-        const ipressConMonitoreoSemanal = new Set();
+        let totalMonitoreosSemanal = 0;
         monitoreos.forEach(m => {
-          if (!m.fechaRegistro) return;
-          const mDate = new Date(m.fechaRegistro);
-          if (mDate >= sevenDaysAgo) {
-            if (m.codigoRenipress) {
-              ipressConMonitoreoSemanal.add(String(m.codigoRenipress).trim());
-              const norm = normalizeRenipress(m.codigoRenipress);
-              if (norm) ipressConMonitoreoSemanal.add(norm);
+          const dateStr = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
+          if (dateStr) {
+            const mDate = new Date(dateStr + 'T00:00:00');
+            if (mDate >= sevenDaysAgo) {
+              totalMonitoreosSemanal++;
             }
-            if (m.nombreIpress) ipressConMonitoreoSemanal.add(String(m.nombreIpress).trim().toLowerCase());
+          } else if (m.fechaRegistro) {
+            const mDate = new Date(m.fechaRegistro);
+            if (!isNaN(mDate.getTime()) && mDate >= sevenDaysAgo) {
+              totalMonitoreosSemanal++;
+            }
           }
         });
 
@@ -258,7 +310,7 @@ export const Home: React.FC = () => {
 
         setGeresaStats({
           totalIpress: totalIpressCount,
-          monitoreoSemanal: ipressConMonitoreoSemanal.size,
+          monitoreoSemanal: totalMonitoreosSemanal,
           faltanDiagnostico: faltanDiag,
           ipressPorRed: ipressPorRedArr,
           coberturaData: [
@@ -418,7 +470,7 @@ export const Home: React.FC = () => {
             </div>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Monitoreos (Últimos 7 días)</p>
-              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: '#10b981' }}>{geresaStats.monitoreoSemanal} <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>{unitName}</span></h3>
+              <h3 style={{ margin: '0.5rem 0 0 0', fontSize: '1.8rem', color: '#10b981' }}>{geresaStats.monitoreoSemanal}</h3>
             </div>
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
               <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Falta Diagnóstico</p>
@@ -438,7 +490,7 @@ export const Home: React.FC = () => {
                       <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
                       <YAxis dataKey="red" type="category" width={140} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                       <Tooltip 
-                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                        content={<CustomBarTooltip />}
                         cursor={{ fill: '#f1f5f9' }}
                       />
                       <Legend />
@@ -459,9 +511,9 @@ export const Home: React.FC = () => {
             </div>
 
             {/* COBERTURA PIE CHART */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
+            <div className="glass-panel" style={{ padding: '1.5rem', position: 'relative' }}>
               <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>Cobertura de Diagnósticos</h4>
-              <div style={{ height: '300px', width: '100%' }}>
+              <div style={{ height: '300px', width: '100%', position: 'relative' }}>
                 {geresaStats.totalIpress > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -500,19 +552,95 @@ export const Home: React.FC = () => {
                     Cargando estadísticas...
                   </div>
                 )}
+
+                {/* FLECHA CURVA ANIMADA QUE SALE DE LA SECCIÓN ROJA APUNTANDO AL BOTÓN VER DETALLE */}
+                {geresaStats.faltanDiagnostico > 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    left: '52%',
+                    top: '185px',
+                    right: '30px',
+                    bottom: '5px',
+                    pointerEvents: 'none',
+                    zIndex: 2
+                  }}>
+                    <svg width="100%" height="100%" viewBox="0 0 120 75" fill="none" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
+                      <defs>
+                        <marker id="arrowhead-red" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+                          <polygon points="0 0, 8 3, 0 6" fill="#ef4444" />
+                        </marker>
+                        <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#ef4444" stopOpacity="1" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M 12 8 Q 45 45 112 70"
+                        stroke="url(#redGrad)"
+                        strokeWidth="2.5"
+                        strokeDasharray="6 4"
+                        markerEnd="url(#arrowhead-red)"
+                        className="dash-flow-arrow"
+                      />
+                    </svg>
+                  </div>
+                )}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+
+              {/* CONTENEDOR INFERIOR CON INDICADOR ANIMADO Y BOTÓN VER DETALLE */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
+                {geresaStats.faltanDiagnostico > 0 && (
+                  <div 
+                    onClick={() => setShowDetalleModal(true)}
+                    title="Clic para ver la lista de IPRESS con y sin diagnóstico"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#fee2e2',
+                      border: '1.5px solid #ef4444',
+                      color: '#b91c1c',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '4px 10px',
+                      borderRadius: '16px',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      animation: 'pulseBadgeRed 2s infinite ease-in-out',
+                      zIndex: 3
+                    }}
+                  >
+                    <span style={{ 
+                      display: 'inline-block', 
+                      width: '7px', 
+                      height: '7px', 
+                      borderRadius: '50%', 
+                      backgroundColor: '#ef4444', 
+                      animation: 'blinkDotRed 1.2s infinite' 
+                    }}></span>
+                    <span>Ver quiénes faltan</span>
+                    <span style={{ animation: 'bounceArrowDiag 1.5s infinite ease-in-out', display: 'inline-block' }}>👉</span>
+                  </div>
+                )}
+
                 <button
                   onClick={() => setShowDetalleModal(true)}
+                  className={geresaStats.faltanDiagnostico > 0 ? "btn-ver-detalle-pulse" : ""}
                   style={{
-                    padding: '0.4rem 1rem',
-                    backgroundColor: 'var(--primary-light)',
-                    color: 'var(--primary-dark)',
-                    border: '1px solid var(--primary)',
+                    padding: '0.45rem 1.1rem',
+                    backgroundColor: geresaStats.faltanDiagnostico > 0 ? '#eff6ff' : 'var(--primary-light)',
+                    color: geresaStats.faltanDiagnostico > 0 ? '#1d4ed8' : 'var(--primary-dark)',
+                    border: geresaStats.faltanDiagnostico > 0 ? '1.5px solid #3b82f6' : '1px solid var(--primary)',
                     borderRadius: '6px',
                     fontSize: '0.875rem',
                     cursor: 'pointer',
-                    fontWeight: 500
+                    fontWeight: 600,
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    zIndex: 3
                   }}
                 >
                   Ver Detalle

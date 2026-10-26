@@ -1,6 +1,15 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.4.4] - 2026-10-26
+### Añadido
+- **Botón de Inicio en Barra de Navegación Principal:** Se agregó el enlace directo **Inicio** con icono institucional (`Home`) a la izquierda de "Diagnóstico" en la barra de navegación de escritorio (`Header.tsx`). Esto permite a los usuarios regresar de forma inmediata y clara al Dashboard principal desde cualquier sección.
+- **Flecha y Guía Animada en Cobertura de Diagnósticos:** Se incorporó una flecha curva animada con trazo de flujo (`dash-flow-arrow`), un indicador visual interactivo (`Ver quiénes faltan`) y un efecto de pulso en el botón **Ver Detalle**. La animación se origina directamente desde el sector rojo "Falta Diagnóstico" del gráfico hacia el botón, guiando de forma intuitiva al usuario a consultar el listado detallado de establecimientos pendientes.
+
+### Mejorado / Arreglado
+- **Claridad Métrica en Monitoreos (Últimos 7 días):** Se eliminó la etiqueta confusa "IPRESS" de la tarjeta de monitoreos semanales, mostrando estrictamente la cifra total de evaluaciones de monitoreo efectuadas en el período. Esto previene la interpretación errónea de haber monitoreado más establecimientos que los existentes en la Red.
+- **Precisión Semántica en Tooltips de Hospitales:** En el gráfico de barras *IPRESS por Unidad Ejecutora*, al posar el cursor sobre la barra de "Hospital", el tooltip ahora indica formalmente `Cant. Hospitales : X` en lugar de `Cant. IPRESS : X`.
+
 ## [1.4.3] - 2026-10-15
 ### Añadido
 - **Cerrojo de Concurrencia (*Mutex Lock*) en Sincronización:** Se implementó una bandera de bloqueo atómico (`isSyncing`) en `storage.ts` para la función `syncPendingRecords`. Esto impide que procesos paralelos (por ejemplo, el bucle post-importación de Excel junto al evento `online` o el temporizador en segundo plano) envíen solicitudes simultáneas a Google Apps Script, eliminando de raíz la duplicación de filas.

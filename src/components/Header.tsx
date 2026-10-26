@@ -79,6 +79,14 @@ export const Header = () => {
         <div className="header-nav-wrapper desktop-only" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <nav className="header-nav">
             <NavLink 
+              to="/" 
+              end
+              className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
+            >
+              <Home size={18} className="nav-icon" />
+              <span>Inicio</span>
+            </NavLink>
+            <NavLink 
               to="/diagnostico" 
               className={({ isActive }) => isActive ? "nav-link active" : "nav-link"}
             >
