@@ -104,34 +104,52 @@ const extractDateHelper = (val: string | undefined): string | null => {
 const captureChartSvgAsBase64 = async (elementId: string): Promise<string | null> => {
   const container = document.getElementById(elementId);
   if (!container) return null;
-  const svg = container.querySelector('svg');
+  // Buscar específicamente el SVG de Recharts (svg.recharts-surface), NUNCA el primer SVG (que puede ser un icono Lucide)
+  const svg = (container.querySelector('svg.recharts-surface') || container.querySelector('.recharts-wrapper svg')) as SVGSVGElement | null;
   if (!svg) return null;
 
   try {
-    const clonedSvg = svg.cloneNode(true) as SVGSVGElement;
     const bbox = svg.getBoundingClientRect();
     const width = Math.max(svg.clientWidth || bbox.width || 750, 600);
     const height = Math.max(svg.clientHeight || bbox.height || 320, 260);
 
-    clonedSvg.setAttribute('width', `${width}`);
-    clonedSvg.setAttribute('height', `${height}`);
-    clonedSvg.setAttribute('style', 'background-color: #ffffff;');
+    const clonedSvg = svg.cloneNode(true) as SVGSVGElement;
+    clonedSvg.setAttribute('width', `${Math.round(width)}`);
+    clonedSvg.setAttribute('height', `${Math.round(height)}`);
+    clonedSvg.setAttribute('viewBox', svg.getAttribute('viewBox') || `0 0 ${width} ${height}`);
+    clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+    // Fondo blanco en el SVG
+    const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bgRect.setAttribute('width', '100%');
+    bgRect.setAttribute('height', '100%');
+    bgRect.setAttribute('fill', '#ffffff');
+    clonedSvg.insertBefore(bgRect, clonedSvg.firstChild);
 
     const origElements = Array.from(svg.querySelectorAll('*'));
     const cloneElements = Array.from(clonedSvg.querySelectorAll('*'));
     origElements.forEach((orig, i) => {
-      const clone = cloneElements[i];
+      const clone = cloneElements[i + 1]; // +1 por el bgRect
       if (orig && clone) {
         const style = window.getComputedStyle(orig);
         const fill = style.getPropertyValue('fill');
         const stroke = style.getPropertyValue('stroke');
+        const strokeWidth = style.getPropertyValue('stroke-width');
         const fontSize = style.getPropertyValue('font-size');
         const fontWeight = style.getPropertyValue('font-weight');
+        const textAnchor = style.getPropertyValue('text-anchor');
+        const dominantBaseline = style.getPropertyValue('dominant-baseline');
+        const opacity = style.getPropertyValue('opacity');
+
         if (fill && fill !== 'none') clone.setAttribute('fill', fill);
         if (stroke && stroke !== 'none') clone.setAttribute('stroke', stroke);
-        clone.setAttribute('font-family', 'Arial, sans-serif');
+        if (strokeWidth && strokeWidth !== '0px') clone.setAttribute('stroke-width', strokeWidth);
         if (fontSize) clone.setAttribute('font-size', fontSize);
         if (fontWeight) clone.setAttribute('font-weight', fontWeight);
+        if (textAnchor) clone.setAttribute('text-anchor', textAnchor);
+        if (dominantBaseline) clone.setAttribute('dominant-baseline', dominantBaseline);
+        if (opacity) clone.setAttribute('opacity', opacity);
+        clone.setAttribute('font-family', 'Arial, sans-serif');
       }
     });
 
@@ -144,14 +162,13 @@ const captureChartSvgAsBase64 = async (elementId: string): Promise<string | null
       img.onload = () => {
         const canvas = document.createElement('canvas');
         const scale = 2; // Alta resolución
-        canvas.width = width * scale;
-        canvas.height = height * scale;
+        canvas.width = Math.round(width * scale);
+        canvas.height = Math.round(height * scale);
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.scale(scale, scale);
-          ctx.drawImage(img, 0, 0, width, height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           const dataUrl = canvas.toDataURL('image/png');
           URL.revokeObjectURL(blobUrl);
           resolve(dataUrl.replace(/^data:image\/png;base64,/, ''));
@@ -172,31 +189,62 @@ const captureChartSvgAsBase64 = async (elementId: string): Promise<string | null
   }
 };
 
-// Tooltip personalizado para IPRESS por Unidad Ejecutora
+// Tooltip personalizado para IPRESS por Unidad Ejecutora (avance semanal)
 const CustomBarTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const isHospitalRow = String(label).trim().toLowerCase() === 'hospital' || String(label).toLowerCase().includes('hospital');
     return (
       <div style={{
         backgroundColor: '#fff',
-        padding: '0.6rem 0.9rem',
+        padding: '0.65rem 0.95rem',
         borderRadius: '8px',
         boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
         border: '1px solid #e2e8f0',
-        fontSize: '0.875rem'
+        fontSize: '0.85rem'
       }}>
-        <p style={{ margin: '0 0 0.4rem 0', fontWeight: 600, color: 'var(--text)' }}>{label}</p>
+        <p style={{ margin: '0 0 0.4rem 0', fontWeight: 700, color: 'var(--text)' }}>{label}</p>
         {payload.map((entry: any, index: number) => {
-          const isCantidad = entry.dataKey === 'cantidad';
-          const title = isCantidad 
-            ? (isHospitalRow ? 'Cant. Hospitales' : 'Cant. IPRESS') 
+          const isMeta = entry.dataKey === 'meta' || entry.dataKey === 'cantidad';
+          const title = isMeta 
+            ? (isHospitalRow ? 'Meta Hospitales' : 'Meta IPRESS') 
             : entry.name;
           return (
             <p key={`tooltip-item-${index}`} style={{ margin: '0.25rem 0', color: entry.color, fontWeight: 500 }}>
-              {title} : {entry.value}
+              {title} : <strong>{entry.value}</strong>
             </p>
           );
         })}
+      </div>
+    );
+  }
+  return null;
+};
+
+// Tooltip personalizado para desglose diario (Lunes a Domingo)
+const CustomDailyTooltip = ({ active, payload }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div style={{
+        backgroundColor: '#ffffff',
+        padding: '0.8rem 1rem',
+        borderRadius: '8px',
+        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+        border: '1px solid #e2e8f0',
+        fontSize: '0.85rem',
+        minWidth: '210px'
+      }}>
+        <p style={{ margin: '0 0 0.4rem 0', fontWeight: 700, color: 'var(--primary-dark)', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.3rem' }}>
+          📅 {data.fullDate || data.day}
+        </p>
+        <p style={{ margin: '0.25rem 0', color: '#10b981', fontWeight: 600 }}>
+          💧 IPRESS con Monitoreo: {data.monitoreadas}
+        </p>
+        {data.totalMuestras !== undefined && (
+          <p style={{ margin: '0.3rem 0 0 0', color: '#64748b', fontSize: '0.8rem', borderTop: '1px dashed #e2e8f0', paddingTop: '0.3rem' }}>
+            📊 Total Registros de Agua: {data.totalMuestras}
+          </p>
+        )}
       </div>
     );
   }
@@ -251,6 +299,7 @@ export const Home: React.FC = () => {
   const [datesInitialized, setDatesInitialized] = useState<boolean>(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
   const [isExportingExcel, setIsExportingExcel] = useState(false);
+  const [selectedWeekIdx, setSelectedWeekIdx] = useState<number>(0);
 
   // Estadísticas consolidadas
   const [gestionStats, setGestionStats] = useState({
@@ -267,11 +316,15 @@ export const Home: React.FC = () => {
     weeklyComplianceData: [] as {
       name: string;
       fullName: string;
+      sStr: string;
+      eStr: string;
       Monitoreadas: number;
       Faltantes: number;
       Meta: number;
       Porcentaje: number;
       TotalMuestras: number;
+      redesAdvance: { red: string; meta: number; monitoreadas: number; faltantes: number; pct: number }[];
+      dailyBreakdown: { dNum: number; dateStr: string; day: string; fullDate: string; monitoreadas: number; totalMuestras: number }[];
     }[]
   });
 
@@ -547,6 +600,20 @@ export const Home: React.FC = () => {
         { wNum: 5, startDay: 29, endDay: daysInTargetMonth }
       ];
 
+      // Lista oficial de Unidades Ejecutoras para el desglose semanal en 'Todas'
+      const redesListSemanal = [
+        'Red Cusco Norte',
+        'Red La Convencion',
+        'Red Cusco Sur',
+        'Red CCE',
+        'Red Chumbivilcas',
+        'Red Cusco VRAEM',
+        'Hospital'
+      ];
+
+      const dayNamesAbbr = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+      const dayNamesFull = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
       const weekDataList = targetMonthWeeks.map(w => {
         const sStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(w.startDay).padStart(2, '0')}`;
         const eStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(w.endDay).padStart(2, '0')}`;
@@ -581,16 +648,97 @@ export const Home: React.FC = () => {
         const faltanCount = Math.max(0, totalIpressCount - monitoredCount);
         const pct = totalIpressCount > 0 ? Math.round((monitoredCount / totalIpressCount) * 100) : 0;
 
+        // 1. Avance semanal por cada Red (para cuando targetRed === 'Todas')
+        const redesAdvance = redesListSemanal.map(rName => {
+          const ipressInThisRed = usersList.filter(u => (u.rol === 'IPRESS' || u.rol === 'Hospital') && matchRedName(u.red, rName));
+          const metaRed = ipressInThisRed.length;
+          const monitoredInRed = new Set<string>();
+          monitoreos.forEach(m => {
+            const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
+            if (mDate && mDate >= sStr && mDate <= eStr) {
+              const matchedU = ipressInThisRed.find(u =>
+                (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
+                (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
+                (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
+              );
+              if (matchedU) {
+                monitoredInRed.add(String(matchedU.codigoRenipress || matchedU.usuario || matchedU.nombreIpress));
+              } else if (m.unidadEjecutora && matchRedName(m.unidadEjecutora, rName)) {
+                monitoredInRed.add(String(m.codigoRenipress || m.nombreIpress || Math.random()));
+              }
+            }
+          });
+          const monCount = Math.min(metaRed, monitoredInRed.size);
+          const pctVal = metaRed > 0 ? Math.round((monCount / metaRed) * 100) : 0;
+          return {
+            red: rName,
+            meta: metaRed,
+            monitoreadas: monCount,
+            faltantes: Math.max(0, metaRed - monCount),
+            pct: pctVal
+          };
+        });
+
+        // 2. Desglose diario (Lunes a Domingo) de la semana para la Unidad Ejecutora seleccionada
+        const dailyBreakdown = [];
+        for (let dayNum = w.startDay; dayNum <= w.endDay; dayNum++) {
+          const dObj = new Date(targetYear, targetMonth - 1, dayNum);
+          const dayOfWeek = dObj.getDay();
+          const dStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+          
+          const uniqueIpressDay = new Set<string>();
+          let daySamples = 0;
+          monitoreos.forEach(m => {
+            const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
+            if (mDate === dStr) {
+              const matchedU = allIpress.find(u =>
+                (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
+                (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
+                (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
+              );
+              if (matchedU) {
+                daySamples++;
+                uniqueIpressDay.add(String(matchedU.codigoRenipress || matchedU.usuario || matchedU.nombreIpress));
+              } else if (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed))) {
+                daySamples++;
+                uniqueIpressDay.add(String(m.codigoRenipress || m.nombreIpress || `day-rec-${daySamples}`));
+              }
+            }
+          });
+
+          dailyBreakdown.push({
+            dNum: dayNum,
+            dateStr: dStr,
+            day: `${dayNamesAbbr[dayOfWeek]} ${dayNum}`,
+            fullDate: `${dayNamesFull[dayOfWeek]} ${String(dayNum).padStart(2, '0')} de ${targetMonthName} ${targetYear}`,
+            monitoreadas: uniqueIpressDay.size,
+            totalMuestras: daySamples
+          });
+        }
+
         return {
           name: shortLabel,
           fullName: fullLabel,
+          sStr,
+          eStr,
           Monitoreadas: monitoredCount,
           Faltantes: faltanCount,
           Meta: totalIpressCount,
           Porcentaje: pct,
-          TotalMuestras: samplesCount
+          TotalMuestras: samplesCount,
+          redesAdvance,
+          dailyBreakdown
         };
       });
+
+      // Auto-seleccionar la semana que corresponde a la fecha de referencia (ej. fecha fin)
+      const refDay = parseInt(referenceDateStr.split('-')[2] || '1', 10);
+      const activeWIdx = targetMonthWeeks.findIndex(w => refDay >= w.startDay && refDay <= w.endDay);
+      if (activeWIdx >= 0) {
+        setSelectedWeekIdx(activeWIdx);
+      } else {
+        setSelectedWeekIdx(Math.max(0, targetMonthWeeks.length - 1));
+      }
 
       setGestionStats({
         totalIpress: totalIpressCount,
@@ -617,15 +765,84 @@ export const Home: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dashboardRedFilter, dateFrom, dateTo, usersList, datesInitialized]);
 
-  // Exportar Detalle de Diagnósticos simple a Excel
-  const exportarDetalleExcel = () => {
-    const data = gestionStats.detalleList.map(item => ({
-      'Unidad Ejecutora': item.red,
-      'IPRESS': item.ipress,
-      '¿Tiene Diagnóstico?': item.tieneDiag ? 'Sí' : 'No'
-    }));
+  // Utilidades de formateo para exportaciones a Excel
+  const formatExcelDateTime = (dtStr?: string) => {
+    if (!dtStr) return '-';
+    const d = new Date(dtStr);
+    if (isNaN(d.getTime())) return dtStr;
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    const hours = String(d.getHours()).padStart(2, '0');
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const seconds = String(d.getSeconds()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  };
 
-    const ws = XLSX.utils.json_to_sheet(data);
+  const formatExcelDate = (dtStr?: string) => {
+    if (!dtStr) return '-';
+    const clean = extractDateHelper(dtStr);
+    if (!clean) return dtStr;
+    const [y, m, d] = clean.split('-');
+    return `${d}-${m}-${y}`;
+  };
+
+  // Exportar Detalle de Diagnósticos completo a Excel desde el modal
+  const exportarDetalleExcel = () => {
+    const allRecords = getRecords();
+    const diagnosticos = allRecords.filter(r => r.estado !== 'Inactivo' && r.tipo === 'diagnostico');
+    const allIpress = usersList.filter(u => {
+      if (u.rol !== 'IPRESS' && u.rol !== 'Hospital') return false;
+      if (targetRed !== 'Todas' && !matchRedName(u.red, targetRed)) return false;
+      return true;
+    });
+
+    const exportRows: any[] = [];
+    allIpress.forEach((u, idx) => {
+      const diag = diagnosticos.find(d => 
+        (d.codigoRenipress && u.codigoRenipress && matchRenipress(u.codigoRenipress, d.codigoRenipress)) ||
+        (d.nombreIpress && u.nombreIpress && String(d.nombreIpress).trim().toLowerCase() === String(u.nombreIpress).trim().toLowerCase()) ||
+        (d.nombreIpress && u.usuario && String(d.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase())
+      );
+
+      exportRows.push({
+        'N°': idx + 1,
+        'ID Registro': diag ? (diag.uuid || diag.id || '-') : '-',
+        'Fecha de Registro': diag ? formatExcelDateTime(diag.fechaRegistro) : '-',
+        'Fecha de Evaluación': diag ? formatExcelDate(diag.fecha) : '-',
+        'Hora': diag?.hora || '-',
+        'Código RENIPRESS': u.codigoRenipress || '-',
+        'Nombre de la IPRESS': u.nombreIpress || u.usuario || '-',
+        'Unidad Ejecutora': u.red || targetRed,
+        'Provincia': diag?.provincia || '-',
+        'Distrito': diag?.distrito || '-',
+        'Centro Poblado': diag?.centroPoblado || '-',
+        'Ubigeo': diag?.ubigeo || '-',
+        'Latitud': diag?.latitud || '-',
+        'Longitud': diag?.longitud || '-',
+        'Altitud': diag?.altitud || '-',
+        'Precisión': diag?.precision || '-',
+        'Sistema Agua Propio': diag?.aguaPropio || '-',
+        'Fuente de Agua': diag?.fuenteAgua || '-',
+        'Bombas de Agua': diag?.bombasAgua || '-',
+        'Bombas Operativas': diag?.bombasOperativas || '-',
+        'Tiene Reservorio': diag?.reservorio || '-',
+        'Tipo Material Reservorio': diag?.tipoMaterialReservorio || '-',
+        'Reservorio Elevado': diag?.reservorioElevado || '-',
+        'Reservorio Operativo': diag?.reservorioOperativo || '-',
+        'Volumen Reservorio (m3)': diag?.volumenReservorio || '-',
+        'Tiene Cisterna': diag?.cisterna || '-',
+        'Volumen Cisterna (m3)': diag?.volumenCisterna || '-',
+        'Cisterna Operativa': diag?.cisternaOperativa || '-',
+        'Tratamiento de Agua': diag?.tratamientoAgua || '-',
+        'Observaciones': diag?.observaciones || '-',
+        'Responsable': diag?.responsable || '-',
+        'DNI': diag?.dni || '-',
+        '¿Tiene Diagnóstico?': diag ? 'SÍ' : 'NO'
+      });
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Detalle de Diagnósticos');
     const safeRedName = (targetRed || 'General').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -642,22 +859,13 @@ export const Home: React.FC = () => {
     ? 'Establecimientos Región Cusco' 
     : (isHospital ? 'Establecimientos Hospitales' : `Establecimientos ${targetRed}`);
 
-  // Filtrar el gráfico horizontal de IPRESS por Red:
-  // Si está en 'Todas', muestra todas las redes; si se seleccionó una Red, muestra ÚNICAMENTE esa red
-  const displayIpressPorRed = targetRed === 'Todas'
-    ? gestionStats.ipressPorRed
-    : gestionStats.ipressPorRed.filter(item => matchRedName(item.red, targetRed));
+  const activeWeek = gestionStats.weeklyComplianceData[selectedWeekIdx] || gestionStats.weeklyComplianceData[0];
 
   const maxWeeklyY = Math.max(
     gestionStats.totalIpress, 
     ...gestionStats.weeklyComplianceData.map(d => Math.max(d.Monitoreadas, d.Faltantes, d.Meta || 0)), 
     10
   ) + 5;
-
-  const maxHorizontalX = Math.max(
-    ...displayIpressPorRed.map(d => Math.max(d.cantidad, d.monitoreos)),
-    10
-  ) + 15;
 
   const complianceAvg = gestionStats.weeklyComplianceData.length > 0
     ? Math.round(
@@ -676,7 +884,7 @@ export const Home: React.FC = () => {
       workbook.creator = 'Sistema de Control IPRESS - GERESA Cusco';
       workbook.created = new Date();
 
-      // Capturar gráficos renderizados en el DOM como imágenes PNG en alta definición
+      // Capturar gráficos reales de Recharts en el DOM como imágenes PNG de alta resolución
       const chartWeeklyPng = await captureChartSvgAsBase64('chart-container-weekly');
       const chartIpressRedPng = await captureChartSvgAsBase64('chart-container-ipress-red');
       const chartCoberturaPng = await captureChartSvgAsBase64('chart-container-cobertura');
@@ -788,60 +996,98 @@ export const Home: React.FC = () => {
 
       currentRow += 2;
 
-      // SECCIÓN 2: IPRESS POR UNIDAD EJECUTORA & COBERTURA
-      wsDashboard.getCell(`B${currentRow}`).value = `2. ESTADÍSTICAS POR UNIDAD EJECUTORA Y COBERTURA (${targetRed === 'Todas' ? 'Región Cusco' : targetRed})`;
+      // SECCIÓN 2: DESGLOSE SEMANAL (O DIARIO) Y COBERTURA DE DIAGNÓSTICOS
+      const section2Title = targetRed === 'Todas'
+        ? `2. AVANCE SEMANAL POR UNIDAD EJECUTORA (${activeWeek?.name || 'Semana Actual'}) Y COBERTURA (Región Cusco)`
+        : `2. DESGLOSE DIARIO DE MONITOREO (${activeWeek?.name || 'Semana Actual'}) Y COBERTURA (${targetRed})`;
+      
+      wsDashboard.getCell(`B${currentRow}`).value = section2Title;
       wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
       currentRow++;
 
-      // Tabla 2: IPRESS por Red
-      const redHeaders = ['Unidad Ejecutora', `Cant. ${unitName}`, 'Monitoreos Totales'];
-      const redCols = ['B', 'C', 'D'];
-      redHeaders.forEach((h, idx) => {
-        const cell = wsDashboard.getCell(`${redCols[idx]}${currentRow}`);
-        cell.value = h;
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-      });
+      // Tabla 2 (Izquierda): Avance por Redes (si Todas) o Desglose Diario Lunes a Domingo (si Red)
+      if (targetRed === 'Todas') {
+        const redHeaders = ['Unidad Ejecutora', 'Meta IPRESS', 'Monitoreadas (Semana)', '% Avance'];
+        const redCols = ['B', 'C', 'D', 'E'];
+        redHeaders.forEach((h, idx) => {
+          const cell = wsDashboard.getCell(`${redCols[idx]}${currentRow}`);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        });
+      } else {
+        const dailyHeaders = ['Día', 'Fecha', 'IPRESS Monitoreadas', 'Total Registros'];
+        const dailyCols = ['B', 'C', 'D', 'E'];
+        dailyHeaders.forEach((h, idx) => {
+          const cell = wsDashboard.getCell(`${dailyCols[idx]}${currentRow}`);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        });
+      }
 
-      // Tabla 3: Cobertura
-      const cobHeaders = ['Estado de Diagnóstico', 'Cantidad IPRESS', 'Porcentaje'];
-      const cobCols = ['F', 'G', 'H'];
-      cobHeaders.forEach((h, idx) => {
-        const cell = wsDashboard.getCell(`${cobCols[idx]}${currentRow}`);
-        cell.value = h;
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-      });
+      // Tabla 3 (Derecha): Cobertura
+      wsDashboard.getCell(`G${currentRow}`).value = 'Estado Diagnóstico';
+      wsDashboard.getCell(`G${currentRow}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      wsDashboard.getCell(`G${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366F1' } };
+      wsDashboard.getCell(`G${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsDashboard.getCell(`G${currentRow}`).border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+
+      wsDashboard.getCell(`H${currentRow}`).value = 'Cant. IPRESS (%)';
+      wsDashboard.getCell(`H${currentRow}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      wsDashboard.getCell(`H${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366F1' } };
+      wsDashboard.getCell(`H${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
+      wsDashboard.getCell(`H${currentRow}`).border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      
       currentRow++;
 
-      const maxSubRows = Math.max(displayIpressPorRed.length, gestionStats.coberturaData.length);
+      const leftDataRows = targetRed === 'Todas' ? (activeWeek?.redesAdvance || []) : (activeWeek?.dailyBreakdown || []);
+      const maxSubRows = Math.max(leftDataRows.length, gestionStats.coberturaData.length);
+
       for (let i = 0; i < maxSubRows; i++) {
-        const redRow = displayIpressPorRed[i];
-        if (redRow) {
-          wsDashboard.getCell(`B${currentRow}`).value = redRow.red;
-          wsDashboard.getCell(`C${currentRow}`).value = redRow.cantidad;
-          wsDashboard.getCell(`D${currentRow}`).value = redRow.monitoreos;
-          ['B', 'C', 'D'].forEach(c => {
-            const cell = wsDashboard.getCell(`${c}${currentRow}`);
-            cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-            if (c !== 'B') cell.alignment = { horizontal: 'center' };
-          });
+        // Datos tabla izquierda
+        if (targetRed === 'Todas') {
+          const rRow = (activeWeek?.redesAdvance || [])[i];
+          if (rRow) {
+            wsDashboard.getCell(`B${currentRow}`).value = rRow.red;
+            wsDashboard.getCell(`C${currentRow}`).value = rRow.meta;
+            wsDashboard.getCell(`D${currentRow}`).value = rRow.monitoreadas;
+            wsDashboard.getCell(`E${currentRow}`).value = `${rRow.pct}%`;
+            ['B', 'C', 'D', 'E'].forEach(c => {
+              const cell = wsDashboard.getCell(`${c}${currentRow}`);
+              cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+              if (c !== 'B') cell.alignment = { horizontal: 'center' };
+            });
+          }
+        } else {
+          const dRow = (activeWeek?.dailyBreakdown || [])[i];
+          if (dRow) {
+            wsDashboard.getCell(`B${currentRow}`).value = dRow.day;
+            wsDashboard.getCell(`C${currentRow}`).value = dRow.dateStr;
+            wsDashboard.getCell(`D${currentRow}`).value = dRow.monitoreadas;
+            wsDashboard.getCell(`E${currentRow}`).value = dRow.totalMuestras;
+            ['B', 'C', 'D', 'E'].forEach(c => {
+              const cell = wsDashboard.getCell(`${c}${currentRow}`);
+              cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+              if (c !== 'B') cell.alignment = { horizontal: 'center' };
+            });
+          }
         }
 
+        // Datos tabla derecha (Cobertura)
         const cobRow = gestionStats.coberturaData[i];
         if (cobRow) {
           const pct = gestionStats.totalIpress > 0 ? Math.round((cobRow.value / gestionStats.totalIpress) * 100) : 0;
-          wsDashboard.getCell(`F${currentRow}`).value = cobRow.name;
-          wsDashboard.getCell(`G${currentRow}`).value = cobRow.value;
-          wsDashboard.getCell(`H${currentRow}`).value = `${pct}%`;
-          ['F', 'G', 'H'].forEach(c => {
+          wsDashboard.getCell(`G${currentRow}`).value = cobRow.name;
+          wsDashboard.getCell(`H${currentRow}`).value = `${cobRow.value} (${pct}%)`;
+          ['G', 'H'].forEach(c => {
             const cell = wsDashboard.getCell(`${c}${currentRow}`);
             cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-            if (c !== 'F') cell.alignment = { horizontal: 'center' };
+            if (c === 'H') cell.alignment = { horizontal: 'center' };
           });
         }
         currentRow++;
@@ -849,56 +1095,140 @@ export const Home: React.FC = () => {
 
       currentRow += 1;
 
-      // Incrustar imágenes de los gráficos de barras y de cobertura
+      // Incrustar imágenes de los gráficos
       if (chartIpressRedPng || chartCoberturaPng) {
         if (chartIpressRedPng) {
           const imgId = workbook.addImage({ base64: chartIpressRedPng, extension: 'png' });
           wsDashboard.addImage(imgId, {
             tl: { col: 1, row: currentRow - 1 },
-            ext: { width: 360, height: 260 }
+            ext: { width: 380, height: 260 }
           });
         }
         if (chartCoberturaPng) {
           const imgId = workbook.addImage({ base64: chartCoberturaPng, extension: 'png' });
           wsDashboard.addImage(imgId, {
             tl: { col: 5, row: currentRow - 1 },
-            ext: { width: 340, height: 260 }
+            ext: { width: 330, height: 260 }
           });
         }
         currentRow += 15;
       }
 
       // -------------------------------------------------------------
-      // HOJA 2: DETALLE DIAGNÓSTICOS
+      // HOJA 2: DETALLE DIAGNÓSTICOS (TODOS LOS CAMPOS + ¿TIENE DIAGNÓSTICO? AL FINAL)
       // -------------------------------------------------------------
       const wsDiag = workbook.addWorksheet('Detalle de Diagnósticos', {
         views: [{ showGridLines: true }]
       });
-      wsDiag.columns = [
+
+      const allRecordsForDiag = getRecords();
+      const allDiagRecords = allRecordsForDiag.filter(r => r.estado !== 'Inactivo' && r.tipo === 'diagnostico');
+      const allIpressList = usersList.filter(u => {
+        if (u.rol !== 'IPRESS' && u.rol !== 'Hospital') return false;
+        if (targetRed !== 'Todas' && !matchRedName(u.red, targetRed)) return false;
+        return true;
+      });
+
+      // Cabeceras completas de la sección Diagnóstico
+      const diagColumnsDef = [
         { header: 'N°', key: 'num', width: 6 },
-        { header: 'Unidad Ejecutora', key: 'red', width: 28 },
-        { header: 'IPRESS / Establecimiento', key: 'ipress', width: 36 },
-        { header: '¿Tiene Diagnóstico?', key: 'tieneDiag', width: 22 },
+        { header: 'ID Registro', key: 'id', width: 22 },
+        { header: 'Fecha de Registro', key: 'fechaRegistro', width: 20 },
+        { header: 'Fecha de Evaluación', key: 'fecha', width: 18 },
+        { header: 'Hora', key: 'hora', width: 12 },
+        { header: 'Código RENIPRESS', key: 'codigoRenipress', width: 18 },
+        { header: 'Nombre de la IPRESS', key: 'nombreIpress', width: 34 },
+        { header: 'Unidad Ejecutora', key: 'unidadEjecutora', width: 24 },
+        { header: 'Provincia', key: 'provincia', width: 18 },
+        { header: 'Distrito', key: 'distrito', width: 18 },
+        { header: 'Centro Poblado', key: 'centroPoblado', width: 20 },
+        { header: 'Ubigeo', key: 'ubigeo', width: 12 },
+        { header: 'Latitud', key: 'latitud', width: 14 },
+        { header: 'Longitud', key: 'longitud', width: 14 },
+        { header: 'Altitud', key: 'altitud', width: 12 },
+        { header: 'Precisión', key: 'precision', width: 12 },
+        { header: 'Sistema Agua Propio', key: 'aguaPropio', width: 18 },
+        { header: 'Fuente de Agua', key: 'fuenteAgua', width: 20 },
+        { header: 'Bombas de Agua', key: 'bombasAgua', width: 16 },
+        { header: 'Bombas Operativas', key: 'bombasOperativas', width: 18 },
+        { header: 'Tiene Reservorio', key: 'reservorio', width: 16 },
+        { header: 'Tipo Reservorio', key: 'tipoMaterialReservorio', width: 20 },
+        { header: 'Reservorio Elevado', key: 'reservorioElevado', width: 18 },
+        { header: 'Reservorio Operativo', key: 'reservorioOperativo', width: 18 },
+        { header: 'Volumen Reservorio (m3)', key: 'volumenReservorio', width: 22 },
+        { header: 'Tiene Cisterna', key: 'cisterna', width: 16 },
+        { header: 'Volumen Cisterna (m3)', key: 'volumenCisterna', width: 20 },
+        { header: 'Cisterna Operativa', key: 'cisternaOperativa', width: 18 },
+        { header: 'Tratamiento de Agua', key: 'tratamientoAgua', width: 20 },
+        { header: 'Observaciones', key: 'observaciones', width: 30 },
+        { header: 'Responsable', key: 'responsable', width: 24 },
+        { header: 'DNI', key: 'dni', width: 14 },
+        { header: '¿Tiene Diagnóstico?', key: 'tieneDiag', width: 22 }, // Columna final
       ];
+
+      wsDiag.columns = diagColumnsDef;
       wsDiag.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
       wsDiag.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
-      wsDiag.getRow(1).alignment = { horizontal: 'center' };
+      wsDiag.getRow(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
-      gestionStats.detalleList.forEach((item, index) => {
+      allIpressList.forEach((u, index) => {
+        const diag = allDiagRecords.find(d => 
+          (d.codigoRenipress && u.codigoRenipress && matchRenipress(u.codigoRenipress, d.codigoRenipress)) ||
+          (d.nombreIpress && u.nombreIpress && String(d.nombreIpress).trim().toLowerCase() === String(u.nombreIpress).trim().toLowerCase()) ||
+          (d.nombreIpress && u.usuario && String(d.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase())
+        );
+
         const row = wsDiag.addRow({
           num: index + 1,
-          red: item.red,
-          ipress: item.ipress,
-          tieneDiag: item.tieneDiag ? 'SÍ' : 'NO'
+          id: diag ? (diag.uuid || diag.id || '-') : '-',
+          fechaRegistro: diag ? formatExcelDateTime(diag.fechaRegistro) : '-',
+          fecha: diag ? formatExcelDate(diag.fecha) : '-',
+          hora: diag?.hora || '-',
+          codigoRenipress: u.codigoRenipress || '-',
+          nombreIpress: u.nombreIpress || u.usuario || '-',
+          unidadEjecutora: u.red || targetRed,
+          provincia: diag?.provincia || '-',
+          distrito: diag?.distrito || '-',
+          centroPoblado: diag?.centroPoblado || '-',
+          ubigeo: diag?.ubigeo || '-',
+          latitud: diag?.latitud || '-',
+          longitud: diag?.longitud || '-',
+          altitud: diag?.altitud || '-',
+          precision: diag?.precision || '-',
+          aguaPropio: diag?.aguaPropio || '-',
+          fuenteAgua: diag?.fuenteAgua || '-',
+          bombasAgua: diag?.bombasAgua || '-',
+          bombasOperativas: diag?.bombasOperativas || '-',
+          reservorio: diag?.reservorio || '-',
+          tipoMaterialReservorio: diag?.tipoMaterialReservorio || '-',
+          reservorioElevado: diag?.reservorioElevado || '-',
+          reservorioOperativo: diag?.reservorioOperativo || '-',
+          volumenReservorio: diag?.volumenReservorio || '-',
+          cisterna: diag?.cisterna || '-',
+          volumenCisterna: diag?.volumenCisterna || '-',
+          cisternaOperativa: diag?.cisternaOperativa || '-',
+          tratamientoAgua: diag?.tratamientoAgua || '-',
+          observaciones: diag?.observaciones || '-',
+          responsable: diag?.responsable || '-',
+          dni: diag?.dni || '-',
+          tieneDiag: diag ? 'SÍ' : 'NO'
         });
-        row.getCell('num').alignment = { horizontal: 'center' };
-        row.getCell('tieneDiag').alignment = { horizontal: 'center' };
-        if (item.tieneDiag) {
-          row.getCell('tieneDiag').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
-          row.getCell('tieneDiag').font = { bold: true, color: { argb: 'FF166534' } };
+
+        // Bordes y alineación
+        row.eachCell((cell, colNumber) => {
+          cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+          if (colNumber === 1 || (colNumber >= 3 && colNumber <= 5) || colNumber === 6 || (colNumber >= 12 && colNumber <= 16) || colNumber === 32 || colNumber === 33) {
+            cell.alignment = { horizontal: 'center' };
+          }
+        });
+
+        const diagCell = row.getCell('tieneDiag');
+        if (diag) {
+          diagCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+          diagCell.font = { bold: true, color: { argb: 'FF166534' } };
         } else {
-          row.getCell('tieneDiag').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
-          row.getCell('tieneDiag').font = { bold: true, color: { argb: 'FF991B1B' } };
+          diagCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+          diagCell.font = { bold: true, color: { argb: 'FF991B1B' } };
         }
       });
 
@@ -986,40 +1316,65 @@ export const Home: React.FC = () => {
 
       {/* SECCIÓN ESTADÍSTICAS DE GESTIÓN (GERESA / REDES) */}
       <div style={{ marginBottom: '3rem' }}>
-        {/* BARRA DE FILTROS EN UNA SOLA LÍNEA */}
+        {/* BARRA DE FILTROS SUPERIOR JUSTIFICADA Y ARMÓNICA */}
         <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1.25rem',
-          marginBottom: '1.5rem',
-          padding: '1rem 1.5rem',
           backgroundColor: '#ffffff',
           borderRadius: '12px',
           boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.05)',
           border: '1px solid #e2e8f0',
+          padding: '1.25rem 1.5rem',
+          marginBottom: '1.5rem',
           width: '100%'
         }}>
-          {/* TÍTULO DE LA SECCIÓN */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 'fit-content' }}>
-            <div style={{ padding: '0.45rem', backgroundColor: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
-              <BarChart3 size={22} />
+          {/* FILA 1: CABECERA INSTITUCIONAL */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            paddingBottom: '0.85rem',
+            marginBottom: '1rem',
+            borderBottom: '1px solid #f1f5f9'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <div style={{ padding: '0.45rem', backgroundColor: 'rgba(37, 99, 235, 0.1)', borderRadius: '8px', color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
+                <BarChart3 size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, color: 'var(--primary-dark)', fontSize: '1.2rem', fontWeight: 700 }}>
+                  {titleText}
+                </h3>
+                <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Control semanal de cobertura y estado situacional
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 style={{ margin: 0, color: 'var(--primary-dark)', fontSize: '1.2rem', fontWeight: 700 }}>
-                {titleText}
-              </h3>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Control semanal de cobertura y estado situacional
-              </p>
+
+            <div style={{
+              fontSize: '0.8rem',
+              color: 'var(--text-muted)',
+              backgroundColor: '#f8fafc',
+              padding: '0.35rem 0.75rem',
+              borderRadius: '6px',
+              border: '1px solid #e2e8f0',
+              fontWeight: 500
+            }}>
+              GERESA Cusco • Vigilancia de Calidad del Agua
             </div>
           </div>
 
-          {/* CONTENEDOR DE FILTROS Y BOTÓN EXPORTAR EXCEL */}
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            {/* FILTRO 1: UNIDAD EJECUTORA */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {/* FILA 2: CONTENEDOR DE FILTROS JUSTIFICADO EN TODA LA VENTANA */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1.25rem',
+            width: '100%'
+          }}>
+            {/* FILTRO 1: UNIDAD EJECUTORA (IZQUIERDA) */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 Filtrar por Unidad Ejecutora:
               </span>
@@ -1028,15 +1383,16 @@ export const Home: React.FC = () => {
                   value={dashboardRedFilter}
                   onChange={(e) => setDashboardRedFilter(e.target.value)}
                   style={{
-                    padding: '0.45rem 0.75rem',
+                    padding: '0.45rem 0.85rem',
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     outline: 'none',
                     fontSize: '0.875rem',
                     backgroundColor: '#ffffff',
-                    color: 'var(--text)',
+                    color: 'var(--primary-dark)',
                     cursor: 'pointer',
-                    fontWeight: 500
+                    fontWeight: 600,
+                    minWidth: '190px'
                   }}
                 >
                   <option value="Todas">Todas</option>
@@ -1050,7 +1406,7 @@ export const Home: React.FC = () => {
                   fontWeight: 600,
                   color: 'var(--primary-dark)',
                   backgroundColor: '#eff6ff',
-                  padding: '0.35rem 0.75rem',
+                  padding: '0.4rem 0.85rem',
                   borderRadius: '6px',
                   border: '1px solid #bfdbfe'
                 }}>
@@ -1059,12 +1415,12 @@ export const Home: React.FC = () => {
               )}
             </div>
 
-            {/* FILTRO 2: RANGO DE FECHA (SOLO INICIO Y FIN, CON VALIDACIÓN MÍNIMA DE DB) */}
+            {/* FILTRO 2: RANGO DE FECHA (CENTRO) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                 Rango de fecha:
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#f8fafc', padding: '0.3rem 0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#f8fafc', padding: '0.35rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Inicio:</span>
                 <input
                   type="date"
@@ -1102,29 +1458,29 @@ export const Home: React.FC = () => {
               </div>
             </div>
 
-            {/* BOTÓN: EXPORTAR DASHBOARD COMPLETO A EXCEL */}
+            {/* BOTÓN: EXPORTAR DASHBOARD COMPLETO A EXCEL (DERECHA) */}
             <button
               onClick={exportDashboardExcel}
               disabled={isExportingExcel}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.45rem',
+                gap: '0.5rem',
                 backgroundColor: isExportingExcel ? '#94a3b8' : '#059669',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
-                padding: '0.45rem 0.9rem',
-                fontSize: '0.85rem',
+                padding: '0.55rem 1.1rem',
+                fontSize: '0.875rem',
                 fontWeight: 600,
                 cursor: isExportingExcel ? 'not-allowed' : 'pointer',
-                boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
+                boxShadow: '0 2px 4px rgba(5, 150, 105, 0.25)',
                 transition: 'all 0.2s ease',
                 whiteSpace: 'nowrap'
               }}
               title="Exportar todo el dashboard actual con gráficos a Excel (.xlsx)"
             >
-              <FileSpreadsheet size={17} />
+              <FileSpreadsheet size={18} />
               <span>{isExportingExcel ? 'Generando Excel...' : 'Exportar Dashboard Excel'}</span>
             </button>
           </div>
@@ -1369,124 +1725,191 @@ export const Home: React.FC = () => {
           </div>
         </div>
 
-        {/* DEMÁS GRÁFICOS: IPRESS POR UNIDAD EJECUTORA & COBERTURA DE DIAGNÓSTICOS */}
+        {/* DEMÁS GRÁFICOS: AVANCE SEMANAL / DESGLOSE DIARIO & COBERTURA DE DIAGNÓSTICOS */}
         {canViewGestionStats && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-            {/* GRÁFICO 2: IPRESS POR UNIDAD EJECUTORA (FILTRADO EXACTO SEGÚN RED SELECCIONADA) */}
-            <div id="chart-container-ipress-red" className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>
-                IPRESS por Unidad Ejecutora ({targetRed === 'Todas' ? 'Región Cusco' : targetRed})
-              </h4>
-              <div style={{ height: displayIpressPorRed.length <= 1 ? '200px' : '300px', width: '100%' }}>
-                {displayIpressPorRed.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={displayIpressPorRed} layout="vertical" margin={{ top: 5, right: 40, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
-                      <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} domain={[0, maxHorizontalX]} />
-                      <YAxis dataKey="red" type="category" width={140} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <Tooltip 
-                        content={<CustomBarTooltip />}
-                        cursor={{ fill: '#f1f5f9' }}
-                      />
-                      <Legend />
-                      <Bar dataKey="cantidad" name={`Cant. ${unitName}`} fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={displayIpressPorRed.length <= 1 ? 22 : 15}>
-                        <LabelList dataKey="cantidad" position="right" fill="#64748b" fontSize={11} fontWeight={500} />
-                      </Bar>
-                      <Bar dataKey="monitoreos" name="Monitoreos Totales" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={displayIpressPorRed.length <= 1 ? 22 : 15}>
-                        <LabelList dataKey="monitoreos" position="right" fill="#64748b" fontSize={11} fontWeight={500} />
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '1.5rem' }}>
+            {/* GRÁFICO 2: AVANCE SEMANAL (TODAS) O DESGLOSE DIARIO LUNES A DOMINGO (POR RED) */}
+            <div id="chart-container-ipress-red" className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <h4 style={{ margin: 0, color: 'var(--text)', fontSize: '1.05rem', fontWeight: 700 }}>
+                    {targetRed === 'Todas'
+                      ? `Avance Semanal por Unidad Ejecutora (${activeWeek?.name || 'Semana Actual'}) - Región Cusco`
+                      : `Desglose Diario de IPRESS con Monitoreo (${activeWeek?.name || 'Semana Actual'}) - ${targetRed}`}
+                  </h4>
+                  <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {targetRed === 'Todas'
+                      ? `Comparativa de IPRESS monitoreadas vs Meta total por cada Red durante la semana`
+                      : `IPRESS únicas monitoreadas de lunes a domingo (cada IPRESS suma como 1 en el día)`}
+                  </p>
+                </div>
+
+                {/* SELECTOR DE SEMANA PARA FILTRAR */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  backgroundColor: '#f8fafc',
+                  padding: '0.3rem 0.65rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1'
+                }}>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Semana:</span>
+                  <select
+                    value={selectedWeekIdx}
+                    onChange={(e) => setSelectedWeekIdx(Number(e.target.value))}
+                    style={{
+                      border: 'none',
+                      background: 'transparent',
+                      fontSize: '0.825rem',
+                      fontWeight: 600,
+                      color: 'var(--primary-dark)',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {gestionStats.weeklyComplianceData.map((w, idx) => (
+                      <option key={idx} value={idx}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* CONTENIDO DEL GRÁFICO 2 */}
+              <div style={{ height: '310px', width: '100%', flex: 1 }}>
+                {targetRed === 'Todas' ? (
+                  // MODO REGIÓN CUSCO (TODAS): BARRAS HORIZONTALES POR RED CON SU AVANCE DE LA SEMANA SELECCIONADA
+                  (activeWeek?.redesAdvance && activeWeek.redesAdvance.length > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={activeWeek.redesAdvance} layout="vertical" margin={{ top: 5, right: 40, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
+                        <XAxis type="number" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <YAxis dataKey="red" type="category" width={135} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
+                        <Tooltip content={<CustomBarTooltip />} cursor={{ fill: '#f1f5f9' }} />
+                        <Legend />
+                        <Bar dataKey="meta" name="Meta IPRESS" fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={14}>
+                          <LabelList dataKey="meta" position="right" fill="#64748b" fontSize={11} fontWeight={500} />
+                        </Bar>
+                        <Bar dataKey="monitoreadas" name="IPRESS Monitoreadas (Semana)" fill="#10b981" radius={[0, 4, 4, 0]} barSize={14}>
+                          <LabelList dataKey="monitoreadas" position="right" fill="#10b981" fontSize={11} fontWeight={600} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                      No hay datos disponibles para la semana seleccionada.
+                    </div>
+                  )
                 ) : (
-                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                    No hay datos disponibles para la unidad seleccionada.
-                  </div>
+                  // MODO UNIDAD EJECUTORA: BARRAS VERTICALES DE LUNES A DOMINGO CON CONTEO DE IPRESS ÚNICAS MONITOREADAS
+                  (activeWeek?.dailyBreakdown && activeWeek.dailyBreakdown.length > 0) ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={activeWeek.dailyBreakdown} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                        <XAxis dataKey="day" tick={{ fill: '#64748b', fontSize: 12, fontWeight: 500 }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip content={<CustomDailyTooltip />} />
+                        <Bar dataKey="monitoreadas" name="IPRESS con Monitoreo" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={45}>
+                          <LabelList dataKey="monitoreadas" position="top" fill="#10b981" fontSize={12} fontWeight={700} />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                      No hay datos registrados de lunes a domingo para esta semana.
+                    </div>
+                  )
                 )}
               </div>
             </div>
 
-            {/* GRÁFICO 3: COBERTURA DE DIAGNÓSTICOS */}
-            <div id="chart-container-cobertura" className="glass-panel" style={{ padding: '1.5rem', position: 'relative' }}>
-              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>
+            {/* GRÁFICO 3: COBERTURA DE DIAGNÓSTICOS (AGRANDADO CON DATOS FIJOS Y FLECHA ANIMADA) */}
+            <div id="chart-container-cobertura" className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+              <h4 style={{ margin: '0 0 0.35rem 0', color: 'var(--text)', fontSize: '1.05rem', fontWeight: 700 }}>
                 Cobertura de Diagnósticos ({targetRed === 'Todas' ? 'Región Cusco' : targetRed})
               </h4>
-              <div style={{ height: '300px', width: '100%', position: 'relative' }}>
-                {gestionStats.totalIpress > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={gestionStats.coberturaData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={45}
-                        outerRadius={70}
-                        paddingAngle={5}
-                        dataKey="value"
-                        label={(props: any) => {
-                          const { cx, cy, midAngle, outerRadius, name, percent } = props;
-                          const RADIAN = Math.PI / 180;
-                          const radius = outerRadius + 12;
-                          const x = cx + radius * Math.cos(-midAngle * RADIAN);
-                          const y = cy + radius * Math.sin(-midAngle * RADIAN);
-                          return (
-                            <text x={x} y={y} fill="#64748b" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={11}>
-                              <tspan x={x} dy="-0.4em">{name}</tspan>
-                              <tspan x={x} dy="1.2em">{`(${((percent || 0) * 100).toFixed(0)}%)`}</tspan>
-                            </text>
-                          );
-                        }}
-                        labelLine={true}
-                      >
-                        <Cell key="cell-0" fill="#10b981" />
-                        <Cell key="cell-1" fill="#ef4444" />
-                        <LabelList dataKey="value" position="inside" fill="#ffffff" fontSize={12} fontWeight={600} />
-                      </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                    Cargando estadísticas...
-                  </div>
-                )}
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                Estado situacional de diagnósticos de agua en establecimientos de salud
+              </p>
 
-                {/* FLECHA CURVA ANIMADA QUE SALE DE LA SECCIÓN ROJA APUNTANDO AL BOTÓN VER DETALLE */}
-                {gestionStats.faltanDiagnostico > 0 && (
-                  <div style={{
-                    position: 'absolute',
-                    left: '52%',
-                    top: '185px',
-                    right: '30px',
-                    bottom: '5px',
-                    pointerEvents: 'none',
-                    zIndex: 2
-                  }}>
-                    <svg width="100%" height="100%" viewBox="0 0 120 75" fill="none" preserveAspectRatio="none" style={{ overflow: 'visible' }}>
-                      <defs>
-                        <marker id="arrowhead-red" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
-                          <polygon points="0 0, 8 3, 0 6" fill="#ef4444" />
-                        </marker>
-                        <linearGradient id="redGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
-                          <stop offset="100%" stopColor="#ef4444" stopOpacity="1" />
-                        </linearGradient>
-                      </defs>
-                      <path
-                        d="M 12 8 Q 45 45 112 70"
-                        stroke="url(#redGrad)"
-                        strokeWidth="2.5"
-                        strokeDasharray="6 4"
-                        markerEnd="url(#arrowhead-red)"
-                        className="dash-flow-arrow"
-                      />
-                    </svg>
+              {/* CUERPO DEL GRÁFICO CON DONUT AGRANDADO Y PANEL FIJO DE CIFRAS */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flex: 1, minHeight: '270px' }}>
+                {/* DONUT CHART AGRANDADO CON TEXTO CENTRAL FIJO (isAnimationActive={false} para evitar que desaparezcan valores) */}
+                <div style={{ height: '270px', flex: 1, position: 'relative' }}>
+                  {gestionStats.totalIpress > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={gestionStats.coberturaData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={95}
+                          paddingAngle={4}
+                          dataKey="value"
+                          isAnimationActive={false}
+                        >
+                          <Cell key="cell-0" fill="#10b981" />
+                          <Cell key="cell-1" fill="#ef4444" />
+                          <LabelList dataKey="value" position="inside" fill="#ffffff" fontSize={13} fontWeight={700} />
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                        <text x="50%" y="46%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '1.55rem', fontWeight: 800, fill: 'var(--primary-dark)' }}>
+                          {Math.round((gestionStats.conDiagnosticoTotal / (gestionStats.totalIpress || 1)) * 100)}%
+                        </text>
+                        <text x="50%" y="58%" textAnchor="middle" dominantBaseline="middle" style={{ fontSize: '0.78rem', fontWeight: 600, fill: '#64748b' }}>
+                          Cobertura
+                        </text>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                      Cargando estadísticas...
+                    </div>
+                  )}
+                </div>
+
+                {/* PANEL LATERAL DE CIFRAS FIJAS (NUNCA DESAPARECEN NI SE OCULTAN) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem', minWidth: '175px' }}>
+                  <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '0.55rem 0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
+                      <span style={{ fontSize: '0.8rem', color: '#166534', fontWeight: 600 }}>Con Diagnóstico</span>
+                    </div>
+                    <p style={{ margin: '0.2rem 0 0 0.85rem', fontSize: '1.15rem', fontWeight: 700, color: '#166534' }}>
+                      {gestionStats.conDiagnosticoTotal} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>({Math.round((gestionStats.conDiagnosticoTotal / (gestionStats.totalIpress || 1)) * 100)}%)</span>
+                    </p>
                   </div>
-                )}
+
+                  <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.55rem 0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                      <span style={{ width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#ef4444' }}></span>
+                      <span style={{ fontSize: '0.8rem', color: '#991b1b', fontWeight: 600 }}>Falta Diagnóstico</span>
+                    </div>
+                    <p style={{ margin: '0.2rem 0 0 0.85rem', fontSize: '1.15rem', fontWeight: 700, color: '#991b1b' }}>
+                      {gestionStats.faltanDiagnostico} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>({Math.max(0, 100 - Math.round((gestionStats.conDiagnosticoTotal / (gestionStats.totalIpress || 1)) * 100))}%)</span>
+                    </p>
+                  </div>
+
+                  <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.45rem 0.85rem' }}>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Meta:</span>
+                    <strong style={{ marginLeft: '0.4rem', color: 'var(--primary-dark)', fontSize: '0.9rem' }}>{gestionStats.totalIpress} {unitName}</strong>
+                  </div>
+                </div>
               </div>
 
-              {/* CONTENEDOR INFERIOR CON INDICADOR ANIMADO Y BOTÓN VER DETALLE */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-                {gestionStats.faltanDiagnostico > 0 && (
+              {/* FILA INFERIOR: INTERACCIÓN Y FLECHA ANIMADA QUE APUNTA AL BOTÓN VER DETALLE */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginTop: '1rem',
+                paddingTop: '0.75rem',
+                borderTop: '1px solid #f1f5f9',
+                position: 'relative'
+              }}>
+                {/* BADGE ANIMADO DE INTERACCIÓN */}
+                {gestionStats.faltanDiagnostico > 0 ? (
                   <div 
                     onClick={() => setShowDetalleModal(true)}
                     title="Clic para ver la lista de IPRESS con y sin diagnóstico"
@@ -1499,7 +1922,7 @@ export const Home: React.FC = () => {
                       color: '#b91c1c',
                       fontSize: '0.75rem',
                       fontWeight: 700,
-                      padding: '4px 10px',
+                      padding: '5px 12px',
                       borderRadius: '16px',
                       cursor: 'pointer',
                       userSelect: 'none',
@@ -1515,30 +1938,81 @@ export const Home: React.FC = () => {
                       backgroundColor: '#ef4444', 
                       animation: 'blinkDotRed 1.2s infinite' 
                     }}></span>
-                    <span>Ver quiénes faltan</span>
+                    <span>Ver quiénes faltan ({gestionStats.faltanDiagnostico})</span>
+                    <span style={{ animation: 'bounceArrowDiag 1.5s infinite ease-in-out', display: 'inline-block' }}>👉</span>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => setShowDetalleModal(true)}
+                    title="Clic para ver la lista completa de IPRESS"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      background: '#dcfce7',
+                      border: '1.5px solid #10b981',
+                      color: '#166534',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '5px 12px',
+                      borderRadius: '16px',
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                      zIndex: 3
+                    }}
+                  >
+                    <span style={{ 
+                      display: 'inline-block', 
+                      width: '7px', 
+                      height: '7px', 
+                      borderRadius: '50%', 
+                      backgroundColor: '#10b981' 
+                    }}></span>
+                    <span>100% al día ({gestionStats.totalIpress} IPRESS)</span>
                     <span style={{ animation: 'bounceArrowDiag 1.5s infinite ease-in-out', display: 'inline-block' }}>👉</span>
                   </div>
                 )}
 
+                {/* FLECHA ANIMADA QUE CONECTA EL BADGE CON EL BOTÓN VER DETALLE */}
+                <div style={{ flex: 1, margin: '0 1rem', height: '24px', display: 'flex', alignItems: 'center' }}>
+                  <svg width="100%" height="24" viewBox="0 0 160 24" fill="none" preserveAspectRatio="none">
+                    <defs>
+                      <marker id="arrowhead-flow-diag" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+                        <polygon points="0 0, 7 2.5, 0 5" fill={gestionStats.faltanDiagnostico > 0 ? '#ef4444' : '#10b981'} />
+                      </marker>
+                    </defs>
+                    <path
+                      d="M 5 12 C 45 20, 115 4, 153 12"
+                      stroke={gestionStats.faltanDiagnostico > 0 ? '#ef4444' : '#10b981'}
+                      strokeWidth="2"
+                      strokeDasharray="6 4"
+                      markerEnd="url(#arrowhead-flow-diag)"
+                      className="dash-flow-arrow"
+                    />
+                  </svg>
+                </div>
+
+                {/* BOTÓN VER DETALLE: SIEMPRE VISIBLE E INTERACTIVO */}
                 <button
                   onClick={() => setShowDetalleModal(true)}
-                  className={gestionStats.faltanDiagnostico > 0 ? "btn-ver-detalle-pulse" : ""}
+                  className="btn-ver-detalle-pulse"
                   style={{
-                    padding: '0.45rem 1.1rem',
+                    padding: '0.45rem 1.15rem',
                     backgroundColor: gestionStats.faltanDiagnostico > 0 ? '#eff6ff' : 'var(--primary-light)',
                     color: gestionStats.faltanDiagnostico > 0 ? '#1d4ed8' : 'var(--primary-dark)',
                     border: gestionStats.faltanDiagnostico > 0 ? '1.5px solid #3b82f6' : '1px solid var(--primary)',
-                    borderRadius: '6px',
+                    borderRadius: '8px',
                     fontSize: '0.875rem',
                     cursor: 'pointer',
                     fontWeight: 600,
                     transition: 'all 0.2s ease',
-                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.1)',
+                    boxShadow: '0 2px 4px rgba(37, 99, 235, 0.15)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.4rem',
                     zIndex: 3
                   }}
+                  title="Abrir ventana de detalle de diagnósticos"
                 >
                   Ver Detalle
                 </button>

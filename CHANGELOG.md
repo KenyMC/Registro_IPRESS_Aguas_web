@@ -1,6 +1,25 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.4.8] - 2026-10-27
+### Añadido / Mejorado
+- **Alineación Justificada y Simétrica de Filtros:**
+  - Se reorganizó el panel de filtros superior en una cuadrícula armónica a todo el ancho de la ventana (`w-full` con `justify-between` y `gap-4`).
+  - Distribución simétrica: Selección de Unidad Ejecutora a la izquierda, Selector de Rango de Fechas (Inicio y Fin) en el centro, y Botón de Exportación a Excel a la derecha, evitando aglomeraciones a la izquierda.
+- **Estabilización Permanente y Agrandamiento del Gráfico Cobertura de Diagnósticos:**
+  - Se eliminó el parpadeo y la desaparición transitoria de etiquetas y porcentajes al deshabilitar animaciones intermitentes (`isAnimationActive={false}`) en el gráfico de dona Recharts.
+  - Se incrementaron los radios del gráfico (`innerRadius={60}`, `outerRadius={95}`) aprovechando el ancho horizontal disponible.
+  - Se fijó el porcentaje central en el corazón de la dona (`% Cobertura`) y se añadió un panel lateral fijo de cifras en HTML (Con Diagnóstico, Falta Diagnóstico, Meta Total) que permanece siempre visible.
+- **Interacción y Flecha Permanente en Cobertura de Diagnósticos:**
+  - La flecha animada y el botón interactivo **Ver Detalle** ahora se mantienen siempre visibles y operativos, incluso al seleccionar una Unidad Ejecutora con 100% de cobertura (mostrando badge positivo `100% al día` o `Ver quiénes faltan`).
+- **Avance Semanal y Desglose Diario en Gráfico IPRESS por Unidad Ejecutora:**
+  - **Selector Semanal Dinámico:** Se incorporó un desplegable de semanas en la esquina superior derecha del gráfico para filtrar cualquier semana del rango de fechas.
+  - **Vista General (Región Cusco / Todas):** Muestra el avance con respecto a la semana seleccionada comparando la Meta de IPRESS de cada Red vs. IPRESS Monitoreadas en dicha semana.
+  - **Desglose Diario por Red:** Al seleccionar una Unidad Ejecutora específica, el gráfico se desglosa automáticamente de **Lunes a Domingo** para la semana elegida, contabilizando estrictamente las **IPRESS únicas con monitoreo por día** (si una IPRESS registra 2 o más monitoreos en el mismo día, computa únicamente como 1).
+- **Corrección de Gráficos Reales en Exportación Excel y Matriz Completa de Diagnósticos:**
+  - **Captura Fiel de Gráficos:** Se corrigió la captura SVG para apuntar específicamente a `svg.recharts-surface`, asegurando que en el archivo Excel se inserten los gráficos reales de Recharts con sus barras y datos en lugar del icono genérico de Lucide.
+  - **Pestaña Detalle de Diagnósticos Completa:** La hoja `Detalle de Diagnósticos` ahora exporta todos los 33 campos analíticos del diagnóstico (conforme a la sección Diagnóstico), ubicando la columna **`¿Tiene Diagnóstico?` (SÍ / NO)** al final de la tabla con formato condicional verde y rojo. La pestaña `Detalle de Monitoreos` se mantiene intacta.
+
 ## [1.4.7] - 2026-10-27
 ### Añadido / Mejorado
 - **Ajuste y Precisión en Tarjetas KPI (Totales):**

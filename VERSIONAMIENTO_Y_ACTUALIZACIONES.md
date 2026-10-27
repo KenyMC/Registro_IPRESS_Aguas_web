@@ -21,11 +21,11 @@ La versión de la aplicación está sincronizada en dos puntos clave del código
 
 1. **[`src/main.tsx`](file:///C:/Users/nemes/.gemini/antigravity-ide/scratch/Registro_IPRESS_Aguas/src/main.tsx)**:
    ```typescript
-   const APP_VERSION = '1.4.7';
+   const APP_VERSION = '1.4.8';
    ```
 2. **[`src/App.tsx`](file:///C:/Users/nemes/.gemini/antigravity-ide/scratch/Registro_IPRESS_Aguas/src/App.tsx)**:
    ```typescript
-   const CURRENT_APP_VERSION = '1.4.7';
+   const CURRENT_APP_VERSION = '1.4.8';
    ```
 
 ---
