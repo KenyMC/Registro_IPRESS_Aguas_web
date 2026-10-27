@@ -6,7 +6,8 @@ import {
   BarChart3, 
   X, 
   CalendarClock, 
-  AlertTriangle 
+  AlertTriangle,
+  FileSpreadsheet
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { getRecords } from '../services/storage';
@@ -27,6 +28,7 @@ import {
   ReferenceLine 
 } from 'recharts';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { matchRenipress, normalizeRenipress } from '../services/ipressData';
 
 const monthNamesShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
@@ -93,10 +95,81 @@ const extractDateHelper = (val: string | undefined): string | null => {
   
   if (result) {
     const yr = parseInt(result.substring(0, 4), 10);
-    // Filtrar fechas anómalas previas al 2020 (como el 1899 de celdas vacías en Excel)
     if (yr < 2020 || yr > 2035) return null;
   }
   return result;
+};
+
+// Captura de elementos SVG de Recharts convertidos a PNG base64 para Excel
+const captureChartSvgAsBase64 = async (elementId: string): Promise<string | null> => {
+  const container = document.getElementById(elementId);
+  if (!container) return null;
+  const svg = container.querySelector('svg');
+  if (!svg) return null;
+
+  try {
+    const clonedSvg = svg.cloneNode(true) as SVGSVGElement;
+    const bbox = svg.getBoundingClientRect();
+    const width = Math.max(svg.clientWidth || bbox.width || 750, 600);
+    const height = Math.max(svg.clientHeight || bbox.height || 320, 260);
+
+    clonedSvg.setAttribute('width', `${width}`);
+    clonedSvg.setAttribute('height', `${height}`);
+    clonedSvg.setAttribute('style', 'background-color: #ffffff;');
+
+    const origElements = Array.from(svg.querySelectorAll('*'));
+    const cloneElements = Array.from(clonedSvg.querySelectorAll('*'));
+    origElements.forEach((orig, i) => {
+      const clone = cloneElements[i];
+      if (orig && clone) {
+        const style = window.getComputedStyle(orig);
+        const fill = style.getPropertyValue('fill');
+        const stroke = style.getPropertyValue('stroke');
+        const fontSize = style.getPropertyValue('font-size');
+        const fontWeight = style.getPropertyValue('font-weight');
+        if (fill && fill !== 'none') clone.setAttribute('fill', fill);
+        if (stroke && stroke !== 'none') clone.setAttribute('stroke', stroke);
+        clone.setAttribute('font-family', 'Arial, sans-serif');
+        if (fontSize) clone.setAttribute('font-size', fontSize);
+        if (fontWeight) clone.setAttribute('font-weight', fontWeight);
+      }
+    });
+
+    const xml = new XMLSerializer().serializeToString(clonedSvg);
+    const svgBlob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(svgBlob);
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = 2; // Alta resolución
+        canvas.width = width * scale;
+        canvas.height = height * scale;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.scale(scale, scale);
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUrl = canvas.toDataURL('image/png');
+          URL.revokeObjectURL(blobUrl);
+          resolve(dataUrl.replace(/^data:image\/png;base64,/, ''));
+        } else {
+          URL.revokeObjectURL(blobUrl);
+          resolve(null);
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(blobUrl);
+        resolve(null);
+      };
+      img.src = blobUrl;
+    });
+  } catch (e) {
+    console.error('Error capturing chart SVG:', e);
+    return null;
+  }
 };
 
 // Tooltip personalizado para IPRESS por Unidad Ejecutora
@@ -177,14 +250,15 @@ export const Home: React.FC = () => {
   const [dbMaxDate, setDbMaxDate] = useState<string>('');
   const [datesInitialized, setDatesInitialized] = useState<boolean>(false);
   const [showDetalleModal, setShowDetalleModal] = useState(false);
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
 
   // Estadísticas consolidadas
   const [gestionStats, setGestionStats] = useState({
     totalIpress: 0,
     monitoreosTotal: 0,
     monitoreosHistoricos: 0,
-    monitoreoSemanal: 0,
-    diagnosticosTotal: 0,
+    monitoreoSemanal: 0, // IPRESS distintas con monitoreo en últimos 7 días
+    conDiagnosticoTotal: 0, // IPRESS distintas con diagnóstico (nunca excede totalIpress)
     faltanDiagnostico: 0,
     chartMonthTitle: '',
     ipressPorRed: [] as { red: string; cantidad: number; monitoreos: number }[],
@@ -232,7 +306,6 @@ export const Home: React.FC = () => {
       setDateTo('');
       return;
     }
-    // Validación: como mínimo se puede filtrar hasta la fecha más antigua de la base de datos
     let safeVal = val;
     if (dbMinDate && safeVal < dbMinDate) {
       safeVal = dbMinDate;
@@ -335,7 +408,6 @@ export const Home: React.FC = () => {
       };
 
       const monitoreosEnPeriodo = monitoreos.filter(isDateInRange);
-      const diagnosticosEnPeriodo = diagnosticos.filter(isDateInRange);
 
       // -------------------------------------------------------------
       // CÁLCULOS AVANZADOS PARA GERESA Y REDES
@@ -375,28 +447,45 @@ export const Home: React.FC = () => {
         monitoreos: monitoreosPorRed[red] || 0
       })).sort((a, b) => b.cantidad - a.cantidad);
 
-      // Monitoreos Totales en los Últimos 7 Días
+      // -------------------------------------------------------------
+      // 3. IPRESS ÚNICAS CON MONITOREOS EN LOS ÚLTIMOS 7 DÍAS
+      // Cada IPRESS que haya monitoreado suma estrictamente 1
+      // -------------------------------------------------------------
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       sevenDaysAgo.setHours(0, 0, 0, 0);
       
-      let totalMonitoreosSemanal = 0;
+      const ipressMonitoreadasSemanal = new Set<string>();
       monitoreos.forEach(m => {
         const dateStr = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
+        let isRecent = false;
         if (dateStr) {
           const mDate = new Date(dateStr + 'T00:00:00');
-          if (mDate >= sevenDaysAgo) {
-            totalMonitoreosSemanal++;
-          }
+          if (mDate >= sevenDaysAgo) isRecent = true;
         } else if (m.fechaRegistro) {
           const mDate = new Date(m.fechaRegistro);
-          if (!isNaN(mDate.getTime()) && mDate >= sevenDaysAgo) {
-            totalMonitoreosSemanal++;
+          if (!isNaN(mDate.getTime()) && mDate >= sevenDaysAgo) isRecent = true;
+        }
+
+        if (isRecent) {
+          const matchedUser = allIpress.find(u => 
+            (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
+            (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
+            (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
+          );
+          if (matchedUser) {
+            ipressMonitoreadasSemanal.add(String(matchedUser.codigoRenipress || matchedUser.usuario || matchedUser.nombreIpress));
+          } else if (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed))) {
+            ipressMonitoreadasSemanal.add(String(m.codigoRenipress || m.nombreIpress || Math.random()));
           }
         }
       });
+      const totalIpressConMonitoreoSemanal = Math.min(totalIpressCount, ipressMonitoreadasSemanal.size);
 
-      // Cobertura de Diagnósticos & Falta Diagnóstico
+      // -------------------------------------------------------------
+      // 4. IPRESS CON DIAGNÓSTICOS & FALTA DIAGNÓSTICO
+      // Conteo de IPRESS únicas con diagnóstico (si una IPRESS tiene >1 diagnóstico igual suma como 1)
+      // -------------------------------------------------------------
       const ipressConDiagnostico = new Set();
       diagnosticos.forEach(d => {
         if (d.codigoRenipress) {
@@ -437,7 +526,7 @@ export const Home: React.FC = () => {
       const faltanDiag = Math.max(0, totalIpressCount - conDiag);
 
       // -------------------------------------------------------------
-      // CÁLCULO DE CUMPLIMIENTO SEMANAL DE MONITOREO
+      // 5. CÁLCULO DE CUMPLIMIENTO SEMANAL DE MONITOREO
       // Regla: Se enfoca siempre en el mes más actual del rango de fechas seleccionado
       // (evitando desconfiguración por abarcar múltiples meses en el gráfico semanal)
       // -------------------------------------------------------------
@@ -507,8 +596,8 @@ export const Home: React.FC = () => {
         totalIpress: totalIpressCount,
         monitoreosTotal: monitoreosEnPeriodo.length,
         monitoreosHistoricos: totalMonitoreosHistorico,
-        monitoreoSemanal: totalMonitoreosSemanal,
-        diagnosticosTotal: (activeDateFrom || activeDateTo) ? diagnosticosEnPeriodo.length : diagnosticos.length,
+        monitoreoSemanal: totalIpressConMonitoreoSemanal,
+        conDiagnosticoTotal: conDiag,
         faltanDiagnostico: faltanDiag,
         chartMonthTitle: `${targetMonthName} ${targetYear}`,
         ipressPorRed: ipressPorRedArr,
@@ -528,6 +617,7 @@ export const Home: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, dashboardRedFilter, dateFrom, dateTo, usersList, datesInitialized]);
 
+  // Exportar Detalle de Diagnósticos simple a Excel
   const exportarDetalleExcel = () => {
     const data = gestionStats.detalleList.map(item => ({
       'Unidad Ejecutora': item.red,
@@ -552,11 +642,22 @@ export const Home: React.FC = () => {
     ? 'Establecimientos Región Cusco' 
     : (isHospital ? 'Establecimientos Hospitales' : `Establecimientos ${targetRed}`);
 
+  // Filtrar el gráfico horizontal de IPRESS por Red:
+  // Si está en 'Todas', muestra todas las redes; si se seleccionó una Red, muestra ÚNICAMENTE esa red
+  const displayIpressPorRed = targetRed === 'Todas'
+    ? gestionStats.ipressPorRed
+    : gestionStats.ipressPorRed.filter(item => matchRedName(item.red, targetRed));
+
   const maxWeeklyY = Math.max(
     gestionStats.totalIpress, 
     ...gestionStats.weeklyComplianceData.map(d => Math.max(d.Monitoreadas, d.Faltantes, d.Meta || 0)), 
     10
   ) + 5;
+
+  const maxHorizontalX = Math.max(
+    ...displayIpressPorRed.map(d => Math.max(d.cantidad, d.monitoreos)),
+    10
+  ) + 15;
 
   const complianceAvg = gestionStats.weeklyComplianceData.length > 0
     ? Math.round(
@@ -564,6 +665,316 @@ export const Home: React.FC = () => {
         gestionStats.weeklyComplianceData.length
       )
     : 0;
+
+  // -------------------------------------------------------------
+  // EXPORTACIÓN COMPLETA DEL DASHBOARD A EXCEL CON GRÁFICOS INCRUSTADOS
+  // -------------------------------------------------------------
+  const exportDashboardExcel = async () => {
+    setIsExportingExcel(true);
+    try {
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Sistema de Control IPRESS - GERESA Cusco';
+      workbook.created = new Date();
+
+      // Capturar gráficos renderizados en el DOM como imágenes PNG en alta definición
+      const chartWeeklyPng = await captureChartSvgAsBase64('chart-container-weekly');
+      const chartIpressRedPng = await captureChartSvgAsBase64('chart-container-ipress-red');
+      const chartCoberturaPng = await captureChartSvgAsBase64('chart-container-cobertura');
+
+      // -------------------------------------------------------------
+      // HOJA 1: DASHBOARD DE GESTIÓN (DATOS + GRÁFICOS DINÁMICOS)
+      // -------------------------------------------------------------
+      const wsDashboard = workbook.addWorksheet('Dashboard de Gestión', {
+        views: [{ showGridLines: true }]
+      });
+
+      // Anchos de columnas
+      wsDashboard.columns = [
+        { width: 4 },  // A
+        { width: 28 }, // B
+        { width: 22 }, // C
+        { width: 22 }, // D
+        { width: 22 }, // E
+        { width: 22 }, // F
+        { width: 20 }, // G
+        { width: 20 }, // H
+      ];
+
+      // Banner institucional de cabecera
+      wsDashboard.mergeCells('B2:H3');
+      const titleCell = wsDashboard.getCell('B2');
+      titleCell.value = 'SISTEMA DE CONTROL IPRESS - REPORTE GERENCIAL DE GESTIÓN Y CALIDAD DE AGUA';
+      titleCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+      titleCell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1E40AF' }
+      };
+
+      // Fila de parámetros del filtro
+      wsDashboard.getCell('B4').value = `Unidad Ejecutora: ${targetRed}`;
+      wsDashboard.getCell('B4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
+      wsDashboard.getCell('D4').value = `Rango de Fechas: ${dateFrom || 'Inicio'} al ${dateTo || 'Fin'}`;
+      wsDashboard.getCell('D4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
+      wsDashboard.getCell('F4').value = `Fecha de Emisión: ${new Date().toLocaleString('es-PE')}`;
+      wsDashboard.getCell('F4').font = { color: { argb: 'FF64748B' }, size: 9 };
+
+      // 5 Tarjetas KPI formateadas
+      const kpiDefinitions = [
+        { col: 'B', title: unitEstablecimientoTitle, val: gestionStats.totalIpress, color: 'FFDBEAFE', textColor: 'FF1E40AF' },
+        { col: 'C', title: 'Registros de Monitoreos', val: gestionStats.monitoreosTotal, color: 'FFFEF3C7', textColor: 'FF92400E' },
+        { col: 'D', title: 'IPRESS c/ Monitoreo (7d)', val: gestionStats.monitoreoSemanal, color: 'FFD1FAE5', textColor: 'FF065F46' },
+        { col: 'E', title: 'IPRESS con Diagnósticos', val: gestionStats.conDiagnosticoTotal, color: 'FFE0E7FF', textColor: 'FF3730A3' },
+        { col: 'F', title: 'Falta Diagnóstico', val: gestionStats.faltanDiagnostico, color: 'FFFEE2E2', textColor: 'FF991B1B' },
+      ];
+
+      kpiDefinitions.forEach(kpi => {
+        const cellHeader = wsDashboard.getCell(`${kpi.col}6`);
+        cellHeader.value = kpi.title;
+        cellHeader.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF475569' } };
+        cellHeader.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+        cellHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: kpi.color } };
+        cellHeader.border = { top: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+
+        const cellVal = wsDashboard.getCell(`${kpi.col}7`);
+        cellVal.value = kpi.val;
+        cellVal.font = { name: 'Arial', size: 16, bold: true, color: { argb: kpi.textColor } };
+        cellVal.alignment = { horizontal: 'center', vertical: 'middle' };
+        cellVal.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: kpi.color } };
+        cellVal.border = { bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      });
+
+      // SECCIÓN 1: CUMPLIMIENTO SEMANAL
+      let currentRow = 9;
+      wsDashboard.getCell(`B${currentRow}`).value = `1. CUMPLIMIENTO SEMANAL DE MONITOREO (${gestionStats.chartMonthTitle}) - ${targetRed === 'Todas' ? 'Región Cusco' : targetRed}`;
+      wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
+      currentRow++;
+
+      const weeklyHeaders = ['Semana', 'Período', 'Meta (IPRESS)', 'Monitoreadas', 'Faltantes', '% Cumplimiento', 'Total Muestras'];
+      const cols = ['B', 'C', 'D', 'E', 'F', 'G', 'H'];
+      weeklyHeaders.forEach((h, idx) => {
+        const cell = wsDashboard.getCell(`${cols[idx]}${currentRow}`);
+        cell.value = h;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      });
+      currentRow++;
+
+      gestionStats.weeklyComplianceData.forEach(row => {
+        const values = [row.name, row.fullName, row.Meta, row.Monitoreadas, row.Faltantes, `${row.Porcentaje}%`, row.TotalMuestras];
+        values.forEach((v, idx) => {
+          const cell = wsDashboard.getCell(`${cols[idx]}${currentRow}`);
+          cell.value = v;
+          cell.alignment = { horizontal: idx >= 2 ? 'center' : 'left', vertical: 'middle' };
+          cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        });
+        currentRow++;
+      });
+
+      currentRow += 1;
+
+      // Incrustar imagen del gráfico semanal
+      if (chartWeeklyPng) {
+        const imgId = workbook.addImage({ base64: chartWeeklyPng, extension: 'png' });
+        wsDashboard.addImage(imgId, {
+          tl: { col: 1, row: currentRow - 1 },
+          ext: { width: 680, height: 280 }
+        });
+        currentRow += 16;
+      }
+
+      currentRow += 2;
+
+      // SECCIÓN 2: IPRESS POR UNIDAD EJECUTORA & COBERTURA
+      wsDashboard.getCell(`B${currentRow}`).value = `2. ESTADÍSTICAS POR UNIDAD EJECUTORA Y COBERTURA (${targetRed === 'Todas' ? 'Región Cusco' : targetRed})`;
+      wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
+      currentRow++;
+
+      // Tabla 2: IPRESS por Red
+      const redHeaders = ['Unidad Ejecutora', `Cant. ${unitName}`, 'Monitoreos Totales'];
+      const redCols = ['B', 'C', 'D'];
+      redHeaders.forEach((h, idx) => {
+        const cell = wsDashboard.getCell(`${redCols[idx]}${currentRow}`);
+        cell.value = h;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      });
+
+      // Tabla 3: Cobertura
+      const cobHeaders = ['Estado de Diagnóstico', 'Cantidad IPRESS', 'Porcentaje'];
+      const cobCols = ['F', 'G', 'H'];
+      cobHeaders.forEach((h, idx) => {
+        const cell = wsDashboard.getCell(`${cobCols[idx]}${currentRow}`);
+        cell.value = h;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      });
+      currentRow++;
+
+      const maxSubRows = Math.max(displayIpressPorRed.length, gestionStats.coberturaData.length);
+      for (let i = 0; i < maxSubRows; i++) {
+        const redRow = displayIpressPorRed[i];
+        if (redRow) {
+          wsDashboard.getCell(`B${currentRow}`).value = redRow.red;
+          wsDashboard.getCell(`C${currentRow}`).value = redRow.cantidad;
+          wsDashboard.getCell(`D${currentRow}`).value = redRow.monitoreos;
+          ['B', 'C', 'D'].forEach(c => {
+            const cell = wsDashboard.getCell(`${c}${currentRow}`);
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+            if (c !== 'B') cell.alignment = { horizontal: 'center' };
+          });
+        }
+
+        const cobRow = gestionStats.coberturaData[i];
+        if (cobRow) {
+          const pct = gestionStats.totalIpress > 0 ? Math.round((cobRow.value / gestionStats.totalIpress) * 100) : 0;
+          wsDashboard.getCell(`F${currentRow}`).value = cobRow.name;
+          wsDashboard.getCell(`G${currentRow}`).value = cobRow.value;
+          wsDashboard.getCell(`H${currentRow}`).value = `${pct}%`;
+          ['F', 'G', 'H'].forEach(c => {
+            const cell = wsDashboard.getCell(`${c}${currentRow}`);
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+            if (c !== 'F') cell.alignment = { horizontal: 'center' };
+          });
+        }
+        currentRow++;
+      }
+
+      currentRow += 1;
+
+      // Incrustar imágenes de los gráficos de barras y de cobertura
+      if (chartIpressRedPng || chartCoberturaPng) {
+        if (chartIpressRedPng) {
+          const imgId = workbook.addImage({ base64: chartIpressRedPng, extension: 'png' });
+          wsDashboard.addImage(imgId, {
+            tl: { col: 1, row: currentRow - 1 },
+            ext: { width: 360, height: 260 }
+          });
+        }
+        if (chartCoberturaPng) {
+          const imgId = workbook.addImage({ base64: chartCoberturaPng, extension: 'png' });
+          wsDashboard.addImage(imgId, {
+            tl: { col: 5, row: currentRow - 1 },
+            ext: { width: 340, height: 260 }
+          });
+        }
+        currentRow += 15;
+      }
+
+      // -------------------------------------------------------------
+      // HOJA 2: DETALLE DIAGNÓSTICOS
+      // -------------------------------------------------------------
+      const wsDiag = workbook.addWorksheet('Detalle de Diagnósticos', {
+        views: [{ showGridLines: true }]
+      });
+      wsDiag.columns = [
+        { header: 'N°', key: 'num', width: 6 },
+        { header: 'Unidad Ejecutora', key: 'red', width: 28 },
+        { header: 'IPRESS / Establecimiento', key: 'ipress', width: 36 },
+        { header: '¿Tiene Diagnóstico?', key: 'tieneDiag', width: 22 },
+      ];
+      wsDiag.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      wsDiag.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E40AF' } };
+      wsDiag.getRow(1).alignment = { horizontal: 'center' };
+
+      gestionStats.detalleList.forEach((item, index) => {
+        const row = wsDiag.addRow({
+          num: index + 1,
+          red: item.red,
+          ipress: item.ipress,
+          tieneDiag: item.tieneDiag ? 'SÍ' : 'NO'
+        });
+        row.getCell('num').alignment = { horizontal: 'center' };
+        row.getCell('tieneDiag').alignment = { horizontal: 'center' };
+        if (item.tieneDiag) {
+          row.getCell('tieneDiag').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } };
+          row.getCell('tieneDiag').font = { bold: true, color: { argb: 'FF166534' } };
+        } else {
+          row.getCell('tieneDiag').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } };
+          row.getCell('tieneDiag').font = { bold: true, color: { argb: 'FF991B1B' } };
+        }
+      });
+
+      // -------------------------------------------------------------
+      // HOJA 3: DETALLE MONITOREOS
+      // -------------------------------------------------------------
+      const wsMon = workbook.addWorksheet('Detalle de Monitoreos', {
+        views: [{ showGridLines: true }]
+      });
+      wsMon.columns = [
+        { header: 'N°', key: 'num', width: 6 },
+        { header: 'Fecha', key: 'fecha', width: 14 },
+        { header: 'Unidad Ejecutora', key: 'red', width: 26 },
+        { header: 'IPRESS', key: 'ipress', width: 34 },
+        { header: 'Código RENIPRESS', key: 'renipress', width: 18 },
+        { header: 'Cloro Residual (mg/L)', key: 'cloro', width: 22 },
+        { header: 'pH', key: 'ph', width: 12 },
+        { header: 'Turbiedad (UNT)', key: 'turbiedad', width: 16 },
+        { header: 'Temperatura (°C)', key: 'temp', width: 16 },
+      ];
+      wsMon.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      wsMon.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+      wsMon.getRow(1).alignment = { horizontal: 'center' };
+
+      const allRecords = getRecords().filter(r => r.estado !== 'Inactivo' && r.tipo === 'monitoreo');
+      let monIdx = 1;
+      allRecords.forEach(r => {
+        const userObj = usersList.find(u => 
+          (u.codigoRenipress && r.codigoRenipress && matchRenipress(u.codigoRenipress, r.codigoRenipress)) ||
+          (u.usuario && r.nombreIpress && String(u.usuario).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase()) ||
+          (u.nombreIpress && r.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(r.nombreIpress).trim().toLowerCase())
+        );
+        const rRed = userObj?.red || r.unidadEjecutora || 'Sin Red';
+        if (targetRed !== 'Todas' && !matchRedName(rRed, targetRed)) return;
+        
+        const dStr = extractDateHelper(r.fecha) || extractDateHelper(r.fechaRegistro);
+        if (dateFrom && dStr && dStr < dateFrom) return;
+        if (dateTo && dStr && dStr > dateTo) return;
+
+        const row = wsMon.addRow({
+          num: monIdx++,
+          fecha: dStr || '',
+          red: rRed,
+          ipress: r.nombreIpress || '',
+          renipress: r.codigoRenipress || '',
+          cloro: (r as any).cloroResidual ?? r.cloro ?? '',
+          ph: r.ph ?? '',
+          turbiedad: r.turbiedad ?? '',
+          temp: r.temperatura ?? '',
+        });
+        row.getCell('num').alignment = { horizontal: 'center' };
+        row.getCell('fecha').alignment = { horizontal: 'center' };
+        row.getCell('renipress').alignment = { horizontal: 'center' };
+        row.getCell('cloro').alignment = { horizontal: 'center' };
+        row.getCell('ph').alignment = { horizontal: 'center' };
+        row.getCell('turbiedad').alignment = { horizontal: 'center' };
+        row.getCell('temp').alignment = { horizontal: 'center' };
+      });
+
+      // Descargar archivo Excel generado
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      const safeRedName = (targetRed || 'General').replace(/[^a-zA-Z0-9_-]/g, '_');
+      link.download = `Dashboard_Gestion_${safeRedName}_${dateFrom || 'inicio'}_al_${dateTo || 'fin'}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error exportando dashboard a Excel:', err);
+      alert('Ocurrió un error al generar el archivo Excel con gráficos.');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
 
   return (
     <div className="dashboard-fullwidth animate-fade-in">
@@ -605,8 +1016,8 @@ export const Home: React.FC = () => {
             </div>
           </div>
 
-          {/* CONTENEDOR DE FILTROS EN LÍNEA */}
-          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1.25rem' }}>
+          {/* CONTENEDOR DE FILTROS Y BOTÓN EXPORTAR EXCEL */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             {/* FILTRO 1: UNIDAD EJECUTORA */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>
@@ -690,12 +1101,38 @@ export const Home: React.FC = () => {
                 />
               </div>
             </div>
+
+            {/* BOTÓN: EXPORTAR DASHBOARD COMPLETO A EXCEL */}
+            <button
+              onClick={exportDashboardExcel}
+              disabled={isExportingExcel}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                backgroundColor: isExportingExcel ? '#94a3b8' : '#059669',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '0.45rem 0.9rem',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: isExportingExcel ? 'not-allowed' : 'pointer',
+                boxShadow: '0 2px 4px rgba(5, 150, 105, 0.2)',
+                transition: 'all 0.2s ease',
+                whiteSpace: 'nowrap'
+              }}
+              title="Exportar todo el dashboard actual con gráficos a Excel (.xlsx)"
+            >
+              <FileSpreadsheet size={17} />
+              <span>{isExportingExcel ? 'Generando Excel...' : 'Exportar Dashboard Excel'}</span>
+            </button>
           </div>
         </div>
 
         {/* 5 TARJETAS KPI EN UNA SOLA LÍNEA HORIZONTAL COMPLETA */}
         <div className="dashboard-kpi-row">
-          {/* 1. Establecimientos Región Cusco */}
+          {/* 1. Establecimientos Región Cusco / Red */}
           <div className="glass-panel" style={{ 
             padding: '1.25rem', 
             display: 'flex', 
@@ -726,7 +1163,7 @@ export const Home: React.FC = () => {
             </div>
           </div>
 
-          {/* 2. Monitoreos */}
+          {/* 2. Registros de Monitoreos */}
           <div className="glass-panel" style={{ 
             padding: '1.25rem', 
             display: 'flex', 
@@ -749,7 +1186,7 @@ export const Home: React.FC = () => {
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                Monitoreos
+                Registros de Monitoreos
               </p>
               <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', color: 'var(--primary-dark)', fontWeight: 700 }}>
                 {gestionStats.monitoreosTotal}
@@ -762,7 +1199,7 @@ export const Home: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. Monitoreos (Últimos 7 días) */}
+          {/* 3. IPRESS con Monitoreos (Últimos 7 días) */}
           <div className="glass-panel" style={{ 
             padding: '1.25rem', 
             display: 'flex', 
@@ -784,8 +1221,8 @@ export const Home: React.FC = () => {
               <CalendarClock size={24} />
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                Monitoreos (Últimos 7 días)
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={isHospital ? 'Hospitales con Monitoreos (Últimos 7 días)' : 'IPRESS con Monitoreos (Últimos 7 días)'}>
+                {isHospital ? 'Hospitales c/ Monitoreo (7d)' : 'IPRESS con Monitoreos (Últimos 7 días)'}
               </p>
               <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', color: '#10b981', fontWeight: 700 }}>
                 {gestionStats.monitoreoSemanal}
@@ -793,7 +1230,7 @@ export const Home: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Diagnósticos */}
+          {/* 4. IPRESS con Diagnósticos */}
           <div className="glass-panel" style={{ 
             padding: '1.25rem', 
             display: 'flex', 
@@ -815,11 +1252,11 @@ export const Home: React.FC = () => {
               <ClipboardList size={24} />
             </div>
             <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-                Diagnósticos
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={isHospital ? 'Hospitales con Diagnósticos' : 'IPRESS con Diagnósticos'}>
+                {isHospital ? 'Hospitales con Diagnósticos' : 'IPRESS con Diagnósticos'}
               </p>
               <h3 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', color: 'var(--primary-dark)', fontWeight: 700 }}>
-                {gestionStats.diagnosticosTotal}
+                {gestionStats.conDiagnosticoTotal}
               </h3>
             </div>
           </div>
@@ -857,13 +1294,13 @@ export const Home: React.FC = () => {
         </div>
 
         {/* GRÁFICO 1: ACTIVIDAD RECIENTE (MES MÁS ACTUAL) - CUMPLIMIENTO SEMANAL DE MONITOREO */}
-        <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+        <div id="chart-container-weekly" className="glass-panel" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <BarChart3 size={20} color="var(--primary)" />
                 <h3 style={{ margin: 0, color: 'var(--primary-dark)', fontSize: '1.15rem' }}>
-                  Actividad Reciente ({gestionStats.chartMonthTitle}) - Cumplimiento Semanal de Monitoreo
+                  Actividad Reciente ({gestionStats.chartMonthTitle}) - Cumplimiento Semanal de Monitoreo ({targetRed === 'Todas' ? 'Región Cusco' : targetRed})
                 </h3>
               </div>
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -935,40 +1372,44 @@ export const Home: React.FC = () => {
         {/* DEMÁS GRÁFICOS: IPRESS POR UNIDAD EJECUTORA & COBERTURA DE DIAGNÓSTICOS */}
         {canViewGestionStats && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
-            {/* GRÁFICO 2: IPRESS POR UNIDAD EJECUTORA */}
-            <div className="glass-panel" style={{ padding: '1.5rem' }}>
-              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>IPRESS por Unidad Ejecutora</h4>
-              <div style={{ height: '300px', width: '100%' }}>
-                {gestionStats.ipressPorRed.length > 0 ? (
+            {/* GRÁFICO 2: IPRESS POR UNIDAD EJECUTORA (FILTRADO EXACTO SEGÚN RED SELECCIONADA) */}
+            <div id="chart-container-ipress-red" className="glass-panel" style={{ padding: '1.5rem' }}>
+              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>
+                IPRESS por Unidad Ejecutora ({targetRed === 'Todas' ? 'Región Cusco' : targetRed})
+              </h4>
+              <div style={{ height: displayIpressPorRed.length <= 1 ? '200px' : '300px', width: '100%' }}>
+                {displayIpressPorRed.length > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={gestionStats.ipressPorRed} layout="vertical" margin={{ top: 5, right: 40, left: 20, bottom: 5 }}>
+                    <BarChart data={displayIpressPorRed} layout="vertical" margin={{ top: 5, right: 40, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
-                      <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <XAxis type="number" tick={{ fill: '#64748b', fontSize: 12 }} axisLine={false} tickLine={false} domain={[0, maxHorizontalX]} />
                       <YAxis dataKey="red" type="category" width={140} tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                       <Tooltip 
                         content={<CustomBarTooltip />}
                         cursor={{ fill: '#f1f5f9' }}
                       />
                       <Legend />
-                      <Bar dataKey="cantidad" name={`Cant. ${unitName}`} fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={15}>
+                      <Bar dataKey="cantidad" name={`Cant. ${unitName}`} fill="var(--primary)" radius={[0, 4, 4, 0]} barSize={displayIpressPorRed.length <= 1 ? 22 : 15}>
                         <LabelList dataKey="cantidad" position="right" fill="#64748b" fontSize={11} fontWeight={500} />
                       </Bar>
-                      <Bar dataKey="monitoreos" name="Monitoreos Totales" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={15}>
+                      <Bar dataKey="monitoreos" name="Monitoreos Totales" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={displayIpressPorRed.length <= 1 ? 22 : 15}>
                         <LabelList dataKey="monitoreos" position="right" fill="#64748b" fontSize={11} fontWeight={500} />
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
                   <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                    Cargando usuarios...
+                    No hay datos disponibles para la unidad seleccionada.
                   </div>
                 )}
               </div>
             </div>
 
             {/* GRÁFICO 3: COBERTURA DE DIAGNÓSTICOS */}
-            <div className="glass-panel" style={{ padding: '1.5rem', position: 'relative' }}>
-              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>Cobertura de Diagnósticos</h4>
+            <div id="chart-container-cobertura" className="glass-panel" style={{ padding: '1.5rem', position: 'relative' }}>
+              <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text)' }}>
+                Cobertura de Diagnósticos ({targetRed === 'Todas' ? 'Región Cusco' : targetRed})
+              </h4>
               <div style={{ height: '300px', width: '100%', position: 'relative' }}>
                 {gestionStats.totalIpress > 0 ? (
                   <ResponsiveContainer width="100%" height="100%">

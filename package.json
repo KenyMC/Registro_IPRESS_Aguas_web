@@ -1,7 +1,7 @@
 {
   "name": "registro-ipress-aguas",
   "private": true,
-  "version": "1.4.6",
+  "version": "1.4.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.9.0",
+    "exceljs": "^4.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.32.0",
     "prop-types": "^15.8.1",

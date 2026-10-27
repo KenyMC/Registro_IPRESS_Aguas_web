@@ -1,7 +1,22 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
-## [1.4.6] - 2026-10-26
+## [1.4.7] - 2026-10-27
+### Añadido / Mejorado
+- **Ajuste y Precisión en Tarjetas KPI (Totales):**
+  - **Registros de Monitoreos:** Renombrada desde "Monitoreos" para reflejar con exactitud la cantidad total de fichas/registros de monitoreo procesados en el período.
+  - **IPRESS con Monitoreos (Últimos 7 días):** Ahora contabiliza estrictamente la cantidad de **IPRESS únicas** que realizaron al menos una evaluación en los últimos 7 días (evitando conteos redundantes de una misma IPRESS).
+  - **IPRESS con Diagnósticos:** Modificado para medir la cantidad de **IPRESS únicas** que cuentan con diagnóstico. Incluso si una IPRESS cuenta con más de un registro de diagnóstico en la base de datos, computa estrictamente como 1, garantizando que nunca supere el total de IPRESS de la Red y manteniendo la consistencia perfecta: `IPRESS con Diagnósticos + Falta Diagnóstico = Total IPRESS`.
+- **Identificación de Unidad Ejecutora en Títulos de Gráficos:**
+  - Los 3 gráficos del Dashboard (`Actividad Reciente - Cumplimiento Semanal`, `IPRESS por Unidad Ejecutora` y `Cobertura de Diagnósticos`) integran dinámicamente en su título el nombre de la Unidad Ejecutora seleccionada (ej. `Red Chumbivilcas` o `Región Cusco` cuando está en `Todas`).
+- **Filtrado Focalizado en Gráfico Horizontal de IPRESS:**
+  - Al seleccionar una Unidad Ejecutora específica (ej. `Red Chumbivilcas`), el gráfico de barras horizontal muestra **únicamente** la barra de la Red seleccionada, eliminando las demás redes para un análisis enfocado y sin distracciones.
+- **Exportación Completa del Dashboard a Excel con Gráficos Dinámicos:**
+  - Se incorporó el botón **Exportar Dashboard Excel** en la barra superior.
+  - Genera un archivo `.xlsx` profesional estructurado en 3 hojas:
+    1. **Dashboard de Gestión:** Encabezado institucional, parámetros de filtro, las 5 tarjetas KPI estilizadas, tablas de cumplimiento y cobertura, e **incrusta las imágenes reales de alta resolución de los 3 gráficos** renderizados en pantalla.
+    2. **Detalle de Diagnósticos:** Matriz completa de IPRESS, Red y estado de diagnóstico con formato condicional verde/rojo.
+    3. **Detalle de Monitoreos:** Sábana analítica con parámetros físico-químicos (cloro, pH, turbiedad, temperatura) filtrada por fecha y red.
 ### Añadido / Optimizado
 - **Diseño a Ancho Completo (*Full Window Width*):**
   - Se extendió el contenedor del Inicio a todo el ancho de la ventana (`dashboard-fullwidth`), permitiendo que el panel superior de filtros entre perfectamente en una sola línea horizontal.
