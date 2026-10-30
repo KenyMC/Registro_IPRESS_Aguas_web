@@ -1,6 +1,15 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.4.9] - 2026-10-30
+### Añadido / Mejorado
+- **Gráficos Dinámicos Nativos de Excel (OpenXML `<c:chartSpace>`) en Exportación del Dashboard:**
+  - Se reemplazó por completo la inserción de imágenes estáticas PNG por **gráficos nativos dinámicos de Excel** (`xl/charts/chart1.xml`, `xl/charts/chart2.xml`, `xl/charts/chart3.xml` y `xl/drawings/drawing1.xml`) construidos en [`src/utils/excelNativeCharts.ts`](file:///c:/Users/nemes/.gemini/antigravity-ide/scratch/Registro_IPRESS_Aguas/src/utils/excelNativeCharts.ts) e inyectados en el libro `.xlsx`.
+  - **Vinculación Dinámica con Celdas y Fórmulas Nativas:**
+    1. **Gráfico 1 (Cumplimiento Semanal de Monitoreo):** Gráfico de columnas agrupadas nativo de Excel vinculado a los rangos de la Tabla 1 (`IPRESS Monitoreadas` en verde esmeralda `#10B981` y `Faltan Monitorear` en rojo `#EF4444`), con fórmulas nativas `=MAX(0, D-E)` para faltantes y `=IF(D>0, E/D, 0)` con formato `0%` para el cumplimiento.
+    2. **Gráfico 2 (Avance Semanal por Unidad Ejecutora / Desglose Diario Lunes a Domingo):** Gráfico nativo horizontal de barras (`Meta IPRESS` vs `IPRESS Monitoreadas`) cuando el filtro está en `Todas`, o gráfico nativo vertical de columnas (`IPRESS con Monitoreo` de Lunes a Domingo) cuando se selecciona una Unidad Ejecutora específica, vinculado directamente a las celdas de la Tabla 2.
+    3. **Gráfico 3 (Cobertura de Diagnósticos):** Gráfico de anillo (*Doughnut Chart*) nativo de Excel vinculado a las celdas numéricas de la Tabla 3 (`Con Diagnóstico` y `Falta Diagnóstico`), mostrando valores y porcentajes interactivos que se recalculan automáticamente si se modifican las celdas en Excel.
+
 ## [1.4.8] - 2026-10-27
 ### Añadido / Mejorado
 - **Alineación Justificada y Simétrica de Filtros:**

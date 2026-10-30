@@ -30,6 +30,11 @@ import {
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import { matchRenipress, normalizeRenipress } from '../services/ipressData';
+import {
+  buildNativeBarChartXml,
+  buildNativeDoughnutChartXml,
+  injectNativeChartsIntoXlsxBuffer
+} from '../utils/excelNativeCharts';
 
 const monthNamesShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
 const monthNamesFull = [
@@ -98,95 +103,6 @@ const extractDateHelper = (val: string | undefined): string | null => {
     if (yr < 2020 || yr > 2035) return null;
   }
   return result;
-};
-
-// Captura de elementos SVG de Recharts convertidos a PNG base64 para Excel
-const captureChartSvgAsBase64 = async (elementId: string): Promise<string | null> => {
-  const container = document.getElementById(elementId);
-  if (!container) return null;
-  // Buscar específicamente el SVG de Recharts (svg.recharts-surface), NUNCA el primer SVG (que puede ser un icono Lucide)
-  const svg = (container.querySelector('svg.recharts-surface') || container.querySelector('.recharts-wrapper svg')) as SVGSVGElement | null;
-  if (!svg) return null;
-
-  try {
-    const bbox = svg.getBoundingClientRect();
-    const width = Math.max(svg.clientWidth || bbox.width || 750, 600);
-    const height = Math.max(svg.clientHeight || bbox.height || 320, 260);
-
-    const clonedSvg = svg.cloneNode(true) as SVGSVGElement;
-    clonedSvg.setAttribute('width', `${Math.round(width)}`);
-    clonedSvg.setAttribute('height', `${Math.round(height)}`);
-    clonedSvg.setAttribute('viewBox', svg.getAttribute('viewBox') || `0 0 ${width} ${height}`);
-    clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-
-    // Fondo blanco en el SVG
-    const bgRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    bgRect.setAttribute('width', '100%');
-    bgRect.setAttribute('height', '100%');
-    bgRect.setAttribute('fill', '#ffffff');
-    clonedSvg.insertBefore(bgRect, clonedSvg.firstChild);
-
-    const origElements = Array.from(svg.querySelectorAll('*'));
-    const cloneElements = Array.from(clonedSvg.querySelectorAll('*'));
-    origElements.forEach((orig, i) => {
-      const clone = cloneElements[i + 1]; // +1 por el bgRect
-      if (orig && clone) {
-        const style = window.getComputedStyle(orig);
-        const fill = style.getPropertyValue('fill');
-        const stroke = style.getPropertyValue('stroke');
-        const strokeWidth = style.getPropertyValue('stroke-width');
-        const fontSize = style.getPropertyValue('font-size');
-        const fontWeight = style.getPropertyValue('font-weight');
-        const textAnchor = style.getPropertyValue('text-anchor');
-        const dominantBaseline = style.getPropertyValue('dominant-baseline');
-        const opacity = style.getPropertyValue('opacity');
-
-        if (fill && fill !== 'none') clone.setAttribute('fill', fill);
-        if (stroke && stroke !== 'none') clone.setAttribute('stroke', stroke);
-        if (strokeWidth && strokeWidth !== '0px') clone.setAttribute('stroke-width', strokeWidth);
-        if (fontSize) clone.setAttribute('font-size', fontSize);
-        if (fontWeight) clone.setAttribute('font-weight', fontWeight);
-        if (textAnchor) clone.setAttribute('text-anchor', textAnchor);
-        if (dominantBaseline) clone.setAttribute('dominant-baseline', dominantBaseline);
-        if (opacity) clone.setAttribute('opacity', opacity);
-        clone.setAttribute('font-family', 'Arial, sans-serif');
-      }
-    });
-
-    const xml = new XMLSerializer().serializeToString(clonedSvg);
-    const svgBlob = new Blob([xml], { type: 'image/svg+xml;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(svgBlob);
-
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const scale = 2; // Alta resolución
-        canvas.width = Math.round(width * scale);
-        canvas.height = Math.round(height * scale);
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const dataUrl = canvas.toDataURL('image/png');
-          URL.revokeObjectURL(blobUrl);
-          resolve(dataUrl.replace(/^data:image\/png;base64,/, ''));
-        } else {
-          URL.revokeObjectURL(blobUrl);
-          resolve(null);
-        }
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(blobUrl);
-        resolve(null);
-      };
-      img.src = blobUrl;
-    });
-  } catch (e) {
-    console.error('Error capturing chart SVG:', e);
-    return null;
-  }
 };
 
 // Tooltip personalizado para IPRESS por Unidad Ejecutora (avance semanal)
@@ -875,7 +791,7 @@ export const Home: React.FC = () => {
     : 0;
 
   // -------------------------------------------------------------
-  // EXPORTACIÓN COMPLETA DEL DASHBOARD A EXCEL CON GRÁFICOS INCRUSTADOS
+  // EXPORTACIÓN COMPLETA DEL DASHBOARD A EXCEL CON GRÁFICOS NATIVOS DINÁMICOS
   // -------------------------------------------------------------
   const exportDashboardExcel = async () => {
     setIsExportingExcel(true);
@@ -884,15 +800,12 @@ export const Home: React.FC = () => {
       workbook.creator = 'Sistema de Control IPRESS - GERESA Cusco';
       workbook.created = new Date();
 
-      // Capturar gráficos reales de Recharts en el DOM como imágenes PNG de alta resolución
-      const chartWeeklyPng = await captureChartSvgAsBase64('chart-container-weekly');
-      const chartIpressRedPng = await captureChartSvgAsBase64('chart-container-ipress-red');
-      const chartCoberturaPng = await captureChartSvgAsBase64('chart-container-cobertura');
+      const sheetName = 'Dashboard de Gestión';
 
       // -------------------------------------------------------------
-      // HOJA 1: DASHBOARD DE GESTIÓN (DATOS + GRÁFICOS DINÁMICOS)
+      // HOJA 1: DASHBOARD DE GESTIÓN (DATOS + GRÁFICOS NATIVOS DINÁMICOS DE EXCEL)
       // -------------------------------------------------------------
-      const wsDashboard = workbook.addWorksheet('Dashboard de Gestión', {
+      const wsDashboard = workbook.addWorksheet(sheetName, {
         views: [{ showGridLines: true }]
       });
 
@@ -900,16 +813,17 @@ export const Home: React.FC = () => {
       wsDashboard.columns = [
         { width: 4 },  // A
         { width: 28 }, // B
-        { width: 22 }, // C
-        { width: 22 }, // D
+        { width: 26 }, // C
+        { width: 20 }, // D
         { width: 22 }, // E
-        { width: 22 }, // F
-        { width: 20 }, // G
-        { width: 20 }, // H
+        { width: 20 }, // F
+        { width: 24 }, // G
+        { width: 18 }, // H
+        { width: 16 }, // I
       ];
 
       // Banner institucional de cabecera
-      wsDashboard.mergeCells('B2:H3');
+      wsDashboard.mergeCells('B2:I3');
       const titleCell = wsDashboard.getCell('B2');
       titleCell.value = 'SISTEMA DE CONTROL IPRESS - REPORTE GERENCIAL DE GESTIÓN Y CALIDAD DE AGUA';
       titleCell.font = { name: 'Arial', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
@@ -925,8 +839,8 @@ export const Home: React.FC = () => {
       wsDashboard.getCell('B4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
       wsDashboard.getCell('D4').value = `Rango de Fechas: ${dateFrom || 'Inicio'} al ${dateTo || 'Fin'}`;
       wsDashboard.getCell('D4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
-      wsDashboard.getCell('F4').value = `Fecha de Emisión: ${new Date().toLocaleString('es-PE')}`;
-      wsDashboard.getCell('F4').font = { color: { argb: 'FF64748B' }, size: 9 };
+      wsDashboard.getCell('G4').value = `Fecha de Emisión: ${new Date().toLocaleString('es-PE')}`;
+      wsDashboard.getCell('G4').font = { color: { argb: 'FF64748B' }, size: 9 };
 
       // 5 Tarjetas KPI formateadas
       const kpiDefinitions = [
@@ -959,7 +873,8 @@ export const Home: React.FC = () => {
       wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
       currentRow++;
 
-      const weeklyHeaders = ['Semana', 'Período', 'Meta (IPRESS)', 'Monitoreadas', 'Faltantes', '% Cumplimiento', 'Total Muestras'];
+      const sec1HeaderRow = currentRow;
+      const weeklyHeaders = ['Semana', 'Período', 'Meta (IPRESS)', 'IPRESS Monitoreadas', 'Faltan Monitorear', '% Cumplimiento', 'Total Muestras'];
       const cols = ['B', 'C', 'D', 'E', 'F', 'G', 'H'];
       weeklyHeaders.forEach((h, idx) => {
         const cell = wsDashboard.getCell(`${cols[idx]}${currentRow}`);
@@ -971,30 +886,32 @@ export const Home: React.FC = () => {
       });
       currentRow++;
 
+      const sec1StartRow = currentRow;
       gestionStats.weeklyComplianceData.forEach(row => {
-        const values = [row.name, row.fullName, row.Meta, row.Monitoreadas, row.Faltantes, `${row.Porcentaje}%`, row.TotalMuestras];
-        values.forEach((v, idx) => {
-          const cell = wsDashboard.getCell(`${cols[idx]}${currentRow}`);
-          cell.value = v;
+        const r = currentRow;
+        wsDashboard.getCell(`B${r}`).value = row.name;
+        wsDashboard.getCell(`C${r}`).value = row.fullName;
+        wsDashboard.getCell(`D${r}`).value = row.Meta;
+        wsDashboard.getCell(`E${r}`).value = row.Monitoreadas;
+        wsDashboard.getCell(`F${r}`).value = { formula: `MAX(0,D${r}-E${r})`, result: row.Faltantes };
+        const pctCell = wsDashboard.getCell(`G${r}`);
+        pctCell.value = { formula: `IF(D${r}>0,E${r}/D${r},0)`, result: row.Meta > 0 ? row.Monitoreadas / row.Meta : 0 };
+        pctCell.numFmt = '0%';
+        wsDashboard.getCell(`H${r}`).value = row.TotalMuestras;
+
+        cols.forEach((colLetter, idx) => {
+          const cell = wsDashboard.getCell(`${colLetter}${r}`);
           cell.alignment = { horizontal: idx >= 2 ? 'center' : 'left', vertical: 'middle' };
           cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
         });
         currentRow++;
       });
+      const sec1EndRow = Math.max(sec1StartRow, currentRow - 1);
 
-      currentRow += 1;
-
-      // Incrustar imagen del gráfico semanal
-      if (chartWeeklyPng) {
-        const imgId = workbook.addImage({ base64: chartWeeklyPng, extension: 'png' });
-        wsDashboard.addImage(imgId, {
-          tl: { col: 1, row: currentRow - 1 },
-          ext: { width: 680, height: 280 }
-        });
-        currentRow += 16;
-      }
-
-      currentRow += 2;
+      // Espacio reservado para el Gráfico Nativo 1 (17 filas)
+      const chart1ZeroRowStart = currentRow; // 0-indexed row inmediatamente debajo de la tabla 1
+      const chart1ZeroRowEnd = chart1ZeroRowStart + 16;
+      currentRow += 18;
 
       // SECCIÓN 2: DESGLOSE SEMANAL (O DIARIO) Y COBERTURA DE DIAGNÓSTICOS
       const section2Title = targetRed === 'Todas'
@@ -1005,9 +922,11 @@ export const Home: React.FC = () => {
       wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
       currentRow++;
 
+      const sec2HeaderRow = currentRow;
+
       // Tabla 2 (Izquierda): Avance por Redes (si Todas) o Desglose Diario Lunes a Domingo (si Red)
       if (targetRed === 'Todas') {
-        const redHeaders = ['Unidad Ejecutora', 'Meta IPRESS', 'Monitoreadas (Semana)', '% Avance'];
+        const redHeaders = ['Unidad Ejecutora', 'Meta IPRESS', 'IPRESS Monitoreadas', '% Avance'];
         const redCols = ['B', 'C', 'D', 'E'];
         redHeaders.forEach((h, idx) => {
           const cell = wsDashboard.getCell(`${redCols[idx]}${currentRow}`);
@@ -1018,7 +937,7 @@ export const Home: React.FC = () => {
           cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
         });
       } else {
-        const dailyHeaders = ['Día', 'Fecha', 'IPRESS Monitoreadas', 'Total Registros'];
+        const dailyHeaders = ['Día', 'Fecha', 'IPRESS con Monitoreo', 'Total Registros'];
         const dailyCols = ['B', 'C', 'D', 'E'];
         dailyHeaders.forEach((h, idx) => {
           const cell = wsDashboard.getCell(`${dailyCols[idx]}${currentRow}`);
@@ -1030,35 +949,40 @@ export const Home: React.FC = () => {
         });
       }
 
-      // Tabla 3 (Derecha): Cobertura
-      wsDashboard.getCell(`G${currentRow}`).value = 'Estado Diagnóstico';
-      wsDashboard.getCell(`G${currentRow}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      wsDashboard.getCell(`G${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366F1' } };
-      wsDashboard.getCell(`G${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-      wsDashboard.getCell(`G${currentRow}`).border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-
-      wsDashboard.getCell(`H${currentRow}`).value = 'Cant. IPRESS (%)';
-      wsDashboard.getCell(`H${currentRow}`).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      wsDashboard.getCell(`H${currentRow}`).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366F1' } };
-      wsDashboard.getCell(`H${currentRow}`).alignment = { horizontal: 'center', vertical: 'middle' };
-      wsDashboard.getCell(`H${currentRow}`).border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      // Tabla 3 (Derecha): Cobertura con valores numéricos y porcentajes dinámicos
+      const cobHeaders = ['Estado de Diagnóstico', 'Cantidad IPRESS', 'Porcentaje'];
+      const cobCols = ['G', 'H', 'I'];
+      cobHeaders.forEach((h, idx) => {
+        const cell = wsDashboard.getCell(`${cobCols[idx]}${currentRow}`);
+        cell.value = h;
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+      });
       
       currentRow++;
+      const sec2StartRow = currentRow;
 
       const leftDataRows = targetRed === 'Todas' ? (activeWeek?.redesAdvance || []) : (activeWeek?.dailyBreakdown || []);
       const maxSubRows = Math.max(leftDataRows.length, gestionStats.coberturaData.length);
+      const cobStartRow = sec2StartRow;
+      const cobEndRow = sec2StartRow + Math.max(1, gestionStats.coberturaData.length - 1);
 
       for (let i = 0; i < maxSubRows; i++) {
+        const r = currentRow;
         // Datos tabla izquierda
         if (targetRed === 'Todas') {
           const rRow = (activeWeek?.redesAdvance || [])[i];
           if (rRow) {
-            wsDashboard.getCell(`B${currentRow}`).value = rRow.red;
-            wsDashboard.getCell(`C${currentRow}`).value = rRow.meta;
-            wsDashboard.getCell(`D${currentRow}`).value = rRow.monitoreadas;
-            wsDashboard.getCell(`E${currentRow}`).value = `${rRow.pct}%`;
+            wsDashboard.getCell(`B${r}`).value = rRow.red;
+            wsDashboard.getCell(`C${r}`).value = rRow.meta;
+            wsDashboard.getCell(`D${r}`).value = rRow.monitoreadas;
+            const pctCell = wsDashboard.getCell(`E${r}`);
+            pctCell.value = { formula: `IF(C${r}>0,D${r}/C${r},0)`, result: rRow.meta > 0 ? rRow.monitoreadas / rRow.meta : 0 };
+            pctCell.numFmt = '0%';
             ['B', 'C', 'D', 'E'].forEach(c => {
-              const cell = wsDashboard.getCell(`${c}${currentRow}`);
+              const cell = wsDashboard.getCell(`${c}${r}`);
               cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
               if (c !== 'B') cell.alignment = { horizontal: 'center' };
             });
@@ -1066,12 +990,12 @@ export const Home: React.FC = () => {
         } else {
           const dRow = (activeWeek?.dailyBreakdown || [])[i];
           if (dRow) {
-            wsDashboard.getCell(`B${currentRow}`).value = dRow.day;
-            wsDashboard.getCell(`C${currentRow}`).value = dRow.dateStr;
-            wsDashboard.getCell(`D${currentRow}`).value = dRow.monitoreadas;
-            wsDashboard.getCell(`E${currentRow}`).value = dRow.totalMuestras;
+            wsDashboard.getCell(`B${r}`).value = dRow.day;
+            wsDashboard.getCell(`C${r}`).value = dRow.dateStr;
+            wsDashboard.getCell(`D${r}`).value = dRow.monitoreadas;
+            wsDashboard.getCell(`E${r}`).value = dRow.totalMuestras;
             ['B', 'C', 'D', 'E'].forEach(c => {
-              const cell = wsDashboard.getCell(`${c}${currentRow}`);
+              const cell = wsDashboard.getCell(`${c}${r}`);
               cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
               if (c !== 'B') cell.alignment = { horizontal: 'center' };
             });
@@ -1081,38 +1005,101 @@ export const Home: React.FC = () => {
         // Datos tabla derecha (Cobertura)
         const cobRow = gestionStats.coberturaData[i];
         if (cobRow) {
-          const pct = gestionStats.totalIpress > 0 ? Math.round((cobRow.value / gestionStats.totalIpress) * 100) : 0;
-          wsDashboard.getCell(`G${currentRow}`).value = cobRow.name;
-          wsDashboard.getCell(`H${currentRow}`).value = `${cobRow.value} (${pct}%)`;
-          ['G', 'H'].forEach(c => {
-            const cell = wsDashboard.getCell(`${c}${currentRow}`);
+          wsDashboard.getCell(`G${r}`).value = cobRow.name;
+          wsDashboard.getCell(`H${r}`).value = cobRow.value;
+          const pctCell = wsDashboard.getCell(`I${r}`);
+          pctCell.value = {
+            formula: `IF(SUM($H$${cobStartRow}:$H$${cobEndRow})>0,H${r}/SUM($H$${cobStartRow}:$H$${cobEndRow}),0)`,
+            result: gestionStats.totalIpress > 0 ? cobRow.value / gestionStats.totalIpress : 0
+          };
+          pctCell.numFmt = '0%';
+          ['G', 'H', 'I'].forEach(c => {
+            const cell = wsDashboard.getCell(`${c}${r}`);
             cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-            if (c === 'H') cell.alignment = { horizontal: 'center' };
+            if (c !== 'G') cell.alignment = { horizontal: 'center' };
           });
         }
         currentRow++;
       }
 
-      currentRow += 1;
+      const sec2EndRowLeft = sec2StartRow + Math.max(0, leftDataRows.length - 1);
+      const chart2And3ZeroRowStart = currentRow; // 0-indexed row inmediatamente debajo de las tablas de la sección 2
+      const chart2And3ZeroRowEnd = chart2And3ZeroRowStart + 16;
 
-      // Incrustar imágenes de los gráficos
-      if (chartIpressRedPng || chartCoberturaPng) {
-        if (chartIpressRedPng) {
-          const imgId = workbook.addImage({ base64: chartIpressRedPng, extension: 'png' });
-          wsDashboard.addImage(imgId, {
-            tl: { col: 1, row: currentRow - 1 },
-            ext: { width: 380, height: 260 }
-          });
-        }
-        if (chartCoberturaPng) {
-          const imgId = workbook.addImage({ base64: chartCoberturaPng, extension: 'png' });
-          wsDashboard.addImage(imgId, {
-            tl: { col: 5, row: currentRow - 1 },
-            ext: { width: 330, height: 260 }
-          });
-        }
-        currentRow += 15;
-      }
+      // Construir los 3 gráficos nativos OpenXML de Excel vinculados dinámicamente a las celdas de la hoja
+      const chart1Xml = buildNativeBarChartXml({
+        title: `Actividad Reciente (${gestionStats.chartMonthTitle}) - Cumplimiento Semanal (${targetRed === 'Todas' ? 'Región Cusco' : targetRed})`,
+        barDir: 'col',
+        categoriesFormula: `'${sheetName}'!$B$${sec1StartRow}:$B$${sec1EndRow}`,
+        categories: gestionStats.weeklyComplianceData.map(r => r.name),
+        seriesList: [
+          {
+            name: 'IPRESS Monitoreadas',
+            nameFormula: `'${sheetName}'!$E$${sec1HeaderRow}`,
+            valuesFormula: `'${sheetName}'!$E$${sec1StartRow}:$E$${sec1EndRow}`,
+            values: gestionStats.weeklyComplianceData.map(r => r.Monitoreadas),
+            color: '10B981'
+          },
+          {
+            name: 'Faltan Monitorear',
+            nameFormula: `'${sheetName}'!$F$${sec1HeaderRow}`,
+            valuesFormula: `'${sheetName}'!$F$${sec1StartRow}:$F$${sec1EndRow}`,
+            values: gestionStats.weeklyComplianceData.map(r => r.Faltantes),
+            color: 'EF4444'
+          }
+        ]
+      });
+
+      const chart2Xml =
+        targetRed === 'Todas'
+          ? buildNativeBarChartXml({
+              title: `IPRESS por Unidad Ejecutora (Región Cusco) - ${activeWeek?.name || 'Semana Actual'}`,
+              barDir: 'bar',
+              categoriesFormula: `'${sheetName}'!$B$${sec2StartRow}:$B$${sec2EndRowLeft}`,
+              categories: (activeWeek?.redesAdvance || []).map(r => r.red),
+              seriesList: [
+                {
+                  name: 'Meta IPRESS',
+                  nameFormula: `'${sheetName}'!$C$${sec2HeaderRow}`,
+                  valuesFormula: `'${sheetName}'!$C$${sec2StartRow}:$C$${sec2EndRowLeft}`,
+                  values: (activeWeek?.redesAdvance || []).map(r => r.meta),
+                  color: '3B82F6'
+                },
+                {
+                  name: 'IPRESS Monitoreadas',
+                  nameFormula: `'${sheetName}'!$D$${sec2HeaderRow}`,
+                  valuesFormula: `'${sheetName}'!$D$${sec2StartRow}:$D$${sec2EndRowLeft}`,
+                  values: (activeWeek?.redesAdvance || []).map(r => r.monitoreadas),
+                  color: '10B981'
+                }
+              ]
+            })
+          : buildNativeBarChartXml({
+              title: `IPRESS con Monitoreo por Día (${targetRed}) - ${activeWeek?.name || 'Semana Actual'}`,
+              barDir: 'col',
+              categoriesFormula: `'${sheetName}'!$B$${sec2StartRow}:$B$${sec2EndRowLeft}`,
+              categories: (activeWeek?.dailyBreakdown || []).map(d => d.day),
+              seriesList: [
+                {
+                  name: 'IPRESS con Monitoreo',
+                  nameFormula: `'${sheetName}'!$D$${sec2HeaderRow}`,
+                  valuesFormula: `'${sheetName}'!$D$${sec2StartRow}:$D$${sec2EndRowLeft}`,
+                  values: (activeWeek?.dailyBreakdown || []).map(d => d.monitoreadas),
+                  color: '10B981'
+                }
+              ]
+            });
+
+      const chart3Xml = buildNativeDoughnutChartXml({
+        title: `Cobertura de Diagnósticos (${targetRed === 'Todas' ? 'Región Cusco' : targetRed})`,
+        nameFormula: `'${sheetName}'!$H$${sec2HeaderRow}`,
+        seriesName: 'Cantidad IPRESS',
+        categoriesFormula: `'${sheetName}'!$G$${cobStartRow}:$G$${cobEndRow}`,
+        categories: gestionStats.coberturaData.map(c => c.name),
+        valuesFormula: `'${sheetName}'!$H$${cobStartRow}:$H$${cobEndRow}`,
+        values: gestionStats.coberturaData.map(c => c.value),
+        sliceColors: ['10B981', 'EF4444']
+      });
 
       // -------------------------------------------------------------
       // HOJA 2: DETALLE DIAGNÓSTICOS (TODOS LOS CAMPOS + ¿TIENE DIAGNÓSTICO? AL FINAL)
@@ -1288,9 +1275,36 @@ export const Home: React.FC = () => {
         row.getCell('temp').alignment = { horizontal: 'center' };
       });
 
-      // Descargar archivo Excel generado
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      // Inyectar los 3 gráficos nativos dinámicos (OpenXML) en la hoja Dashboard de Gestión y descargar
+      const rawBuffer = await workbook.xlsx.writeBuffer();
+      const bufferWithNativeCharts = await injectNativeChartsIntoXlsxBuffer(rawBuffer as ArrayBuffer, [
+        {
+          xml: chart1Xml,
+          name: 'Gráfico Cumplimiento Semanal',
+          fromCol: 1,
+          fromRow: chart1ZeroRowStart,
+          toCol: 8,
+          toRow: chart1ZeroRowEnd
+        },
+        {
+          xml: chart2Xml,
+          name: 'Gráfico Avance Semanal / Diario',
+          fromCol: 1,
+          fromRow: chart2And3ZeroRowStart,
+          toCol: 5,
+          toRow: chart2And3ZeroRowEnd,
+          toColOff: 150000
+        },
+        {
+          xml: chart3Xml,
+          name: 'Gráfico Cobertura de Diagnósticos',
+          fromCol: 6,
+          fromRow: chart2And3ZeroRowStart,
+          toCol: 9,
+          toRow: chart2And3ZeroRowEnd
+        }
+      ]);
+      const blob = new Blob([bufferWithNativeCharts], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       const safeRedName = (targetRed || 'General').replace(/[^a-zA-Z0-9_-]/g, '_');
