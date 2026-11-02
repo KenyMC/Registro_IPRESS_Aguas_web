@@ -1,6 +1,22 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.5.2] - 2026-11-02
+### Añadido / Mejorado
+- **Sección 3 en Exportación Excel: 10 Gráficos de Torta/Anillo Nativos Dinámicos de Excel para el Estado del Sistema de Agua:**
+  - En la pestaña `Dashboard de Gestión`, debajo de la Sección 2 (Avance y Cobertura), se incorporó la nueva **`3. CARACTERÍSTICAS Y ESTADO SITUACIONAL DEL SISTEMA DE AGUA (<Ámbito>)`**.
+  - Agrupa en una cuadrícula simétrica de 2 columnas los 10 indicadores técnicos de diagnóstico del sistema de agua:
+    1. `Fuente de Agua` (Red Pública, Manante, Agua de Lluvia, Riachuelo, Pozo, etc.) & `Tratamiento de Agua` (Con Tratamiento / Sin Tratamiento).
+    2. `Tiene Reservorio` (Con Reservorio / Sin Reservorio) & `Reservorio Operativo` (Operativo / No Operativo).
+    3. `Tipo de Reservorio` (Concreto, Polietileno/Plástico, Otros, Sin Reservorio) & `Reservorio Elevado` (Elevado / No Elevado).
+    4. `Tiene Cisterna` (Con Cisterna / Sin Cisterna) & `Cisterna Operativa` (Operativa / No Operativa).
+    5. `Bombas de Agua` (Con Bombas / Sin Bombas) & `Bombas Operativas` (Operativas / No Operativas).
+  - Cada indicador cuenta con:
+    - Tabla estructurada con encabezados corporativos (`Categoría`, `Cantidad IPRESS` / `Cantidad Hospital`, `Porcentaje`).
+    - Fórmulas de cálculo de porcentaje nativas en Excel `=IF(SUM(...)>0, Cantidad/SUM(...), 0)` con formato porcentual `0%`.
+    - Gráfico de torta/anillo (*Doughnut Chart*) nativo OpenXML vinculado dinámicamente a las celdas de la tabla con etiquetas de valor y porcentaje.
+    - Adaptación automática al ámbito seleccionado: Regional (`Región Cusco`), Red o Establecimiento individual (`scopeLabel`), calculando con exactitud los porcentajes de operativos/no operativos.
+
 ## [1.5.1] - 2026-11-02
 ### Añadido / Mejorado
 - **Adaptación Visual y de Encabezados para Hospitales Individuales en Excel:**

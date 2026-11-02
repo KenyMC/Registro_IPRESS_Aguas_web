@@ -159,6 +159,62 @@ En lugar de incrustar imágenes PNG estáticas, este módulo genera archivos Ope
 
 ## 4. HISTORIAL DE MEJORAS CLAVE Y FRAGMENTOS IMPLEMENTADOS
 
+### Versión 1.5.2 (2026-11-02)
+- **Sección 3 en Hoja 1 (`Dashboard de Gestión`): 10 Gráficos de Torta/Anillo Nativos Dinámicos de Excel para el Estado Situacional del Sistema de Agua:**
+  - Se implementó la nueva sección **`3. CARACTERÍSTICAS Y ESTADO SITUACIONAL DEL SISTEMA DE AGUA (${scopeLabel})`** ubicada debajo de los gráficos de la Sección 2.
+  - Se estructuró en pares armónicos de 2 columnas (Bloque Izquierdo en cols B-D y Bloque Derecho en cols G-I), alineados directamente con la Sección 2:
+    - **Par 1:** `1. Fuente de Agua` (cols B-D) y `2. Tratamiento de Agua` (cols G-I).
+    - **Par 2:** `3. Tiene Reservorio` (cols B-D) y `4. Reservorio Operativo` (cols G-I).
+    - **Par 3:** `5. Tipo de Reservorio` (cols B-D) y `6. Reservorio Elevado` (cols G-I).
+    - **Par 4:** `7. Tiene Cisterna` (cols B-D) y `8. Cisterna Operativa` (cols G-I).
+    - **Par 5:** `9. Bombas de Agua` (cols B-D) y `10. Bombas Operativas` (cols G-I).
+  - Cada bloque consta de:
+    - Tabla estructurada con encabezados dinámicos (`Categoría`, `Cantidad IPRESS` / `Cantidad Hospital`, `Porcentaje`).
+    - Fórmulas de cálculo de porcentaje nativas en Excel: `=IF(SUM($C$start:$C$end)>0, C_r/SUM($C$start:$C$end), 0)` con formato `0%`.
+    - Gráfico de anillo (*Doughnut Chart*) nativo OpenXML vinculado dinámicamente a las celdas de la tabla con etiquetas de datos mostrando valor y porcentaje (`<c:showVal val="1"/>`, `<c:showPercent val="1"/>`).
+  - Adaptabilidad total según el ámbito: regional (`Región Cusco`), por red ejecutora o por establecimiento de salud individual (`scopeLabel`).
+
+```typescript
+// Fragmento clave: Renderizado dinámico de pares de indicadores en Sección 3 de Excel
+indicatorPairs.forEach(([leftSpec, rightSpec]) => {
+  const pairHeaderRow = currentRow;
+  wsDashboard.getCell(`B${pairHeaderRow}`).value = leftSpec.title;
+  wsDashboard.getCell(`G${pairHeaderRow}`).value = rightSpec.title;
+
+  const tableHeaderRow = pairHeaderRow + 1;
+  // Encabezados y datos con fórmulas dinámicas
+  // ...
+  const leftChartXml = buildNativeDoughnutChartXml({
+    title: `${leftSpec.title} (${scopeLabel})`,
+    nameFormula: `'${sheetName}'!$C$${tableHeaderRow}`,
+    seriesName: leftSpec.countHeader,
+    categoriesFormula: `'${sheetName}'!$B$${dataStartRow}:$B$${leftEndRow}`,
+    categories: leftSpec.categories.map(c => c.name),
+    valuesFormula: `'${sheetName}'!$C$${dataStartRow}:$C$${leftEndRow}`,
+    values: leftSpec.categories.map(c => c.count),
+    sliceColors: leftSpec.sliceColors
+  });
+
+  chartsToInject.push({
+    xml: leftChartXml,
+    name: `Gráfico ${leftSpec.title}`,
+    fromCol: 1,
+    fromRow: chartZeroRowStart,
+    toCol: 5,
+    toRow: chartZeroRowEnd
+  }, {
+    xml: rightChartXml,
+    name: `Gráfico ${rightSpec.title}`,
+    fromCol: 6,
+    fromRow: chartZeroRowStart,
+    toCol: 9,
+    toRow: chartZeroRowEnd
+  });
+
+  currentRow = chartZeroRowEnd + 2;
+});
+```
+
 ### Versión 1.5.1 (2026-11-02)
 - **Formato Especial para Hospitales y Establecimientos Individuales en Excel:**
   - Cuando se filtra por una Unidad Ejecutora `Hospital` y la cantidad es 1 (o establecimiento individual):

@@ -162,7 +162,10 @@ export const buildNativeDoughnutChartXml = (spec: NativeDoughnutChartSpec): stri
     .map((v, i) => `<c:pt idx="${i}"><c:v>${Number(v) || 0}</c:v></c:pt>`)
     .join('');
 
-  const dPts = sliceColors
+  const defaultPalette = ['2563EB', '10B981', 'F59E0B', 'EF4444', '8B5CF6', '06B6D4', 'EC4899', '64748B'];
+  const colorsToUse = categories.map((_, i) => (sliceColors && sliceColors[i]) || defaultPalette[i % defaultPalette.length]);
+
+  const dPts = colorsToUse
     .map(
       (clr, i) =>
         `<c:dPt><c:idx val="${i}"/><c:bubble3D val="0"/><c:spPr><a:solidFill><a:srgbClr val="${escapeXml(clr)}"/></a:solidFill><a:ln w="12700"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:ln></c:spPr></c:dPt>`

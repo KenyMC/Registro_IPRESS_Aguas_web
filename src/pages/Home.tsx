@@ -1334,11 +1334,10 @@ export const Home: React.FC = () => {
       );
 
       // -------------------------------------------------------------
-      // HOJA 2: DETALLE DIAGNÓSTICOS (TODOS LOS CAMPOS + ¿TIENE DIAGNÓSTICO? AL FINAL)
+      // SECCIÓN 3: ESTADO SITUACIONAL Y CARACTERÍSTICAS DEL SISTEMA DE AGUA (${scopeLabel})
+      // 10 gráficos de torta/anillo (pie/doughnut) nativos dinámicos de Excel vinculados a sus tablas
       // -------------------------------------------------------------
-      const wsDiag = workbook.addWorksheet('Detalle de Diagnósticos', {
-        views: [{ showGridLines: true }]
-      });
+      currentRow = chart2And3ZeroRowEnd + 2;
 
       const allRecordsForDiag = getRecords();
       const allDiagRecords = allRecordsForDiag.filter(r => r.estado !== 'Inactivo' && r.tipo === 'diagnostico');
@@ -1350,6 +1349,406 @@ export const Home: React.FC = () => {
           if (uLabel !== dashboardIpressFilter && !matchEstablishmentName(uLabel, dashboardIpressFilter)) return false;
         }
         return true;
+      });
+
+      const findMatchingDiag = (u: any) => {
+        return allDiagRecords.find(d => 
+          (d.codigoRenipress && u.codigoRenipress && matchRenipress(u.codigoRenipress, d.codigoRenipress)) ||
+          (d.nombreIpress && u.nombreIpress && String(d.nombreIpress).trim().toLowerCase() === String(u.nombreIpress).trim().toLowerCase()) ||
+          (d.nombreIpress && u.usuario && String(d.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase()) ||
+          matchEstablishmentName(d.nombreIpress, u.nombreIpress || u.usuario)
+        );
+      };
+
+      const ipressWithDiags = allIpressList.map(u => ({
+        u,
+        diag: findMatchingDiag(u)
+      }));
+
+      const countHeaderTitle = isHospitalSingle 
+        ? 'Cantidad Hospital' 
+        : (isHospitalScope ? 'Cantidad Hospitales' : 'Cantidad IPRESS');
+
+      // Variables técnicas acumuladoras
+      const fuenteMap: Record<string, number> = {
+        'Red Pública': 0,
+        'Manante': 0,
+        'Agua de Lluvia': 0,
+        'Riachuelo': 0,
+        'Pozo': 0,
+        'Camión Cisterna': 0,
+        'Otros': 0
+      };
+
+      let bomSi = 0, bomNo = 0;
+      let bomOpSi = 0, bomOpNo = 0;
+      let resSi = 0, resNo = 0;
+      const matMap: Record<string, number> = {
+        'Concreto': 0,
+        'Polietileno (Plástico)': 0,
+        'Otros Materiales': 0,
+        'Sin Reservorio': 0
+      };
+      let resElevSi = 0, resElevNo = 0;
+      let resOpSi = 0, resOpNo = 0;
+      let cisSi = 0, cisNo = 0;
+      let cisOpSi = 0, cisOpNo = 0;
+      let tratSi = 0, tratNo = 0;
+
+      ipressWithDiags.forEach(({ diag }) => {
+        // 1. Fuente de Agua
+        if (diag) {
+          const f = String(diag.fuenteAgua || '').trim().toLowerCase();
+          if (f.includes('red')) fuenteMap['Red Pública']++;
+          else if (f.includes('manante')) fuenteMap['Manante']++;
+          else if (f.includes('lluvia')) fuenteMap['Agua de Lluvia']++;
+          else if (f.includes('riachuelo')) fuenteMap['Riachuelo']++;
+          else if (f.includes('pozo')) fuenteMap['Pozo']++;
+          else if (f.includes('cisterna')) fuenteMap['Camión Cisterna']++;
+          else if (f !== '') fuenteMap['Otros']++;
+        }
+
+        // 2. Bombas de Agua
+        if (diag && String(diag.bombasAgua || '').trim().toLowerCase() === 'si') bomSi++;
+        else bomNo++;
+
+        // 3. Bombas Operativas
+        if (diag && String(diag.bombasOperativas || '').trim().toLowerCase() === 'si') bomOpSi++;
+        else bomOpNo++;
+
+        // 4. Tiene Reservorio
+        const hasRes = diag && String(diag.reservorio || '').trim().toLowerCase() === 'si';
+        if (hasRes) resSi++;
+        else resNo++;
+
+        // 5. Tipo Reservorio
+        if (!hasRes) {
+          matMap['Sin Reservorio']++;
+        } else {
+          const mat = String(diag?.tipoMaterialReservorio || '').trim().toLowerCase();
+          if (mat.includes('concr')) matMap['Concreto']++;
+          else if (mat.includes('poliet') || mat.includes('plast') || mat.includes('rotoplas') || mat.includes('poliest')) matMap['Polietileno (Plástico)']++;
+          else matMap['Otros Materiales']++;
+        }
+
+        // 6. Reservorio Elevado
+        if (hasRes && diag && String(diag.reservorioElevado || '').trim().toLowerCase() === 'si') resElevSi++;
+        else resElevNo++;
+
+        // 7. Reservorio Operativo
+        if (diag && String(diag.reservorioOperativo || '').trim().toLowerCase() === 'si') resOpSi++;
+        else resOpNo++;
+
+        // 8. Tiene Cisterna
+        const hasCis = diag && String(diag.cisterna || '').trim().toLowerCase() === 'si';
+        if (hasCis) cisSi++;
+        else cisNo++;
+
+        // 9. Cisterna Operativa
+        if (diag && String(diag.cisternaOperativa || '').trim().toLowerCase() === 'si') cisOpSi++;
+        else cisOpNo++;
+
+        // 10. Tratamiento de Agua
+        if (diag && String(diag.tratamientoAgua || '').trim().toLowerCase() === 'si') tratSi++;
+        else tratNo++;
+      });
+
+      // Fuente de Agua
+      let fuenteCategories = Object.entries(fuenteMap)
+        .filter(([, count]) => count > 0)
+        .map(([name, count]) => ({ name, count }));
+      if (fuenteCategories.length === 0) {
+        fuenteCategories = [{ name: 'Sin Registro', count: 0 }];
+      }
+
+      const fuenteColorsMap: Record<string, string> = {
+        'Red Pública': '2563EB',
+        'Manante': '059669',
+        'Agua de Lluvia': '0284C7',
+        'Riachuelo': 'D97706',
+        'Pozo': '7C3AED',
+        'Camión Cisterna': 'E11D48',
+        'Otros': '94A3B8',
+        'Sin Registro': '94A3B8'
+      };
+      const fuenteColors = fuenteCategories.map(c => fuenteColorsMap[c.name] || '3B82F6');
+
+      // Tipo Reservorio
+      let matCategories = Object.entries(matMap)
+        .filter(([, count]) => count > 0)
+        .map(([name, count]) => ({ name, count }));
+      if (matCategories.length === 0) {
+        matCategories = [{ name: 'Sin Reservorio', count: 0 }];
+      }
+
+      const matColorsMap: Record<string, string> = {
+        'Concreto': '2563EB',
+        'Polietileno (Plástico)': '0D9488',
+        'Otros Materiales': 'F59E0B',
+        'Sin Reservorio': '94A3B8'
+      };
+      const matColors = matCategories.map(c => matColorsMap[c.name] || '3B82F6');
+
+      interface IndicatorSpec {
+        title: string;
+        categoryHeader: string;
+        countHeader: string;
+        categories: { name: string; count: number }[];
+        sliceColors: string[];
+      }
+
+      const indicatorPairs: [IndicatorSpec, IndicatorSpec][] = [
+        // Par 1: Fuente de Agua y Tratamiento de Agua
+        [
+          {
+            title: '1. Fuente de Agua',
+            categoryHeader: 'Tipo de Fuente',
+            countHeader: countHeaderTitle,
+            categories: fuenteCategories,
+            sliceColors: fuenteColors
+          },
+          {
+            title: '2. Tratamiento de Agua',
+            categoryHeader: 'Tratamiento',
+            countHeader: countHeaderTitle,
+            categories: [
+              { name: 'Con Tratamiento (Sí)', count: tratSi },
+              { name: 'Sin Tratamiento (No)', count: tratNo }
+            ],
+            sliceColors: ['10B981', 'EF4444']
+          }
+        ],
+        // Par 2: Tiene Reservorio y Reservorio Operativo
+        [
+          {
+            title: '3. Tiene Reservorio',
+            categoryHeader: 'Reservorio',
+            countHeader: countHeaderTitle,
+            categories: [
+              { name: 'Con Reservorio (Sí)', count: resSi },
+              { name: 'Sin Reservorio (No)', count: resNo }
+            ],
+            sliceColors: ['3B82F6', '94A3B8']
+          },
+          {
+            title: '4. Reservorio Operativo',
+            categoryHeader: 'Estado Operativo',
+            countHeader: countHeaderTitle,
+            categories: [
+              { name: 'Operativo', count: resOpSi },
+              { name: 'No Operativo', count: resOpNo }
+            ],
+            sliceColors: ['10B981', 'EF4444']
+          }
+        ],
+        // Par 3: Tipo Reservorio y Reservorio Elevado
+        [
+          {
+            title: '5. Tipo de Reservorio',
+            categoryHeader: 'Material',
+            countHeader: countHeaderTitle,
+            categories: matCategories,
+            sliceColors: matColors
+          },
+          {
+            title: '6. Reservorio Elevado',
+            categoryHeader: 'Tipo de Estructura',
+            countHeader: countHeaderTitle,
+            categories: [
+              { name: 'Elevado (Sí)', count: resElevSi },
+              { name: 'No Elevado / Apoyado (No)', count: resElevNo }
+            ],
+            sliceColors: ['10B981', '94A3B8']
+          }
+        ],
+        // Par 4: Tiene Cisterna y Cisterna Operativa
+        [
+          {
+            title: '7. Tiene Cisterna',
+            categoryHeader: 'Cisterna',
+            countHeader: countHeaderTitle,
+            categories: [
+              { name: 'Con Cisterna (Sí)', count: cisSi },
+              { name: 'Sin Cisterna (No)', count: cisNo }
+            ],
+            sliceColors: ['3B82F6', '94A3B8']
+          },
+          {
+            title: '8. Cisterna Operativa',
+            categoryHeader: 'Estado Operativo',
+            countHeader: countHeaderTitle,
+            categories: [
+              { name: 'Operativa', count: cisOpSi },
+              { name: 'No Operativa', count: cisOpNo }
+            ],
+            sliceColors: ['10B981', 'EF4444']
+          }
+        ],
+        // Par 5: Bombas de Agua y Bombas Operativas
+        [
+          {
+            title: '9. Bombas de Agua',
+            categoryHeader: 'Bombas de Agua',
+            countHeader: countHeaderTitle,
+            categories: [
+              { name: 'Con Bombas (Sí)', count: bomSi },
+              { name: 'Sin Bombas (No)', count: bomNo }
+            ],
+            sliceColors: ['3B82F6', '94A3B8']
+          },
+          {
+            title: '10. Bombas Operativas',
+            categoryHeader: 'Estado Operativo',
+            countHeader: countHeaderTitle,
+            categories: [
+              { name: 'Operativas', count: bomOpSi },
+              { name: 'No Operativas', count: bomOpNo }
+            ],
+            sliceColors: ['10B981', 'EF4444']
+          }
+        ]
+      ];
+
+      // Título de Sección 3
+      wsDashboard.getCell(`B${currentRow}`).value = `3. CARACTERÍSTICAS Y ESTADO SITUACIONAL DEL SISTEMA DE AGUA (${scopeLabel})`;
+      wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
+      currentRow += 2;
+
+      indicatorPairs.forEach(([leftSpec, rightSpec]) => {
+        const pairHeaderRow = currentRow;
+
+        // Títulos en negrita
+        wsDashboard.getCell(`B${pairHeaderRow}`).value = leftSpec.title;
+        wsDashboard.getCell(`B${pairHeaderRow}`).font = { bold: true, size: 10, color: { argb: 'FF1E40AF' } };
+
+        wsDashboard.getCell(`G${pairHeaderRow}`).value = rightSpec.title;
+        wsDashboard.getCell(`G${pairHeaderRow}`).font = { bold: true, size: 10, color: { argb: 'FF1E40AF' } };
+
+        const tableHeaderRow = pairHeaderRow + 1;
+
+        // Encabezados tabla izquierda (B, C, D)
+        const leftHeaders = [leftSpec.categoryHeader, leftSpec.countHeader, 'Porcentaje'];
+        const leftCols = ['B', 'C', 'D'];
+        leftHeaders.forEach((h, idx) => {
+          const cell = wsDashboard.getCell(`${leftCols[idx]}${tableHeaderRow}`);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        });
+
+        // Encabezados tabla derecha (G, H, I)
+        const rightHeaders = [rightSpec.categoryHeader, rightSpec.countHeader, 'Porcentaje'];
+        const rightCols = ['G', 'H', 'I'];
+        rightHeaders.forEach((h, idx) => {
+          const cell = wsDashboard.getCell(`${rightCols[idx]}${tableHeaderRow}`);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF10B981' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+        });
+
+        const dataStartRow = tableHeaderRow + 1;
+        const leftEndRow = dataStartRow + leftSpec.categories.length - 1;
+        const rightEndRow = dataStartRow + rightSpec.categories.length - 1;
+        const maxDataRows = Math.max(leftSpec.categories.length, rightSpec.categories.length);
+
+        const leftTotal = leftSpec.categories.reduce((acc, c) => acc + c.count, 0);
+        const rightTotal = rightSpec.categories.reduce((acc, c) => acc + c.count, 0);
+
+        // Llenar tabla izquierda
+        leftSpec.categories.forEach((cat, idx) => {
+          const r = dataStartRow + idx;
+          wsDashboard.getCell(`B${r}`).value = cat.name;
+          wsDashboard.getCell(`C${r}`).value = cat.count;
+          const pctCell = wsDashboard.getCell(`D${r}`);
+          pctCell.value = {
+            formula: `IF(SUM($C$${dataStartRow}:$C$${leftEndRow})>0,C${r}/SUM($C$${dataStartRow}:$C$${leftEndRow}),0)`,
+            result: leftTotal > 0 ? cat.count / leftTotal : 0
+          };
+          pctCell.numFmt = '0%';
+          ['B', 'C', 'D'].forEach(c => {
+            const cell = wsDashboard.getCell(`${c}${r}`);
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+            if (c !== 'B') cell.alignment = { horizontal: 'center' };
+          });
+        });
+
+        // Llenar tabla derecha
+        rightSpec.categories.forEach((cat, idx) => {
+          const r = dataStartRow + idx;
+          wsDashboard.getCell(`G${r}`).value = cat.name;
+          wsDashboard.getCell(`H${r}`).value = cat.count;
+          const pctCell = wsDashboard.getCell(`I${r}`);
+          pctCell.value = {
+            formula: `IF(SUM($H$${dataStartRow}:$H$${rightEndRow})>0,H${r}/SUM($H$${dataStartRow}:$H$${rightEndRow}),0)`,
+            result: rightTotal > 0 ? cat.count / rightTotal : 0
+          };
+          pctCell.numFmt = '0%';
+          ['G', 'H', 'I'].forEach(c => {
+            const cell = wsDashboard.getCell(`${c}${r}`);
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+            if (c !== 'G') cell.alignment = { horizontal: 'center' };
+          });
+        });
+
+        // Coordenadas para los gráficos de este par
+        const tableLastRow = dataStartRow + maxDataRows - 1;
+        const chartZeroRowStart = tableLastRow + 1; // 1 fila bajo la tabla
+        const chartZeroRowEnd = chartZeroRowStart + 15; // 16 filas de altura
+
+        const leftChartXml = buildNativeDoughnutChartXml({
+          title: `${leftSpec.title} (${scopeLabel})`,
+          nameFormula: `'${sheetName}'!$C$${tableHeaderRow}`,
+          seriesName: leftSpec.countHeader,
+          categoriesFormula: `'${sheetName}'!$B$${dataStartRow}:$B$${leftEndRow}`,
+          categories: leftSpec.categories.map(c => c.name),
+          valuesFormula: `'${sheetName}'!$C$${dataStartRow}:$C$${leftEndRow}`,
+          values: leftSpec.categories.map(c => c.count),
+          sliceColors: leftSpec.sliceColors
+        });
+
+        const rightChartXml = buildNativeDoughnutChartXml({
+          title: `${rightSpec.title} (${scopeLabel})`,
+          nameFormula: `'${sheetName}'!$H$${tableHeaderRow}`,
+          seriesName: rightSpec.countHeader,
+          categoriesFormula: `'${sheetName}'!$G$${dataStartRow}:$G$${rightEndRow}`,
+          categories: rightSpec.categories.map(c => c.name),
+          valuesFormula: `'${sheetName}'!$H$${dataStartRow}:$H$${rightEndRow}`,
+          values: rightSpec.categories.map(c => c.count),
+          sliceColors: rightSpec.sliceColors
+        });
+
+        chartsToInject.push(
+          {
+            xml: leftChartXml,
+            name: `Gráfico ${leftSpec.title}`,
+            fromCol: 1,
+            fromRow: chartZeroRowStart,
+            toCol: 5,
+            toRow: chartZeroRowEnd
+          },
+          {
+            xml: rightChartXml,
+            name: `Gráfico ${rightSpec.title}`,
+            fromCol: 6,
+            fromRow: chartZeroRowStart,
+            toCol: 9,
+            toRow: chartZeroRowEnd
+          }
+        );
+
+        // Avanzar currentRow para el siguiente par
+        currentRow = chartZeroRowEnd + 2;
+      });
+
+      // -------------------------------------------------------------
+      // HOJA 2: DETALLE DIAGNÓSTICOS (TODOS LOS CAMPOS + ¿TIENE DIAGNÓSTICO? AL FINAL)
+      // -------------------------------------------------------------
+      const wsDiag = workbook.addWorksheet('Detalle de Diagnósticos', {
+        views: [{ showGridLines: true }]
       });
 
       // Cabeceras completas de la sección Diagnóstico
