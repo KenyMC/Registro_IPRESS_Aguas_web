@@ -33,7 +33,8 @@ import { matchRenipress, normalizeRenipress } from '../services/ipressData';
 import {
   buildNativeBarChartXml,
   buildNativeDoughnutChartXml,
-  injectNativeChartsIntoXlsxBuffer
+  injectNativeChartsIntoXlsxBuffer,
+  type NativeChartPlacement
 } from '../utils/excelNativeCharts';
 
 const monthNamesShort = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
@@ -208,6 +209,7 @@ export const Home: React.FC = () => {
   const { user, usersList } = useAuth();
 
   const [dashboardRedFilter, setDashboardRedFilter] = useState<string>('Todas');
+  const [dashboardIpressFilter, setDashboardIpressFilter] = useState<string>('Todos');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [dbMinDate, setDbMinDate] = useState<string>('');
@@ -241,6 +243,24 @@ export const Home: React.FC = () => {
       TotalMuestras: number;
       redesAdvance: { red: string; meta: number; monitoreadas: number; faltantes: number; pct: number }[];
       dailyBreakdown: { dNum: number; dateStr: string; day: string; fullDate: string; monitoreadas: number; totalMuestras: number }[];
+    }[],
+    monthlyComplianceList: [] as {
+      year: number;
+      month: number;
+      monthTitle: string;
+      weeks: {
+        name: string;
+        fullName: string;
+        sStr: string;
+        eStr: string;
+        Monitoreadas: number;
+        Faltantes: number;
+        Meta: number;
+        Porcentaje: number;
+        TotalMuestras: number;
+        redesAdvance: { red: string; meta: number; monitoreadas: number; faltantes: number; pct: number }[];
+        dailyBreakdown: { dNum: number; dateStr: string; day: string; fullDate: string; monitoreadas: number; totalMuestras: number }[];
+      }[];
     }[]
   });
 
@@ -253,6 +273,34 @@ export const Home: React.FC = () => {
   const redesOptions = Array.from(new Set(
     usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital' || u.rol === 'Red').map(u => u.red).filter(Boolean)
   )).sort();
+
+  // Obtener listado de Establecimientos de Salud (IPRESS / Hospitales) según Unidad Ejecutora activa
+  const ipressOptionsList = Array.from(
+    new Map(
+      usersList
+        .filter(u => (u.rol === 'IPRESS' || u.rol === 'Hospital') && (targetRed === 'Todas' || matchRedName(u.red, targetRed)))
+        .map(u => {
+          const label = String(u.nombreIpress || u.usuario || '').trim();
+          return [label, {
+            id: label,
+            label,
+            red: String(u.red || '').trim(),
+            rol: String(u.rol || '').trim(),
+            codigoRenipress: String(u.codigoRenipress || '').trim(),
+            rawUser: u
+          }] as const;
+        })
+        .filter(([k]) => k !== '')
+    ).values()
+  ).sort((a, b) => a.label.localeCompare(b.label, 'es'));
+
+  const selectedIpressObj = dashboardIpressFilter !== 'Todos'
+    ? ipressOptionsList.find(item => item.id === dashboardIpressFilter)
+    : undefined;
+
+  const scopeLabel = selectedIpressObj
+    ? selectedIpressObj.label
+    : (targetRed === 'Todas' ? 'Región Cusco' : targetRed);
 
   // Controladores de fecha con validación estricta
   const handleDateFromChange = (val: string) => {
@@ -310,16 +358,21 @@ export const Home: React.FC = () => {
       setDbMinDate(earliest);
       setDbMaxDate(latest);
 
-      // Si es la primera carga, inicializar el rango con [fecha más antigua, fecha más actual]
+      // Si es la primera carga, inicializar el rango con [fecha más antigua, fecha más actual] reales de la BD
       let activeDateFrom = dateFrom;
       let activeDateTo = dateTo;
 
-      if (!datesInitialized) {
+      if (!datesInitialized && minDateFound && maxDateFound) {
         activeDateFrom = earliest;
         activeDateTo = latest;
         setDateFrom(earliest);
         setDateTo(latest);
         setDatesInitialized(true);
+      } else if (!datesInitialized && !dateFrom && !dateTo) {
+        activeDateFrom = earliest;
+        activeDateTo = latest;
+        setDateFrom(earliest);
+        setDateTo(latest);
       }
 
       // Filtro por Rol (RBAC)
@@ -363,7 +416,42 @@ export const Home: React.FC = () => {
         monitoreos = monitoreos.filter(filterByRed);
       }
 
-      // Total histórico de monitoreos para la Red seleccionada
+      // -------------------------------------------------------------
+      // CÁLCULOS AVANZADOS PARA GERESA, REDES Y ESTABLECIMIENTO DE SALUD
+      // -------------------------------------------------------------
+      const currentTargetRed = isGeresaAdmin ? dashboardRedFilter : (getUserRed(user) || 'Sin Red');
+
+      // Población total de IPRESS u Hospitales objetivo
+      let allIpress = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital');
+      if (currentTargetRed !== 'Todas') {
+        allIpress = allIpress.filter(u => matchRedName(u.red, currentTargetRed));
+      }
+
+      // Aplicar filtro específico por Establecimiento de Salud (IPRESS / Hospital)
+      if (dashboardIpressFilter !== 'Todos') {
+        const targetIpressUser = allIpress.find(
+          u => String(u.nombreIpress || u.usuario || '').trim() === dashboardIpressFilter
+        );
+        if (targetIpressUser) {
+          allIpress = [targetIpressUser];
+          const filterBySingleIpress = (r: any) => {
+            if (targetIpressUser.codigoRenipress && targetIpressUser.codigoRenipress !== 'S/N' && r.codigoRenipress) {
+              if (matchRenipress(targetIpressUser.codigoRenipress, r.codigoRenipress)) return true;
+            }
+            const rName = String(r.nombreIpress || '').trim().toLowerCase();
+            if (!rName) return false;
+            const u1 = String(targetIpressUser.usuario || '').trim().toLowerCase();
+            const u2 = String(targetIpressUser.nombreIpress || '').trim().toLowerCase();
+            return (u1 !== '' && rName === u1) || (u2 !== '' && rName === u2);
+          };
+          diagnosticos = diagnosticos.filter(filterBySingleIpress);
+          monitoreos = monitoreos.filter(filterBySingleIpress);
+        }
+      }
+
+      const totalIpressCount = allIpress.length;
+
+      // Total histórico de monitoreos para la Red / Establecimiento seleccionado
       const totalMonitoreosHistorico = monitoreos.length;
 
       // Filtrar registros por Rango de Fechas (Inicio / Fin)
@@ -377,18 +465,6 @@ export const Home: React.FC = () => {
       };
 
       const monitoreosEnPeriodo = monitoreos.filter(isDateInRange);
-
-      // -------------------------------------------------------------
-      // CÁLCULOS AVANZADOS PARA GERESA Y REDES
-      // -------------------------------------------------------------
-      const currentTargetRed = isGeresaAdmin ? dashboardRedFilter : (getUserRed(user) || 'Sin Red');
-
-      // Población total de IPRESS u Hospitales objetivo
-      let allIpress = usersList.filter(u => u.rol === 'IPRESS' || u.rol === 'Hospital');
-      if (currentTargetRed !== 'Todas') {
-        allIpress = allIpress.filter(u => matchRedName(u.red, currentTargetRed));
-      }
-      const totalIpressCount = allIpress.length;
 
       // IPRESS por Red / Unidad Ejecutora (Conteo total y monitoreos)
       const redCounts: Record<string, number> = {};
@@ -444,7 +520,7 @@ export const Home: React.FC = () => {
           );
           if (matchedUser) {
             ipressMonitoreadasSemanal.add(String(matchedUser.codigoRenipress || matchedUser.usuario || matchedUser.nombreIpress));
-          } else if (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed))) {
+          } else if (dashboardIpressFilter === 'Todos' && (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed)))) {
             ipressMonitoreadasSemanal.add(String(m.codigoRenipress || m.nombreIpress || Math.random()));
           }
         }
@@ -495,28 +571,8 @@ export const Home: React.FC = () => {
       const faltanDiag = Math.max(0, totalIpressCount - conDiag);
 
       // -------------------------------------------------------------
-      // 5. CÁLCULO DE CUMPLIMIENTO SEMANAL DE MONITOREO
-      // Regla: Se enfoca siempre en el mes más actual del rango de fechas seleccionado
-      // (evitando desconfiguración por abarcar múltiples meses en el gráfico semanal)
+      // 5. CÁLCULO DE CUMPLIMIENTO SEMANAL POR CADA MES DEL RANGO DE FECHAS
       // -------------------------------------------------------------
-      const referenceDateStr = activeDateTo || activeDateFrom || latest;
-      const [tYearStr, tMonthStr] = referenceDateStr.split('-');
-      const targetYear = parseInt(tYearStr, 10);
-      const targetMonth = parseInt(tMonthStr, 10); // 1-12
-
-      const targetMonthName = monthNamesFull[targetMonth - 1] || tMonthStr;
-      const targetMonthShort = monthNamesShort[targetMonth - 1] || tMonthStr;
-      const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
-
-      const targetMonthWeeks = [
-        { wNum: 1, startDay: 1, endDay: 7 },
-        { wNum: 2, startDay: 8, endDay: 14 },
-        { wNum: 3, startDay: 15, endDay: 21 },
-        { wNum: 4, startDay: 22, endDay: 28 },
-        { wNum: 5, startDay: 29, endDay: daysInTargetMonth }
-      ];
-
-      // Lista oficial de Unidades Ejecutoras para el desglose semanal en 'Todas'
       const redesListSemanal = [
         'Red Cusco Norte',
         'Red La Convencion',
@@ -530,125 +586,186 @@ export const Home: React.FC = () => {
       const dayNamesAbbr = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
       const dayNamesFull = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-      const weekDataList = targetMonthWeeks.map(w => {
-        const sStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(w.startDay).padStart(2, '0')}`;
-        const eStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(w.endDay).padStart(2, '0')}`;
-        
-        const shortLabel = `Sem. ${w.wNum} (${w.startDay}-${w.endDay} ${targetMonthShort})`;
-        const fullLabel = `Semana ${w.wNum} (${String(w.startDay).padStart(2, '0')} al ${String(w.endDay).padStart(2, '0')} de ${targetMonthName} ${targetYear})`;
+      const buildWeeksForMonth = (tYear: number, tMonth: number) => {
+        const tMonthName = monthNamesFull[tMonth - 1] || String(tMonth);
+        const tMonthShort = monthNamesShort[tMonth - 1] || String(tMonth);
+        const daysInMonth = new Date(tYear, tMonth, 0).getDate();
 
-        const uniqueMonitoredIpress = new Set<string>();
-        let samplesCount = 0;
+        const monthWeeksDef = [
+          { wNum: 1, startDay: 1, endDay: 7 },
+          { wNum: 2, startDay: 8, endDay: 14 },
+          { wNum: 3, startDay: 15, endDay: 21 },
+          { wNum: 4, startDay: 22, endDay: 28 },
+          { wNum: 5, startDay: 29, endDay: daysInMonth }
+        ];
 
-        monitoreos.forEach(m => {
-          const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
-          if (mDate && mDate >= sStr && mDate <= eStr) {
-            samplesCount++;
+        const weeks = monthWeeksDef.map(w => {
+          const sStr = `${tYear}-${String(tMonth).padStart(2, '0')}-${String(w.startDay).padStart(2, '0')}`;
+          const eStr = `${tYear}-${String(tMonth).padStart(2, '0')}-${String(w.endDay).padStart(2, '0')}`;
+          
+          const shortLabel = `Sem. ${w.wNum} (${w.startDay}-${w.endDay} ${tMonthShort})`;
+          const fullLabel = `Semana ${w.wNum} (${String(w.startDay).padStart(2, '0')} al ${String(w.endDay).padStart(2, '0')} de ${tMonthName} ${tYear})`;
 
-            const matchedUser = allIpress.find(u =>
-              (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
-              (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
-              (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
-            );
+          const uniqueMonitoredIpress = new Set<string>();
+          let samplesCount = 0;
 
-            if (matchedUser) {
-              const key = String(matchedUser.codigoRenipress || matchedUser.usuario || matchedUser.nombreIpress || 'ipress-item');
-              uniqueMonitoredIpress.add(key);
-            } else if (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed))) {
-              uniqueMonitoredIpress.add(m.codigoRenipress || m.nombreIpress || `rec-${samplesCount}`);
-            }
-          }
-        });
-
-        const monitoredCount = Math.min(totalIpressCount, uniqueMonitoredIpress.size);
-        const faltanCount = Math.max(0, totalIpressCount - monitoredCount);
-        const pct = totalIpressCount > 0 ? Math.round((monitoredCount / totalIpressCount) * 100) : 0;
-
-        // 1. Avance semanal por cada Red (para cuando targetRed === 'Todas')
-        const redesAdvance = redesListSemanal.map(rName => {
-          const ipressInThisRed = usersList.filter(u => (u.rol === 'IPRESS' || u.rol === 'Hospital') && matchRedName(u.red, rName));
-          const metaRed = ipressInThisRed.length;
-          const monitoredInRed = new Set<string>();
           monitoreos.forEach(m => {
             const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
             if (mDate && mDate >= sStr && mDate <= eStr) {
-              const matchedU = ipressInThisRed.find(u =>
+              samplesCount++;
+
+              const matchedUser = allIpress.find(u =>
                 (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
                 (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
                 (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
               );
-              if (matchedU) {
-                monitoredInRed.add(String(matchedU.codigoRenipress || matchedU.usuario || matchedU.nombreIpress));
-              } else if (m.unidadEjecutora && matchRedName(m.unidadEjecutora, rName)) {
-                monitoredInRed.add(String(m.codigoRenipress || m.nombreIpress || Math.random()));
+
+              if (matchedUser) {
+                const key = String(matchedUser.codigoRenipress || matchedUser.usuario || matchedUser.nombreIpress || 'ipress-item');
+                uniqueMonitoredIpress.add(key);
+              } else if (dashboardIpressFilter === 'Todos' && (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed)))) {
+                uniqueMonitoredIpress.add(m.codigoRenipress || m.nombreIpress || `rec-${samplesCount}`);
               }
             }
           });
-          const monCount = Math.min(metaRed, monitoredInRed.size);
-          const pctVal = metaRed > 0 ? Math.round((monCount / metaRed) * 100) : 0;
+
+          const monitoredCount = Math.min(totalIpressCount, uniqueMonitoredIpress.size);
+          const faltanCount = Math.max(0, totalIpressCount - monitoredCount);
+          const pct = totalIpressCount > 0 ? Math.round((monitoredCount / totalIpressCount) * 100) : 0;
+
+          // 1. Avance semanal por cada Red (para cuando targetRed === 'Todas' y sin filtro de IPRESS individual)
+          const redesAdvance = redesListSemanal.map(rName => {
+            const ipressInThisRed = usersList.filter(u => (u.rol === 'IPRESS' || u.rol === 'Hospital') && matchRedName(u.red, rName));
+            const metaRed = ipressInThisRed.length;
+            const monitoredInRed = new Set<string>();
+            monitoreos.forEach(m => {
+              const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
+              if (mDate && mDate >= sStr && mDate <= eStr) {
+                const matchedU = ipressInThisRed.find(u =>
+                  (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
+                  (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
+                  (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
+                );
+                if (matchedU) {
+                  monitoredInRed.add(String(matchedU.codigoRenipress || matchedU.usuario || matchedU.nombreIpress));
+                } else if (m.unidadEjecutora && matchRedName(m.unidadEjecutora, rName)) {
+                  monitoredInRed.add(String(m.codigoRenipress || m.nombreIpress || Math.random()));
+                }
+              }
+            });
+            const monCount = Math.min(metaRed, monitoredInRed.size);
+            const pctVal = metaRed > 0 ? Math.round((monCount / metaRed) * 100) : 0;
+            return {
+              red: rName,
+              meta: metaRed,
+              monitoreadas: monCount,
+              faltantes: Math.max(0, metaRed - monCount),
+              pct: pctVal
+            };
+          });
+
+          // 2. Desglose diario (Lunes a Domingo) de la semana para la Unidad Ejecutora o Establecimiento seleccionado
+          const dailyBreakdown = [];
+          for (let dayNum = w.startDay; dayNum <= w.endDay; dayNum++) {
+            const dObj = new Date(tYear, tMonth - 1, dayNum);
+            const dayOfWeek = dObj.getDay();
+            const dStr = `${tYear}-${String(tMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+            
+            const uniqueIpressDay = new Set<string>();
+            let daySamples = 0;
+            monitoreos.forEach(m => {
+              const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
+              if (mDate === dStr) {
+                const matchedU = allIpress.find(u =>
+                  (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
+                  (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
+                  (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
+                );
+                if (matchedU) {
+                  daySamples++;
+                  uniqueIpressDay.add(String(matchedU.codigoRenipress || matchedU.usuario || matchedU.nombreIpress));
+                } else if (dashboardIpressFilter === 'Todos' && (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed)))) {
+                  daySamples++;
+                  uniqueIpressDay.add(String(m.codigoRenipress || m.nombreIpress || `day-rec-${daySamples}`));
+                }
+              }
+            });
+
+            dailyBreakdown.push({
+              dNum: dayNum,
+              dateStr: dStr,
+              day: `${dayNamesAbbr[dayOfWeek]} ${dayNum}`,
+              fullDate: `${dayNamesFull[dayOfWeek]} ${String(dayNum).padStart(2, '0')} de ${tMonthName} ${tYear}`,
+              monitoreadas: Math.min(totalIpressCount, uniqueIpressDay.size),
+              totalMuestras: daySamples
+            });
+          }
+
           return {
-            red: rName,
-            meta: metaRed,
-            monitoreadas: monCount,
-            faltantes: Math.max(0, metaRed - monCount),
-            pct: pctVal
+            name: shortLabel,
+            fullName: fullLabel,
+            sStr,
+            eStr,
+            Monitoreadas: monitoredCount,
+            Faltantes: faltanCount,
+            Meta: totalIpressCount,
+            Porcentaje: pct,
+            TotalMuestras: samplesCount,
+            redesAdvance,
+            dailyBreakdown
           };
         });
 
-        // 2. Desglose diario (Lunes a Domingo) de la semana para la Unidad Ejecutora seleccionada
-        const dailyBreakdown = [];
-        for (let dayNum = w.startDay; dayNum <= w.endDay; dayNum++) {
-          const dObj = new Date(targetYear, targetMonth - 1, dayNum);
-          const dayOfWeek = dObj.getDay();
-          const dStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-          
-          const uniqueIpressDay = new Set<string>();
-          let daySamples = 0;
-          monitoreos.forEach(m => {
-            const mDate = extractDateHelper(m.fecha) || extractDateHelper(m.fechaRegistro);
-            if (mDate === dStr) {
-              const matchedU = allIpress.find(u =>
-                (u.codigoRenipress && m.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
-                (u.usuario && m.nombreIpress && String(u.usuario).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase()) ||
-                (u.nombreIpress && m.nombreIpress && String(u.nombreIpress).trim().toLowerCase() === String(m.nombreIpress).trim().toLowerCase())
-              );
-              if (matchedU) {
-                daySamples++;
-                uniqueIpressDay.add(String(matchedU.codigoRenipress || matchedU.usuario || matchedU.nombreIpress));
-              } else if (currentTargetRed === 'Todas' || (m.unidadEjecutora && matchRedName(m.unidadEjecutora, currentTargetRed))) {
-                daySamples++;
-                uniqueIpressDay.add(String(m.codigoRenipress || m.nombreIpress || `day-rec-${daySamples}`));
-              }
-            }
-          });
-
-          dailyBreakdown.push({
-            dNum: dayNum,
-            dateStr: dStr,
-            day: `${dayNamesAbbr[dayOfWeek]} ${dayNum}`,
-            fullDate: `${dayNamesFull[dayOfWeek]} ${String(dayNum).padStart(2, '0')} de ${targetMonthName} ${targetYear}`,
-            monitoreadas: uniqueIpressDay.size,
-            totalMuestras: daySamples
-          });
-        }
-
         return {
-          name: shortLabel,
-          fullName: fullLabel,
-          sStr,
-          eStr,
-          Monitoreadas: monitoredCount,
-          Faltantes: faltanCount,
-          Meta: totalIpressCount,
-          Porcentaje: pct,
-          TotalMuestras: samplesCount,
-          redesAdvance,
-          dailyBreakdown
+          year: tYear,
+          month: tMonth,
+          monthTitle: `${tMonthName} ${tYear}`,
+          weeks
         };
-      });
+      };
+
+      // Construir la lista de todos los meses comprendidos entre activeDateFrom y activeDateTo
+      const startRefStr = activeDateFrom || earliest;
+      const referenceDateStr = activeDateTo || activeDateFrom || latest;
+      const [sYearStr, sMonthStr] = startRefStr.split('-');
+      const [tYearStr, tMonthStr] = referenceDateStr.split('-');
+      const startYear = parseInt(sYearStr, 10);
+      const startMonth = parseInt(sMonthStr, 10);
+      const targetYear = parseInt(tYearStr, 10);
+      const targetMonth = parseInt(tMonthStr, 10);
+
+      const monthsInRange: { year: number; month: number }[] = [];
+      if (!isNaN(startYear) && !isNaN(startMonth) && !isNaN(targetYear) && !isNaN(targetMonth)) {
+        let curY = startYear;
+        let curM = startMonth;
+        while ((curY < targetYear || (curY === targetYear && curM <= targetMonth)) && monthsInRange.length < 36) {
+          monthsInRange.push({ year: curY, month: curM });
+          curM++;
+          if (curM > 12) {
+            curM = 1;
+            curY++;
+          }
+        }
+      }
+      if (monthsInRange.length === 0) {
+        monthsInRange.push({ year: targetYear || new Date().getFullYear(), month: targetMonth || (new Date().getMonth() + 1) });
+      }
+
+      const monthlyComplianceList = monthsInRange.map(mItem => buildWeeksForMonth(mItem.year, mItem.month));
+      const latestMonthCompliance = monthlyComplianceList[monthlyComplianceList.length - 1];
+      const weekDataList = latestMonthCompliance ? latestMonthCompliance.weeks : [];
+      const activeMonthTitle = latestMonthCompliance ? latestMonthCompliance.monthTitle : '';
 
       // Auto-seleccionar la semana que corresponde a la fecha de referencia (ej. fecha fin)
       const refDay = parseInt(referenceDateStr.split('-')[2] || '1', 10);
+      const daysInTargetMonth = new Date(targetYear, targetMonth, 0).getDate();
+      const targetMonthWeeks = [
+        { wNum: 1, startDay: 1, endDay: 7 },
+        { wNum: 2, startDay: 8, endDay: 14 },
+        { wNum: 3, startDay: 15, endDay: 21 },
+        { wNum: 4, startDay: 22, endDay: 28 },
+        { wNum: 5, startDay: 29, endDay: daysInTargetMonth }
+      ];
       const activeWIdx = targetMonthWeeks.findIndex(w => refDay >= w.startDay && refDay <= w.endDay);
       if (activeWIdx >= 0) {
         setSelectedWeekIdx(activeWIdx);
@@ -663,14 +780,15 @@ export const Home: React.FC = () => {
         monitoreoSemanal: totalIpressConMonitoreoSemanal,
         conDiagnosticoTotal: conDiag,
         faltanDiagnostico: faltanDiag,
-        chartMonthTitle: `${targetMonthName} ${targetYear}`,
+        chartMonthTitle: activeMonthTitle,
         ipressPorRed: ipressPorRedArr,
         coberturaData: [
           { name: 'Con Diagnóstico', value: conDiag },
           { name: 'Falta Diagnóstico', value: faltanDiag }
         ],
         detalleList: tempDetalleList,
-        weeklyComplianceData: weekDataList
+        weeklyComplianceData: weekDataList,
+        monthlyComplianceList
       });
     };
 
@@ -679,7 +797,7 @@ export const Home: React.FC = () => {
     window.addEventListener('recordsUpdated', loadData);
     return () => window.removeEventListener('recordsUpdated', loadData);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, dashboardRedFilter, dateFrom, dateTo, usersList, datesInitialized]);
+  }, [user, dashboardRedFilter, dashboardIpressFilter, dateFrom, dateTo, usersList, datesInitialized]);
 
   // Utilidades de formateo para exportaciones a Excel
   const formatExcelDateTime = (dtStr?: string) => {
@@ -710,6 +828,7 @@ export const Home: React.FC = () => {
     const allIpress = usersList.filter(u => {
       if (u.rol !== 'IPRESS' && u.rol !== 'Hospital') return false;
       if (targetRed !== 'Todas' && !matchRedName(u.red, targetRed)) return false;
+      if (dashboardIpressFilter !== 'Todos' && String(u.nombreIpress || u.usuario || '').trim() !== dashboardIpressFilter) return false;
       return true;
     });
 
@@ -761,27 +880,31 @@ export const Home: React.FC = () => {
     const ws = XLSX.utils.json_to_sheet(exportRows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Detalle de Diagnósticos');
-    const safeRedName = (targetRed || 'General').replace(/[^a-zA-Z0-9_-]/g, '_');
-    XLSX.writeFile(wb, `Detalle_Diagnosticos_${safeRedName}.xlsx`);
+    const safeScopeName = (scopeLabel || 'General').replace(/[^a-zA-Z0-9_-]/g, '_');
+    XLSX.writeFile(wb, `Detalle_Diagnosticos_${safeScopeName}.xlsx`);
   };
 
-  const isHospital = targetRed === 'Hospital';
+  const isHospital = selectedIpressObj
+    ? (selectedIpressObj.rol === 'Hospital' || selectedIpressObj.red === 'Hospital')
+    : targetRed === 'Hospital';
   const unitName = isHospital ? 'Hospitales' : 'IPRESS';
   const titleText = isGeresaAdmin 
     ? 'Estadísticas de Gestión (GERESA)' 
     : `Estadísticas de Gestión (${targetRed})`;
 
-  const unitEstablecimientoTitle = targetRed === 'Todas' 
-    ? 'Establecimientos Región Cusco' 
-    : (isHospital ? 'Establecimientos Hospitales' : `Establecimientos ${targetRed}`);
+  const unitEstablecimientoTitle = selectedIpressObj
+    ? `Establecimiento: ${selectedIpressObj.label}`
+    : (targetRed === 'Todas' 
+      ? 'Establecimientos Región Cusco' 
+      : (isHospital ? 'Establecimientos Hospitales' : `Establecimientos ${targetRed}`));
 
   const activeWeek = gestionStats.weeklyComplianceData[selectedWeekIdx] || gestionStats.weeklyComplianceData[0];
 
   const maxWeeklyY = Math.max(
     gestionStats.totalIpress, 
     ...gestionStats.weeklyComplianceData.map(d => Math.max(d.Monitoreadas, d.Faltantes, d.Meta || 0)), 
-    10
-  ) + 5;
+    selectedIpressObj ? 2 : 10
+  ) + (selectedIpressObj ? 1 : 5);
 
   const complianceAvg = gestionStats.weeklyComplianceData.length > 0
     ? Math.round(
@@ -837,10 +960,12 @@ export const Home: React.FC = () => {
       // Fila de parámetros del filtro
       wsDashboard.getCell('B4').value = `Unidad Ejecutora: ${targetRed}`;
       wsDashboard.getCell('B4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
-      wsDashboard.getCell('D4').value = `Rango de Fechas: ${dateFrom || 'Inicio'} al ${dateTo || 'Fin'}`;
+      wsDashboard.getCell('D4').value = `Establecimiento: ${selectedIpressObj ? selectedIpressObj.label : 'Todos'}`;
       wsDashboard.getCell('D4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
-      wsDashboard.getCell('G4').value = `Fecha de Emisión: ${new Date().toLocaleString('es-PE')}`;
-      wsDashboard.getCell('G4').font = { color: { argb: 'FF64748B' }, size: 9 };
+      wsDashboard.getCell('F4').value = `Rango de Fechas: ${dateFrom || 'Inicio'} al ${dateTo || 'Fin'}`;
+      wsDashboard.getCell('F4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
+      wsDashboard.getCell('H4').value = `Fecha de Emisión: ${new Date().toLocaleString('es-PE')}`;
+      wsDashboard.getCell('H4').font = { color: { argb: 'FF64748B' }, size: 9 };
 
       // 5 Tarjetas KPI formateadas
       const kpiDefinitions = [
@@ -867,56 +992,96 @@ export const Home: React.FC = () => {
         cellVal.border = { bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
       });
 
-      // SECCIÓN 1: CUMPLIMIENTO SEMANAL
+      const chartsToInject: NativeChartPlacement[] = [];
+      const monthsToRender = gestionStats.monthlyComplianceList.length > 0
+        ? gestionStats.monthlyComplianceList
+        : [{ monthTitle: gestionStats.chartMonthTitle, weeks: gestionStats.weeklyComplianceData }];
+
+      // SECCIÓN 1: CUMPLIMIENTO SEMANAL POR CADA MES DEL RANGO DE FECHAS
       let currentRow = 9;
-      wsDashboard.getCell(`B${currentRow}`).value = `1. CUMPLIMIENTO SEMANAL DE MONITOREO (${gestionStats.chartMonthTitle}) - ${targetRed === 'Todas' ? 'Región Cusco' : targetRed}`;
-      wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
-      currentRow++;
+      monthsToRender.forEach((monthBlock, mIdx) => {
+        wsDashboard.getCell(`B${currentRow}`).value = `1. CUMPLIMIENTO SEMANAL DE MONITOREO (${monthBlock.monthTitle}) - ${scopeLabel}`;
+        wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
+        currentRow++;
 
-      const sec1HeaderRow = currentRow;
-      const weeklyHeaders = ['Semana', 'Período', 'Meta (IPRESS)', 'IPRESS Monitoreadas', 'Faltan Monitorear', '% Cumplimiento', 'Total Muestras'];
-      const cols = ['B', 'C', 'D', 'E', 'F', 'G', 'H'];
-      weeklyHeaders.forEach((h, idx) => {
-        const cell = wsDashboard.getCell(`${cols[idx]}${currentRow}`);
-        cell.value = h;
-        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
-      });
-      currentRow++;
-
-      const sec1StartRow = currentRow;
-      gestionStats.weeklyComplianceData.forEach(row => {
-        const r = currentRow;
-        wsDashboard.getCell(`B${r}`).value = row.name;
-        wsDashboard.getCell(`C${r}`).value = row.fullName;
-        wsDashboard.getCell(`D${r}`).value = row.Meta;
-        wsDashboard.getCell(`E${r}`).value = row.Monitoreadas;
-        wsDashboard.getCell(`F${r}`).value = { formula: `MAX(0,D${r}-E${r})`, result: row.Faltantes };
-        const pctCell = wsDashboard.getCell(`G${r}`);
-        pctCell.value = { formula: `IF(D${r}>0,E${r}/D${r},0)`, result: row.Meta > 0 ? row.Monitoreadas / row.Meta : 0 };
-        pctCell.numFmt = '0%';
-        wsDashboard.getCell(`H${r}`).value = row.TotalMuestras;
-
-        cols.forEach((colLetter, idx) => {
-          const cell = wsDashboard.getCell(`${colLetter}${r}`);
-          cell.alignment = { horizontal: idx >= 2 ? 'center' : 'left', vertical: 'middle' };
+        const sec1HeaderRow = currentRow;
+        const weeklyHeaders = ['Semana', 'Período', 'Meta (IPRESS)', 'IPRESS Monitoreadas', 'Faltan Monitorear', '% Cumplimiento', 'Total Muestras'];
+        const cols = ['B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        weeklyHeaders.forEach((h, idx) => {
+          const cell = wsDashboard.getCell(`${cols[idx]}${currentRow}`);
+          cell.value = h;
+          cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+          cell.alignment = { horizontal: 'center', vertical: 'middle' };
           cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
         });
         currentRow++;
-      });
-      const sec1EndRow = Math.max(sec1StartRow, currentRow - 1);
 
-      // Espacio reservado para el Gráfico Nativo 1 (17 filas)
-      const chart1ZeroRowStart = currentRow; // 0-indexed row inmediatamente debajo de la tabla 1
-      const chart1ZeroRowEnd = chart1ZeroRowStart + 16;
-      currentRow += 18;
+        const sec1StartRow = currentRow;
+        monthBlock.weeks.forEach(row => {
+          const r = currentRow;
+          wsDashboard.getCell(`B${r}`).value = row.name;
+          wsDashboard.getCell(`C${r}`).value = row.fullName;
+          wsDashboard.getCell(`D${r}`).value = row.Meta;
+          wsDashboard.getCell(`E${r}`).value = row.Monitoreadas;
+          wsDashboard.getCell(`F${r}`).value = { formula: `MAX(0,D${r}-E${r})`, result: row.Faltantes };
+          const pctCell = wsDashboard.getCell(`G${r}`);
+          pctCell.value = { formula: `IF(D${r}>0,E${r}/D${r},0)`, result: row.Meta > 0 ? row.Monitoreadas / row.Meta : 0 };
+          pctCell.numFmt = '0%';
+          wsDashboard.getCell(`H${r}`).value = row.TotalMuestras;
+
+          cols.forEach((colLetter, idx) => {
+            const cell = wsDashboard.getCell(`${colLetter}${r}`);
+            cell.alignment = { horizontal: idx >= 2 ? 'center' : 'left', vertical: 'middle' };
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } };
+          });
+          currentRow++;
+        });
+        const sec1EndRow = Math.max(sec1StartRow, currentRow - 1);
+
+        // Espacio reservado para el Gráfico Nativo de este mes (17 filas)
+        const chart1ZeroRowStart = currentRow;
+        const chart1ZeroRowEnd = chart1ZeroRowStart + 16;
+        currentRow += 18;
+
+        const monthChartXml = buildNativeBarChartXml({
+          title: `Actividad Reciente (${monthBlock.monthTitle}) - Cumplimiento Semanal (${scopeLabel})`,
+          barDir: 'col',
+          categoriesFormula: `'${sheetName}'!$B$${sec1StartRow}:$B$${sec1EndRow}`,
+          categories: monthBlock.weeks.map(r => r.name),
+          seriesList: [
+            {
+              name: 'IPRESS Monitoreadas',
+              nameFormula: `'${sheetName}'!$E$${sec1HeaderRow}`,
+              valuesFormula: `'${sheetName}'!$E$${sec1StartRow}:$E$${sec1EndRow}`,
+              values: monthBlock.weeks.map(r => r.Monitoreadas),
+              color: '10B981'
+            },
+            {
+              name: 'Faltan Monitorear',
+              nameFormula: `'${sheetName}'!$F$${sec1HeaderRow}`,
+              valuesFormula: `'${sheetName}'!$F$${sec1StartRow}:$F$${sec1EndRow}`,
+              values: monthBlock.weeks.map(r => r.Faltantes),
+              color: 'EF4444'
+            }
+          ]
+        });
+
+        chartsToInject.push({
+          xml: monthChartXml,
+          name: `Gráfico Cumplimiento Semanal ${mIdx + 1} (${monthBlock.monthTitle})`,
+          fromCol: 1,
+          fromRow: chart1ZeroRowStart,
+          toCol: 8,
+          toRow: chart1ZeroRowEnd
+        });
+      });
 
       // SECCIÓN 2: DESGLOSE SEMANAL (O DIARIO) Y COBERTURA DE DIAGNÓSTICOS
-      const section2Title = targetRed === 'Todas'
+      const isRegionalAll = targetRed === 'Todas' && !selectedIpressObj;
+      const section2Title = isRegionalAll
         ? `2. AVANCE SEMANAL POR UNIDAD EJECUTORA (${activeWeek?.name || 'Semana Actual'}) Y COBERTURA (Región Cusco)`
-        : `2. DESGLOSE DIARIO DE MONITOREO (${activeWeek?.name || 'Semana Actual'}) Y COBERTURA (${targetRed})`;
+        : `2. DESGLOSE DIARIO DE MONITOREO (${activeWeek?.name || 'Semana Actual'}) Y COBERTURA (${scopeLabel})`;
       
       wsDashboard.getCell(`B${currentRow}`).value = section2Title;
       wsDashboard.getCell(`B${currentRow}`).font = { bold: true, size: 11, color: { argb: 'FF1E40AF' } };
@@ -924,8 +1089,8 @@ export const Home: React.FC = () => {
 
       const sec2HeaderRow = currentRow;
 
-      // Tabla 2 (Izquierda): Avance por Redes (si Todas) o Desglose Diario Lunes a Domingo (si Red)
-      if (targetRed === 'Todas') {
+      // Tabla 2 (Izquierda): Avance por Redes (si Todas y Todos) o Desglose Diario Lunes a Domingo (si Red o Establecimiento)
+      if (isRegionalAll) {
         const redHeaders = ['Unidad Ejecutora', 'Meta IPRESS', 'IPRESS Monitoreadas', '% Avance'];
         const redCols = ['B', 'C', 'D', 'E'];
         redHeaders.forEach((h, idx) => {
@@ -964,7 +1129,7 @@ export const Home: React.FC = () => {
       currentRow++;
       const sec2StartRow = currentRow;
 
-      const leftDataRows = targetRed === 'Todas' ? (activeWeek?.redesAdvance || []) : (activeWeek?.dailyBreakdown || []);
+      const leftDataRows = isRegionalAll ? (activeWeek?.redesAdvance || []) : (activeWeek?.dailyBreakdown || []);
       const maxSubRows = Math.max(leftDataRows.length, gestionStats.coberturaData.length);
       const cobStartRow = sec2StartRow;
       const cobEndRow = sec2StartRow + Math.max(1, gestionStats.coberturaData.length - 1);
@@ -972,7 +1137,7 @@ export const Home: React.FC = () => {
       for (let i = 0; i < maxSubRows; i++) {
         const r = currentRow;
         // Datos tabla izquierda
-        if (targetRed === 'Todas') {
+        if (isRegionalAll) {
           const rRow = (activeWeek?.redesAdvance || [])[i];
           if (rRow) {
             wsDashboard.getCell(`B${r}`).value = rRow.red;
@@ -1026,32 +1191,8 @@ export const Home: React.FC = () => {
       const chart2And3ZeroRowStart = currentRow; // 0-indexed row inmediatamente debajo de las tablas de la sección 2
       const chart2And3ZeroRowEnd = chart2And3ZeroRowStart + 16;
 
-      // Construir los 3 gráficos nativos OpenXML de Excel vinculados dinámicamente a las celdas de la hoja
-      const chart1Xml = buildNativeBarChartXml({
-        title: `Actividad Reciente (${gestionStats.chartMonthTitle}) - Cumplimiento Semanal (${targetRed === 'Todas' ? 'Región Cusco' : targetRed})`,
-        barDir: 'col',
-        categoriesFormula: `'${sheetName}'!$B$${sec1StartRow}:$B$${sec1EndRow}`,
-        categories: gestionStats.weeklyComplianceData.map(r => r.name),
-        seriesList: [
-          {
-            name: 'IPRESS Monitoreadas',
-            nameFormula: `'${sheetName}'!$E$${sec1HeaderRow}`,
-            valuesFormula: `'${sheetName}'!$E$${sec1StartRow}:$E$${sec1EndRow}`,
-            values: gestionStats.weeklyComplianceData.map(r => r.Monitoreadas),
-            color: '10B981'
-          },
-          {
-            name: 'Faltan Monitorear',
-            nameFormula: `'${sheetName}'!$F$${sec1HeaderRow}`,
-            valuesFormula: `'${sheetName}'!$F$${sec1StartRow}:$F$${sec1EndRow}`,
-            values: gestionStats.weeklyComplianceData.map(r => r.Faltantes),
-            color: 'EF4444'
-          }
-        ]
-      });
-
       const chart2Xml =
-        targetRed === 'Todas'
+        isRegionalAll
           ? buildNativeBarChartXml({
               title: `IPRESS por Unidad Ejecutora (Región Cusco) - ${activeWeek?.name || 'Semana Actual'}`,
               barDir: 'bar',
@@ -1075,7 +1216,7 @@ export const Home: React.FC = () => {
               ]
             })
           : buildNativeBarChartXml({
-              title: `IPRESS con Monitoreo por Día (${targetRed}) - ${activeWeek?.name || 'Semana Actual'}`,
+              title: `IPRESS con Monitoreo por Día (${scopeLabel}) - ${activeWeek?.name || 'Semana Actual'}`,
               barDir: 'col',
               categoriesFormula: `'${sheetName}'!$B$${sec2StartRow}:$B$${sec2EndRowLeft}`,
               categories: (activeWeek?.dailyBreakdown || []).map(d => d.day),
@@ -1091,7 +1232,7 @@ export const Home: React.FC = () => {
             });
 
       const chart3Xml = buildNativeDoughnutChartXml({
-        title: `Cobertura de Diagnósticos (${targetRed === 'Todas' ? 'Región Cusco' : targetRed})`,
+        title: `Cobertura de Diagnósticos (${scopeLabel})`,
         nameFormula: `'${sheetName}'!$H$${sec2HeaderRow}`,
         seriesName: 'Cantidad IPRESS',
         categoriesFormula: `'${sheetName}'!$G$${cobStartRow}:$G$${cobEndRow}`,
@@ -1100,6 +1241,26 @@ export const Home: React.FC = () => {
         values: gestionStats.coberturaData.map(c => c.value),
         sliceColors: ['10B981', 'EF4444']
       });
+
+      chartsToInject.push(
+        {
+          xml: chart2Xml,
+          name: 'Gráfico Avance Semanal / Diario',
+          fromCol: 1,
+          fromRow: chart2And3ZeroRowStart,
+          toCol: 5,
+          toRow: chart2And3ZeroRowEnd,
+          toColOff: 150000
+        },
+        {
+          xml: chart3Xml,
+          name: 'Gráfico Cobertura de Diagnósticos',
+          fromCol: 6,
+          fromRow: chart2And3ZeroRowStart,
+          toCol: 9,
+          toRow: chart2And3ZeroRowEnd
+        }
+      );
 
       // -------------------------------------------------------------
       // HOJA 2: DETALLE DIAGNÓSTICOS (TODOS LOS CAMPOS + ¿TIENE DIAGNÓSTICO? AL FINAL)
@@ -1113,6 +1274,9 @@ export const Home: React.FC = () => {
       const allIpressList = usersList.filter(u => {
         if (u.rol !== 'IPRESS' && u.rol !== 'Hospital') return false;
         if (targetRed !== 'Todas' && !matchRedName(u.red, targetRed)) return false;
+        if (dashboardIpressFilter !== 'Todos') {
+          if (String(u.nombreIpress || u.usuario || '').trim() !== dashboardIpressFilter) return false;
+        }
         return true;
       });
 
@@ -1250,6 +1414,18 @@ export const Home: React.FC = () => {
         );
         const rRed = userObj?.red || r.unidadEjecutora || 'Sin Red';
         if (targetRed !== 'Todas' && !matchRedName(rRed, targetRed)) return;
+
+        if (dashboardIpressFilter !== 'Todos' && selectedIpressObj) {
+          const uTarget = selectedIpressObj.rawUser;
+          const matchByRenipress = Boolean(
+            uTarget.codigoRenipress && uTarget.codigoRenipress !== 'S/N' && r.codigoRenipress && matchRenipress(uTarget.codigoRenipress, r.codigoRenipress)
+          );
+          const rName = String(r.nombreIpress || '').trim().toLowerCase();
+          const u1 = String(uTarget.usuario || '').trim().toLowerCase();
+          const u2 = String(uTarget.nombreIpress || '').trim().toLowerCase();
+          const matchByName = rName !== '' && ((u1 !== '' && rName === u1) || (u2 !== '' && rName === u2));
+          if (!matchByRenipress && !matchByName) return;
+        }
         
         const dStr = extractDateHelper(r.fecha) || extractDateHelper(r.fechaRegistro);
         if (dateFrom && dStr && dStr < dateFrom) return;
@@ -1275,40 +1451,14 @@ export const Home: React.FC = () => {
         row.getCell('temp').alignment = { horizontal: 'center' };
       });
 
-      // Inyectar los 3 gráficos nativos dinámicos (OpenXML) en la hoja Dashboard de Gestión y descargar
+      // Inyectar todos los gráficos nativos dinámicos (OpenXML) en la hoja Dashboard de Gestión y descargar
       const rawBuffer = await workbook.xlsx.writeBuffer();
-      const bufferWithNativeCharts = await injectNativeChartsIntoXlsxBuffer(rawBuffer as ArrayBuffer, [
-        {
-          xml: chart1Xml,
-          name: 'Gráfico Cumplimiento Semanal',
-          fromCol: 1,
-          fromRow: chart1ZeroRowStart,
-          toCol: 8,
-          toRow: chart1ZeroRowEnd
-        },
-        {
-          xml: chart2Xml,
-          name: 'Gráfico Avance Semanal / Diario',
-          fromCol: 1,
-          fromRow: chart2And3ZeroRowStart,
-          toCol: 5,
-          toRow: chart2And3ZeroRowEnd,
-          toColOff: 150000
-        },
-        {
-          xml: chart3Xml,
-          name: 'Gráfico Cobertura de Diagnósticos',
-          fromCol: 6,
-          fromRow: chart2And3ZeroRowStart,
-          toCol: 9,
-          toRow: chart2And3ZeroRowEnd
-        }
-      ]);
+      const bufferWithNativeCharts = await injectNativeChartsIntoXlsxBuffer(rawBuffer as ArrayBuffer, chartsToInject);
       const blob = new Blob([bufferWithNativeCharts], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
-      const safeRedName = (targetRed || 'General').replace(/[^a-zA-Z0-9_-]/g, '_');
-      link.download = `Dashboard_Gestion_${safeRedName}_${dateFrom || 'inicio'}_al_${dateTo || 'fin'}.xlsx`;
+      const safeScopeName = (scopeLabel || 'General').replace(/[^a-zA-Z0-9_-]/g, '_');
+      link.download = `Dashboard_Gestion_${safeScopeName}_${dateFrom || 'inicio'}_al_${dateTo || 'fin'}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -1384,29 +1534,32 @@ export const Home: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '1.25rem',
+            gap: '1rem',
             width: '100%'
           }}>
             {/* FILTRO 1: UNIDAD EJECUTORA (IZQUIERDA) */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 Filtrar por Unidad Ejecutora:
               </span>
               {isGeresaAdmin ? (
                 <select
                   value={dashboardRedFilter}
-                  onChange={(e) => setDashboardRedFilter(e.target.value)}
+                  onChange={(e) => {
+                    setDashboardRedFilter(e.target.value);
+                    setDashboardIpressFilter('Todos');
+                  }}
                   style={{
-                    padding: '0.45rem 0.85rem',
+                    padding: '0.45rem 0.75rem',
                     borderRadius: '8px',
                     border: '1px solid #cbd5e1',
                     outline: 'none',
-                    fontSize: '0.875rem',
+                    fontSize: '0.85rem',
                     backgroundColor: '#ffffff',
                     color: 'var(--primary-dark)',
                     cursor: 'pointer',
                     fontWeight: 600,
-                    minWidth: '190px'
+                    minWidth: '170px'
                   }}
                 >
                   <option value="Todas">Todas</option>
@@ -1416,11 +1569,11 @@ export const Home: React.FC = () => {
                 </select>
               ) : (
                 <span style={{
-                  fontSize: '0.875rem',
+                  fontSize: '0.85rem',
                   fontWeight: 600,
                   color: 'var(--primary-dark)',
                   backgroundColor: '#eff6ff',
-                  padding: '0.4rem 0.85rem',
+                  padding: '0.4rem 0.75rem',
                   borderRadius: '6px',
                   border: '1px solid #bfdbfe'
                 }}>
@@ -1429,9 +1582,42 @@ export const Home: React.FC = () => {
               )}
             </div>
 
-            {/* FILTRO 2: RANGO DE FECHA (CENTRO) */}
+            {/* FILTRO 2: ESTABLECIMIENTO DE SALUD */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                Establecimiento de salud:
+              </span>
+              <select
+                value={dashboardIpressFilter}
+                onChange={(e) => setDashboardIpressFilter(e.target.value)}
+                style={{
+                  padding: '0.45rem 0.75rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  outline: 'none',
+                  fontSize: '0.85rem',
+                  backgroundColor: '#ffffff',
+                  color: 'var(--primary-dark)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  maxWidth: '250px',
+                  minWidth: '185px',
+                  textOverflow: 'ellipsis'
+                }}
+                title="Filtrar por IPRESS / Hospital específico"
+              >
+                <option value="Todos">Todos ({ipressOptionsList.length})</option>
+                {ipressOptionsList.map(ip => (
+                  <option key={ip.id} value={ip.id}>
+                    {ip.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* FILTRO 3: RANGO DE FECHA */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
                 Rango de fecha:
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#f8fafc', padding: '0.35rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
@@ -1670,11 +1856,11 @@ export const Home: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <BarChart3 size={20} color="var(--primary)" />
                 <h3 style={{ margin: 0, color: 'var(--primary-dark)', fontSize: '1.15rem' }}>
-                  Actividad Reciente ({gestionStats.chartMonthTitle}) - Cumplimiento Semanal de Monitoreo ({targetRed === 'Todas' ? 'Región Cusco' : targetRed})
+                  Actividad Reciente ({gestionStats.chartMonthTitle}) - Cumplimiento Semanal de Monitoreo ({scopeLabel})
                 </h3>
               </div>
               <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                Evaluación mensual por semanas de {gestionStats.chartMonthTitle} en {targetRed === 'Todas' ? 'toda la Región Cusco' : targetRed} (Meta: {gestionStats.totalIpress} {unitName} semanales)
+                Evaluación mensual por semanas de {gestionStats.chartMonthTitle} en {targetRed === 'Todas' && !selectedIpressObj ? 'toda la Región Cusco' : scopeLabel} (Meta: {gestionStats.totalIpress} {unitName} semanales)
               </p>
             </div>
 
@@ -1742,17 +1928,17 @@ export const Home: React.FC = () => {
         {/* DEMÁS GRÁFICOS: AVANCE SEMANAL / DESGLOSE DIARIO & COBERTURA DE DIAGNÓSTICOS */}
         {canViewGestionStats && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '1.5rem' }}>
-            {/* GRÁFICO 2: AVANCE SEMANAL (TODAS) O DESGLOSE DIARIO LUNES A DOMINGO (POR RED) */}
+            {/* GRÁFICO 2: AVANCE SEMANAL (TODAS) O DESGLOSE DIARIO LUNES A DOMINGO (POR RED O ESTABLECIMIENTO) */}
             <div id="chart-container-ipress-red" className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
                 <div>
                   <h4 style={{ margin: 0, color: 'var(--text)', fontSize: '1.05rem', fontWeight: 700 }}>
-                    {targetRed === 'Todas'
+                    {targetRed === 'Todas' && !selectedIpressObj
                       ? `Avance Semanal por Unidad Ejecutora (${activeWeek?.name || 'Semana Actual'}) - Región Cusco`
-                      : `Desglose Diario de IPRESS con Monitoreo (${activeWeek?.name || 'Semana Actual'}) - ${targetRed}`}
+                      : `Desglose Diario de IPRESS con Monitoreo (${activeWeek?.name || 'Semana Actual'}) - ${scopeLabel}`}
                   </h4>
                   <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    {targetRed === 'Todas'
+                    {targetRed === 'Todas' && !selectedIpressObj
                       ? `Comparativa de IPRESS monitoreadas vs Meta total por cada Red durante la semana`
                       : `IPRESS únicas monitoreadas de lunes a domingo (cada IPRESS suma como 1 en el día)`}
                   </p>
@@ -1791,7 +1977,7 @@ export const Home: React.FC = () => {
 
               {/* CONTENIDO DEL GRÁFICO 2 */}
               <div style={{ height: '310px', width: '100%', flex: 1 }}>
-                {targetRed === 'Todas' ? (
+                {targetRed === 'Todas' && !selectedIpressObj ? (
                   // MODO REGIÓN CUSCO (TODAS): BARRAS HORIZONTALES POR RED CON SU AVANCE DE LA SEMANA SELECCIONADA
                   (activeWeek?.redesAdvance && activeWeek.redesAdvance.length > 0) ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -1815,7 +2001,7 @@ export const Home: React.FC = () => {
                     </div>
                   )
                 ) : (
-                  // MODO UNIDAD EJECUTORA: BARRAS VERTICALES DE LUNES A DOMINGO CON CONTEO DE IPRESS ÚNICAS MONITOREADAS
+                  // MODO UNIDAD EJECUTORA O ESTABLECIMIENTO: BARRAS VERTICALES DE LUNES A DOMINGO CON CONTEO DE IPRESS ÚNICAS MONITOREADAS
                   (activeWeek?.dailyBreakdown && activeWeek.dailyBreakdown.length > 0) ? (
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={activeWeek.dailyBreakdown} margin={{ top: 20, right: 20, left: -10, bottom: 5 }}>
@@ -1840,7 +2026,7 @@ export const Home: React.FC = () => {
             {/* GRÁFICO 3: COBERTURA DE DIAGNÓSTICOS (AGRANDADO CON DATOS FIJOS Y FLECHA ANIMADA) */}
             <div id="chart-container-cobertura" className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', position: 'relative' }}>
               <h4 style={{ margin: '0 0 0.35rem 0', color: 'var(--text)', fontSize: '1.05rem', fontWeight: 700 }}>
-                Cobertura de Diagnósticos ({targetRed === 'Todas' ? 'Región Cusco' : targetRed})
+                Cobertura de Diagnósticos ({scopeLabel})
               </h4>
               <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                 Estado situacional de diagnósticos de agua en establecimientos de salud
@@ -2049,7 +2235,7 @@ export const Home: React.FC = () => {
             }}>
               <div style={{ padding: '1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ margin: 0, color: 'var(--text)', fontSize: '1.2rem' }}>
-                  Detalle de Diagnósticos {isGeresaAdmin ? (dashboardRedFilter === 'Todas' ? '(Región Cusco)' : `(${dashboardRedFilter})`) : `(${targetRed})`}
+                  Detalle de Diagnósticos ({scopeLabel})
                 </h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <button 

@@ -1,6 +1,16 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.5.0] - 2026-11-02
+### Añadido / Mejorado
+- **Filtro por Establecimiento de Salud (IPRESS / Hospitales):**
+  - Se incorporó el nuevo filtro desplegable **`Establecimiento de salud:`** en la barra superior de filtros del Dashboard en [`src/pages/Home.tsx`](file:///c:/Users/nemes/.gemini/antigravity-ide/scratch/Registro_IPRESS_Aguas/src/pages/Home.tsx).
+  - Lista dinámicamente todas las IPRESS y Hospitales correspondientes a la Unidad Ejecutora seleccionada (o las 371 de toda la Región Cusco si Unidad Ejecutora está en `Todas`), ordenadas alfabéticamente.
+  - Al seleccionar un establecimiento específico, las 5 tarjetas KPI, los 3 gráficos del Dashboard, el modal de detalle y la exportación a Excel se filtran y titulan automáticamente con el nombre de ese Establecimiento de salud (`scopeLabel`).
+- **Desglose Mensual Completo con Tablas y Gráficos Nativos por Mes en Exportación Excel:**
+  - En el archivo descargado desde **`Exportar Dashboard Excel`** (pestaña `Dashboard de Gestión`), la sección **`1. CUMPLIMIENTO SEMANAL DE MONITOREO`** ahora genera automáticamente un cuadro semanal y su respectivo **gráfico nativo dinámico de Excel** (`Actividad Reciente (<Mes Año>) - Cumplimiento Semanal (<Nivel>)`) por **cada uno de los meses comprendidos dentro del filtro de Rango de Fecha** (por ejemplo: Agosto 2026 con su tabla y gráfico nativo, seguido de Setiembre 2026 con su tabla y gráfico nativo, seguido de Octubre 2026 con su tabla y gráfico nativo).
+  - Funciona de manera integrada en los tres niveles de análisis: Regional (`Región Cusco`), por Unidad Ejecutora (`Red ...` / `Hospital`) y por `Establecimiento de salud`.
+
 ## [1.4.9] - 2026-10-30
 ### Añadido / Mejorado
 - **Gráficos Dinámicos Nativos de Excel (OpenXML `<c:chartSpace>`) en Exportación del Dashboard:**
