@@ -1,6 +1,18 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.5.1] - 2026-11-02
+### Añadido / Mejorado
+- **Adaptación Visual y de Encabezados para Hospitales Individuales en Excel:**
+  - Cuando se filtra por una Unidad Ejecutora de tipo `Hospital` o un Hospital específico con cantidad 1 (ej. *ANTONIO LORENA DEL CUSCO*):
+    - La cabecera del reporte muestra `Establecimiento: <Nombre>` y `Rango de Fechas: DD-MM-YYYY al DD-MM-YYYY`.
+    - Se presentan exactamente 4 tarjetas KPI (`Establecimiento: <Nombre>`, `Registros de Monitoreos`, `Hospital con Diagnóstico`, `Falta Diagnóstico`).
+    - En la tabla de cumplimiento semanal se usan los textos exactos solicitados: `Semana`, `Período`, `Cantidad Hospital`, `Cant. Hospital Monitoreado`, `Falta Monitorear`, `% Cumplimiento`, `Total Registros`.
+- **Corrección de Coincidencia de Diagnósticos y Orden Oficial de Columnas:**
+  - Se incorporó la función `matchEstablishmentName` para vincular registros de diagnóstico con nombres flexibles o variantes institucionales (evitando pérdidas de datos en hospitales como *ANTONIO LORENA DEL CUSCO*).
+  - Se corrigió el orden de las columnas en la pestaña `Detalle de Diagnósticos` y en la exportación del modal para respetar la secuencia oficial:
+    `Sistema Agua Propio` → `Fuente de Agua` → `Bombas de Agua` → `Bombas Operativas` → `Tiene Reservorio` → `Tipo Reservorio` → `Volumen Reservorio (m3)` → `Reservorio Elevado` → `Reservorio Operativo` → `Tiene Cisterna` → `Volumen Cisterna (m3)` → `Cisterna Operativa` → `Tratamiento de Agua`.
+
 ## [1.5.0] - 2026-11-02
 ### Añadido / Mejorado
 - **Filtro por Establecimiento de Salud (IPRESS / Hospitales):**

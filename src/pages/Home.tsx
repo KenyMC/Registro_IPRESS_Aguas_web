@@ -50,6 +50,43 @@ const matchRedName = (a?: any, b?: any): boolean => {
   return strA !== '' && strA === strB;
 };
 
+// Limpiador y comparador flexible de nombres de establecimientos (IPRESS / Hospitales)
+const cleanEstablishmentName = (n?: any): string => {
+  if (!n) return '';
+  return String(n)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(hospital|hosp|c\.s\.|cs|p\.s\.|ps|puesto de salud|centro de salud|del cusco|cusco)\b/gi, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const matchEstablishmentName = (nameA?: any, nameB?: any): boolean => {
+  if (!nameA || !nameB) return false;
+  const sA = String(nameA).trim().toLowerCase();
+  const sB = String(nameB).trim().toLowerCase();
+  if (sA === sB) return true;
+  
+  const cA = cleanEstablishmentName(nameA);
+  const cB = cleanEstablishmentName(nameB);
+  if (cA && cB && (cA === cB || cA.includes(cB) || cB.includes(cA))) {
+    return true;
+  }
+  return false;
+};
+
+const formatDisplayDate = (dStr?: string): string => {
+  if (!dStr) return '';
+  const clean = extractDateHelper(dStr);
+  if (!clean) return dStr;
+  const parts = clean.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return clean;
+};
+
 const getUserRed = (u: any): string => {
   if (!u) return '';
   if (u.red !== undefined && u.red !== null) {
@@ -430,7 +467,10 @@ export const Home: React.FC = () => {
       // Aplicar filtro específico por Establecimiento de Salud (IPRESS / Hospital)
       if (dashboardIpressFilter !== 'Todos') {
         const targetIpressUser = allIpress.find(
-          u => String(u.nombreIpress || u.usuario || '').trim() === dashboardIpressFilter
+          u => {
+            const uLabel = String(u.nombreIpress || u.usuario || '').trim();
+            return uLabel === dashboardIpressFilter || matchEstablishmentName(uLabel, dashboardIpressFilter);
+          }
         );
         if (targetIpressUser) {
           allIpress = [targetIpressUser];
@@ -442,7 +482,7 @@ export const Home: React.FC = () => {
             if (!rName) return false;
             const u1 = String(targetIpressUser.usuario || '').trim().toLowerCase();
             const u2 = String(targetIpressUser.nombreIpress || '').trim().toLowerCase();
-            return (u1 !== '' && rName === u1) || (u2 !== '' && rName === u2);
+            return (u1 !== '' && rName === u1) || (u2 !== '' && rName === u2) || matchEstablishmentName(rName, targetIpressUser.nombreIpress || targetIpressUser.usuario);
           };
           diagnosticos = diagnosticos.filter(filterBySingleIpress);
           monitoreos = monitoreos.filter(filterBySingleIpress);
@@ -828,7 +868,10 @@ export const Home: React.FC = () => {
     const allIpress = usersList.filter(u => {
       if (u.rol !== 'IPRESS' && u.rol !== 'Hospital') return false;
       if (targetRed !== 'Todas' && !matchRedName(u.red, targetRed)) return false;
-      if (dashboardIpressFilter !== 'Todos' && String(u.nombreIpress || u.usuario || '').trim() !== dashboardIpressFilter) return false;
+      if (dashboardIpressFilter !== 'Todos') {
+        const uLabel = String(u.nombreIpress || u.usuario || '').trim();
+        if (uLabel !== dashboardIpressFilter && !matchEstablishmentName(uLabel, dashboardIpressFilter)) return false;
+      }
       return true;
     });
 
@@ -837,7 +880,8 @@ export const Home: React.FC = () => {
       const diag = diagnosticos.find(d => 
         (d.codigoRenipress && u.codigoRenipress && matchRenipress(u.codigoRenipress, d.codigoRenipress)) ||
         (d.nombreIpress && u.nombreIpress && String(d.nombreIpress).trim().toLowerCase() === String(u.nombreIpress).trim().toLowerCase()) ||
-        (d.nombreIpress && u.usuario && String(d.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase())
+        (d.nombreIpress && u.usuario && String(d.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase()) ||
+        matchEstablishmentName(d.nombreIpress, u.nombreIpress || u.usuario)
       );
 
       exportRows.push({
@@ -862,12 +906,12 @@ export const Home: React.FC = () => {
         'Bombas de Agua': diag?.bombasAgua || '-',
         'Bombas Operativas': diag?.bombasOperativas || '-',
         'Tiene Reservorio': diag?.reservorio || '-',
-        'Tipo Material Reservorio': diag?.tipoMaterialReservorio || '-',
+        'Tipo Reservorio': diag?.tipoMaterialReservorio || '-',
+        'Volumen Reservorio (m3)': (diag?.volumenReservorio !== undefined && diag?.volumenReservorio !== null && diag?.volumenReservorio !== '') ? diag.volumenReservorio : '-',
         'Reservorio Elevado': diag?.reservorioElevado || '-',
         'Reservorio Operativo': diag?.reservorioOperativo || '-',
-        'Volumen Reservorio (m3)': diag?.volumenReservorio || '-',
         'Tiene Cisterna': diag?.cisterna || '-',
-        'Volumen Cisterna (m3)': diag?.volumenCisterna || '-',
+        'Volumen Cisterna (m3)': (diag?.volumenCisterna !== undefined && diag?.volumenCisterna !== null && diag?.volumenCisterna !== '') ? diag.volumenCisterna : '-',
         'Cisterna Operativa': diag?.cisternaOperativa || '-',
         'Tratamiento de Agua': diag?.tratamientoAgua || '-',
         'Observaciones': diag?.observaciones || '-',
@@ -957,24 +1001,43 @@ export const Home: React.FC = () => {
         fgColor: { argb: 'FF1E40AF' }
       };
 
-      // Fila de parámetros del filtro
-      wsDashboard.getCell('B4').value = `Unidad Ejecutora: ${targetRed}`;
-      wsDashboard.getCell('B4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
-      wsDashboard.getCell('D4').value = `Establecimiento: ${selectedIpressObj ? selectedIpressObj.label : 'Todos'}`;
-      wsDashboard.getCell('D4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
-      wsDashboard.getCell('F4').value = `Rango de Fechas: ${dateFrom || 'Inicio'} al ${dateTo || 'Fin'}`;
-      wsDashboard.getCell('F4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
-      wsDashboard.getCell('H4').value = `Fecha de Emisión: ${new Date().toLocaleString('es-PE')}`;
-      wsDashboard.getCell('H4').font = { color: { argb: 'FF64748B' }, size: 9 };
+      const isHospitalScope = isHospital || (selectedIpressObj && (selectedIpressObj.rol === 'Hospital' || selectedIpressObj.red === 'Hospital')) || targetRed === 'Hospital';
+      const isHospitalSingle = isHospitalScope && gestionStats.totalIpress === 1;
 
-      // 5 Tarjetas KPI formateadas
-      const kpiDefinitions = [
-        { col: 'B', title: unitEstablecimientoTitle, val: gestionStats.totalIpress, color: 'FFDBEAFE', textColor: 'FF1E40AF' },
-        { col: 'C', title: 'Registros de Monitoreos', val: gestionStats.monitoreosTotal, color: 'FFFEF3C7', textColor: 'FF92400E' },
-        { col: 'D', title: 'IPRESS c/ Monitoreo (7d)', val: gestionStats.monitoreoSemanal, color: 'FFD1FAE5', textColor: 'FF065F46' },
-        { col: 'E', title: 'IPRESS con Diagnósticos', val: gestionStats.conDiagnosticoTotal, color: 'FFE0E7FF', textColor: 'FF3730A3' },
-        { col: 'F', title: 'Falta Diagnóstico', val: gestionStats.faltanDiagnostico, color: 'FFFEE2E2', textColor: 'FF991B1B' },
-      ];
+      // Fila de parámetros del filtro
+      if (isHospitalSingle) {
+        wsDashboard.getCell('D4').value = `Establecimiento: ${scopeLabel}`;
+        wsDashboard.getCell('D4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
+        wsDashboard.getCell('F4').value = `Rango de Fechas: ${formatDisplayDate(dateFrom)} al ${formatDisplayDate(dateTo)}`;
+        wsDashboard.getCell('F4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
+        wsDashboard.getCell('H4').value = `Fecha de Emisión: ${new Date().toLocaleString('es-PE')}`;
+        wsDashboard.getCell('H4').font = { color: { argb: 'FF64748B' }, size: 9 };
+      } else {
+        wsDashboard.getCell('B4').value = `Unidad Ejecutora: ${targetRed}`;
+        wsDashboard.getCell('B4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
+        wsDashboard.getCell('D4').value = `Establecimiento: ${selectedIpressObj ? selectedIpressObj.label : 'Todos'}`;
+        wsDashboard.getCell('D4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
+        wsDashboard.getCell('F4').value = `Rango de Fechas: ${formatDisplayDate(dateFrom)} al ${formatDisplayDate(dateTo)}`;
+        wsDashboard.getCell('F4').font = { bold: true, color: { argb: 'FF1E293B' }, size: 10 };
+        wsDashboard.getCell('H4').value = `Fecha de Emisión: ${new Date().toLocaleString('es-PE')}`;
+        wsDashboard.getCell('H4').font = { color: { argb: 'FF64748B' }, size: 9 };
+      }
+
+      // Tarjetas KPI formateadas
+      const kpiDefinitions = isHospitalSingle
+        ? [
+            { col: 'B', title: `Establecimiento: ${scopeLabel}`, val: gestionStats.totalIpress, color: 'FFDBEAFE', textColor: 'FF1E40AF' },
+            { col: 'C', title: 'Registros de Monitoreos', val: gestionStats.monitoreosTotal, color: 'FFFEF3C7', textColor: 'FF92400E' },
+            { col: 'D', title: 'Hospital con Diagnóstico', val: gestionStats.conDiagnosticoTotal, color: 'FFE0E7FF', textColor: 'FF3730A3' },
+            { col: 'E', title: 'Falta Diagnóstico', val: gestionStats.faltanDiagnostico, color: 'FFFEE2E2', textColor: 'FF991B1B' },
+          ]
+        : [
+            { col: 'B', title: unitEstablecimientoTitle, val: gestionStats.totalIpress, color: 'FFDBEAFE', textColor: 'FF1E40AF' },
+            { col: 'C', title: 'Registros de Monitoreos', val: gestionStats.monitoreosTotal, color: 'FFFEF3C7', textColor: 'FF92400E' },
+            { col: 'D', title: isHospitalScope ? 'Hospitales c/ Monitoreo (7d)' : 'IPRESS c/ Monitoreo (7d)', val: gestionStats.monitoreoSemanal, color: 'FFD1FAE5', textColor: 'FF065F46' },
+            { col: 'E', title: isHospitalScope ? 'Hospitales con Diagnósticos' : 'IPRESS con Diagnósticos', val: gestionStats.conDiagnosticoTotal, color: 'FFE0E7FF', textColor: 'FF3730A3' },
+            { col: 'F', title: 'Falta Diagnóstico', val: gestionStats.faltanDiagnostico, color: 'FFFEE2E2', textColor: 'FF991B1B' },
+          ];
 
       kpiDefinitions.forEach(kpi => {
         const cellHeader = wsDashboard.getCell(`${kpi.col}6`);
@@ -1005,7 +1068,12 @@ export const Home: React.FC = () => {
         currentRow++;
 
         const sec1HeaderRow = currentRow;
-        const weeklyHeaders = ['Semana', 'Período', 'Meta (IPRESS)', 'IPRESS Monitoreadas', 'Faltan Monitorear', '% Cumplimiento', 'Total Muestras'];
+        const weeklyHeaders = isHospitalSingle
+          ? ['Semana', 'Período', 'Cantidad Hospital', 'Cant. Hospital Monitoreado', 'Falta Monitorear', '% Cumplimiento', 'Total Registros']
+          : isHospitalScope
+          ? ['Semana', 'Período', 'Cantidad Hospitales', 'Cant. Hospitales Monitoreados', 'Faltan Monitorear', '% Cumplimiento', 'Total Registros']
+          : ['Semana', 'Período', 'Meta (IPRESS)', 'IPRESS Monitoreadas', 'Faltan Monitorear', '% Cumplimiento', 'Total Registros'];
+
         const cols = ['B', 'C', 'D', 'E', 'F', 'G', 'H'];
         weeklyHeaders.forEach((h, idx) => {
           const cell = wsDashboard.getCell(`${cols[idx]}${currentRow}`);
@@ -1044,6 +1112,9 @@ export const Home: React.FC = () => {
         const chart1ZeroRowEnd = chart1ZeroRowStart + 16;
         currentRow += 18;
 
+        const monSeriesName = isHospitalSingle ? 'Cant. Hospital Monitoreado' : isHospitalScope ? 'Cant. Hospitales Monitoreados' : 'IPRESS Monitoreadas';
+        const faltSeriesName = isHospitalSingle ? 'Falta Monitorear' : 'Faltan Monitorear';
+
         const monthChartXml = buildNativeBarChartXml({
           title: `Actividad Reciente (${monthBlock.monthTitle}) - Cumplimiento Semanal (${scopeLabel})`,
           barDir: 'col',
@@ -1051,14 +1122,14 @@ export const Home: React.FC = () => {
           categories: monthBlock.weeks.map(r => r.name),
           seriesList: [
             {
-              name: 'IPRESS Monitoreadas',
+              name: monSeriesName,
               nameFormula: `'${sheetName}'!$E$${sec1HeaderRow}`,
               valuesFormula: `'${sheetName}'!$E$${sec1StartRow}:$E$${sec1EndRow}`,
               values: monthBlock.weeks.map(r => r.Monitoreadas),
               color: '10B981'
             },
             {
-              name: 'Faltan Monitorear',
+              name: faltSeriesName,
               nameFormula: `'${sheetName}'!$F$${sec1HeaderRow}`,
               valuesFormula: `'${sheetName}'!$F$${sec1StartRow}:$F$${sec1EndRow}`,
               values: monthBlock.weeks.map(r => r.Faltantes),
@@ -1275,7 +1346,8 @@ export const Home: React.FC = () => {
         if (u.rol !== 'IPRESS' && u.rol !== 'Hospital') return false;
         if (targetRed !== 'Todas' && !matchRedName(u.red, targetRed)) return false;
         if (dashboardIpressFilter !== 'Todos') {
-          if (String(u.nombreIpress || u.usuario || '').trim() !== dashboardIpressFilter) return false;
+          const uLabel = String(u.nombreIpress || u.usuario || '').trim();
+          if (uLabel !== dashboardIpressFilter && !matchEstablishmentName(uLabel, dashboardIpressFilter)) return false;
         }
         return true;
       });
@@ -1304,9 +1376,9 @@ export const Home: React.FC = () => {
         { header: 'Bombas Operativas', key: 'bombasOperativas', width: 18 },
         { header: 'Tiene Reservorio', key: 'reservorio', width: 16 },
         { header: 'Tipo Reservorio', key: 'tipoMaterialReservorio', width: 20 },
+        { header: 'Volumen Reservorio (m3)', key: 'volumenReservorio', width: 22 },
         { header: 'Reservorio Elevado', key: 'reservorioElevado', width: 18 },
         { header: 'Reservorio Operativo', key: 'reservorioOperativo', width: 18 },
-        { header: 'Volumen Reservorio (m3)', key: 'volumenReservorio', width: 22 },
         { header: 'Tiene Cisterna', key: 'cisterna', width: 16 },
         { header: 'Volumen Cisterna (m3)', key: 'volumenCisterna', width: 20 },
         { header: 'Cisterna Operativa', key: 'cisternaOperativa', width: 18 },
@@ -1326,7 +1398,8 @@ export const Home: React.FC = () => {
         const diag = allDiagRecords.find(d => 
           (d.codigoRenipress && u.codigoRenipress && matchRenipress(u.codigoRenipress, d.codigoRenipress)) ||
           (d.nombreIpress && u.nombreIpress && String(d.nombreIpress).trim().toLowerCase() === String(u.nombreIpress).trim().toLowerCase()) ||
-          (d.nombreIpress && u.usuario && String(d.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase())
+          (d.nombreIpress && u.usuario && String(d.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase()) ||
+          matchEstablishmentName(d.nombreIpress, u.nombreIpress || u.usuario)
         );
 
         const row = wsDiag.addRow({
@@ -1352,11 +1425,11 @@ export const Home: React.FC = () => {
           bombasOperativas: diag?.bombasOperativas || '-',
           reservorio: diag?.reservorio || '-',
           tipoMaterialReservorio: diag?.tipoMaterialReservorio || '-',
+          volumenReservorio: (diag?.volumenReservorio !== undefined && diag?.volumenReservorio !== null && diag?.volumenReservorio !== '') ? diag.volumenReservorio : '-',
           reservorioElevado: diag?.reservorioElevado || '-',
           reservorioOperativo: diag?.reservorioOperativo || '-',
-          volumenReservorio: diag?.volumenReservorio || '-',
           cisterna: diag?.cisterna || '-',
-          volumenCisterna: diag?.volumenCisterna || '-',
+          volumenCisterna: (diag?.volumenCisterna !== undefined && diag?.volumenCisterna !== null && diag?.volumenCisterna !== '') ? diag.volumenCisterna : '-',
           cisternaOperativa: diag?.cisternaOperativa || '-',
           tratamientoAgua: diag?.tratamientoAgua || '-',
           observaciones: diag?.observaciones || '-',
@@ -1423,7 +1496,7 @@ export const Home: React.FC = () => {
           const rName = String(r.nombreIpress || '').trim().toLowerCase();
           const u1 = String(uTarget.usuario || '').trim().toLowerCase();
           const u2 = String(uTarget.nombreIpress || '').trim().toLowerCase();
-          const matchByName = rName !== '' && ((u1 !== '' && rName === u1) || (u2 !== '' && rName === u2));
+          const matchByName = rName !== '' && ((u1 !== '' && rName === u1) || (u2 !== '' && rName === u2) || matchEstablishmentName(rName, uTarget.nombreIpress || uTarget.usuario));
           if (!matchByRenipress && !matchByName) return;
         }
         

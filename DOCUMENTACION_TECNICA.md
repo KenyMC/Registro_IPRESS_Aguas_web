@@ -159,6 +159,41 @@ En lugar de incrustar imágenes PNG estáticas, este módulo genera archivos Ope
 
 ## 4. HISTORIAL DE MEJORAS CLAVE Y FRAGMENTOS IMPLEMENTADOS
 
+### Versión 1.5.1 (2026-11-02)
+- **Formato Especial para Hospitales y Establecimientos Individuales en Excel:**
+  - Cuando se filtra por una Unidad Ejecutora `Hospital` y la cantidad es 1 (o establecimiento individual):
+    - La cabecera muestra `Establecimiento: <Nombre>` y fechas en formato `DD-MM-YYYY al DD-MM-YYYY`.
+    - Se configuran exactamente 4 tarjetas KPI: `Establecimiento: <Nombre>` (1), `Registros de Monitoreos` (total), `Hospital con Diagnóstico` (1), `Falta Diagnóstico` (0).
+    - Encabezados de tabla semanal de sección 1: `Semana`, `Período`, `Cantidad Hospital`, `Cant. Hospital Monitoreado`, `Falta Monitorear`, `% Cumplimiento`, `Total Registros`.
+- **Coincidencia Flexible `matchEstablishmentName` y Orden Oficial de Columnas en Diagnósticos:**
+  - Se implementó `cleanEstablishmentName` y `matchEstablishmentName` para evitar fallos de coincidencia cuando los nombres presentan prefijos/sufijos institucionales (ej. "Hospital Antonio Lorena" vs "Antonio Lorena del Cusco").
+  - Se corrigió el orden de columnas en `wsDiag` y `exportarDetalleExcel`:
+    `Tiene Reservorio` → `Tipo Reservorio` → `Volumen Reservorio (m3)` → `Reservorio Elevado` → `Reservorio Operativo` → `Tiene Cisterna` → `Volumen Cisterna (m3)` → `Cisterna Operativa` → `Tratamiento de Agua`.
+
+```typescript
+// Fragmento clave: Coincidencia flexible de nombres de establecimientos
+const cleanEstablishmentName = (n?: any): string => {
+  if (!n) return '';
+  return String(n)
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(hospital|hosp|c\.s\.|cs|p\.s\.|ps|puesto de salud|centro de salud|del cusco|cusco)\b/gi, '')
+    .replace(/[^a-z0-9]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const matchEstablishmentName = (nameA?: any, nameB?: any): boolean => {
+  if (!nameA || !nameB) return false;
+  const sA = String(nameA).trim().toLowerCase();
+  const sB = String(nameB).trim().toLowerCase();
+  if (sA === sB) return true;
+  const cA = cleanEstablishmentName(nameA);
+  const cB = cleanEstablishmentName(nameB);
+  return Boolean(cA && cB && (cA === cB || cA.includes(cB) || cB.includes(cA)));
+};
+```
+
 ### Versión 1.5.0 (2026-11-02)
 - **Filtro por Establecimiento de salud en Dashboard:**
   - Se agregó estado `dashboardIpressFilter` y selector en la barra superior.
@@ -184,3 +219,4 @@ Cuando el usuario pida cualquier ajuste o mejora:
 2. **Aplicar la edición de forma quirúrgica** con `read_file` y `edit_file` en el rango de líneas exacto.
 3. **Registrar la nueva versión** en `package.json`, `src/main.tsx` (`APP_VERSION`), `src/App.tsx` (`CURRENT_APP_VERSION`), `CHANGELOG.md` y en este archivo con sus fragmentos de código relevantes.
 4. **Compilar y desplegar** verificando código de salida 0.
+
