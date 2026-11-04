@@ -159,6 +159,42 @@ En lugar de incrustar imágenes PNG estáticas, este módulo genera archivos Ope
 
 ## 4. HISTORIAL DE MEJORAS CLAVE Y FRAGMENTOS IMPLEMENTADOS
 
+### Versión 1.5.3 (2026-11-04)
+- **Cruce de Monitoreo y 3 Particiones en `2. Tratamiento de Agua` (Excel Dashboard):**
+  - Se agregó la categoría **`No requiere tratamiento`** cruzando con los registros de monitoreo:
+    - Se evalúan las muestras de cloro residual por cada mes del período.
+    - Si la IPRESS no tiene tratamiento registrado en diagnóstico, pero en todos los meses monitoreados más del 70% de sus registros cumplen con la norma sanitaria ($0.5 \le \text{cloro} \le 2.0\text{ mg/L}$), se clasifica como `No requiere tratamiento`.
+    - Distribución en 3 particiones: `Con Tratamiento (Sí)` (verde `#10B981`), `No requiere tratamiento` (azul `#3B82F6`) y `Sin Tratamiento (No)` (rojo `#EF4444`).
+- **Tercera Partición en `4. Reservorio Operativo` (Excel Dashboard):**
+  - Se implementó la categoría **`Se abastece de Red Pública`**:
+    - Aplica cuando en el diagnóstico `Fuente de Agua` es `La Red Publica` y `Tiene Reservorio` es `No`.
+    - Distribución en 3 particiones: `Operativo` (verde `#10B981`), `Se abastece de Red Pública` (azul `#3B82F6`) y `No Operativo` (rojo `#EF4444`).
+
+```typescript
+// Fragmento clave: Clasificación de 3 particiones para Tratamiento de Agua y Reservorio Operativo
+// Reservorio Operativo:
+const isOp = hasRes && diag && String(diag.reservorioOperativo || '').trim().toLowerCase() === 'si';
+const fuente = diag ? String(diag.fuenteAgua || '').trim().toLowerCase() : '';
+const isRedPub = fuente.includes('red') || fuente.includes('publica');
+
+if (isOp) resOpSi++;
+else if (!hasRes && isRedPub) resRedPub++;
+else resOpNo++;
+
+// Tratamiento de Agua:
+const hasTrat = diag && String(diag.tratamientoAgua || '').trim().toLowerCase() === 'si';
+if (hasTrat) {
+  tratSi++;
+} else {
+  const evaluatedMonths = Object.values(monthlyStats).filter(st => st.total > 0);
+  if (evaluatedMonths.length > 0 && evaluatedMonths.every(st => (st.compliant / st.total) >= 0.70)) {
+    tratNoRequiere++;
+  } else {
+    tratNo++;
+  }
+}
+```
+
 ### Versión 1.5.2 (2026-11-02)
 - **Sección 3 en Hoja 1 (`Dashboard de Gestión`): 10 Gráficos de Torta/Anillo Nativos Dinámicos de Excel para el Estado Situacional del Sistema de Agua:**
   - Se implementó la nueva sección **`3. CARACTERÍSTICAS Y ESTADO SITUACIONAL DEL SISTEMA DE AGUA (${scopeLabel})`** ubicada debajo de los gráficos de la Sección 2.

@@ -1,6 +1,16 @@
 # Changelog
 Todos los cambios notables de este proyecto serán documentados en este archivo.
 
+## [1.5.3] - 2026-11-04
+### Añadido / Mejorado
+- **Cruce Dinámico y 3 Particiones en `2. Tratamiento de Agua` (Excel Dashboard):**
+  - Se incorporó la tercera categoría **`No requiere tratamiento`** cruzando los diagnósticos con los registros de monitoreo de cloro residual.
+  - Una IPRESS se clasifica como `No requiere tratamiento` si no tiene tratamiento en diagnóstico y en todos los meses monitoreados más del 70% de sus muestras registran cloro residual en el rango normativo ($0.5 \le \text{cloro} \le 2.0\text{ mg/L}$).
+  - Las 3 particiones resultantes son: `Con Tratamiento (Sí)` (verde `#10B981`), `No requiere tratamiento` (azul `#3B82F6`) y `Sin Tratamiento (No)` (rojo `#EF4444`), representadas tanto en la tabla dinámica como en el gráfico de torta/anillo OpenXML nativo.
+- **Tercera Partición en `4. Reservorio Operativo` (Excel Dashboard):**
+  - Se añadió el estado **`Se abastece de Red Pública`** para aquellas IPRESS cuya `Fuente de Agua` es `La Red Publica` y `Tiene Reservorio` es `No`.
+  - Las 3 particiones resultantes son: `Operativo` (verde `#10B981`), `Se abastece de Red Pública` (azul `#3B82F6`) y `No Operativo` (rojo `#EF4444`), con recálculo dinámico en tabla y gráfico nativo de Excel.
+
 ## [1.5.2] - 2026-11-02
 ### Añadido / Mejorado
 - **Sección 3 en Exportación Excel: 10 Gráficos de Torta/Anillo Nativos Dinámicos de Excel para el Estado del Sistema de Agua:**

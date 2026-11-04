@@ -1341,6 +1341,7 @@ export const Home: React.FC = () => {
 
       const allRecordsForDiag = getRecords();
       const allDiagRecords = allRecordsForDiag.filter(r => r.estado !== 'Inactivo' && r.tipo === 'diagnostico');
+      const allMonitRecords = allRecordsForDiag.filter(r => r.estado !== 'Inactivo' && r.tipo === 'monitoreo');
       const allIpressList = usersList.filter(u => {
         if (u.rol !== 'IPRESS' && u.rol !== 'Hospital') return false;
         if (targetRed !== 'Todas' && !matchRedName(u.red, targetRed)) return false;
@@ -1357,6 +1358,15 @@ export const Home: React.FC = () => {
           (d.nombreIpress && u.nombreIpress && String(d.nombreIpress).trim().toLowerCase() === String(u.nombreIpress).trim().toLowerCase()) ||
           (d.nombreIpress && u.usuario && String(d.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase()) ||
           matchEstablishmentName(d.nombreIpress, u.nombreIpress || u.usuario)
+        );
+      };
+
+      const findMatchingMonits = (u: any) => {
+        return allMonitRecords.filter(m => 
+          (m.codigoRenipress && u.codigoRenipress && matchRenipress(u.codigoRenipress, m.codigoRenipress)) ||
+          (m.nombreIpress && u.nombreIpress && String(m.nombreIpress).trim().toLowerCase() === String(u.nombreIpress).trim().toLowerCase()) ||
+          (m.nombreIpress && u.usuario && String(m.nombreIpress).trim().toLowerCase() === String(u.usuario).trim().toLowerCase()) ||
+          matchEstablishmentName(m.nombreIpress, u.nombreIpress || u.usuario)
         );
       };
 
@@ -1390,12 +1400,12 @@ export const Home: React.FC = () => {
         'Sin Reservorio': 0
       };
       let resElevSi = 0, resElevNo = 0;
-      let resOpSi = 0, resOpNo = 0;
+      let resOpSi = 0, resRedPub = 0, resOpNo = 0;
       let cisSi = 0, cisNo = 0;
       let cisOpSi = 0, cisOpNo = 0;
-      let tratSi = 0, tratNo = 0;
+      let tratSi = 0, tratNoRequiere = 0, tratNo = 0;
 
-      ipressWithDiags.forEach(({ diag }) => {
+      ipressWithDiags.forEach(({ u, diag }) => {
         // 1. Fuente de Agua
         if (diag) {
           const f = String(diag.fuenteAgua || '').trim().toLowerCase();
@@ -1435,9 +1445,18 @@ export const Home: React.FC = () => {
         if (hasRes && diag && String(diag.reservorioElevado || '').trim().toLowerCase() === 'si') resElevSi++;
         else resElevNo++;
 
-        // 7. Reservorio Operativo
-        if (diag && String(diag.reservorioOperativo || '').trim().toLowerCase() === 'si') resOpSi++;
-        else resOpNo++;
+        // 7. Reservorio Operativo (3 categorías: Operativo, Se abastece de Red Pública, No Operativo)
+        const isOp = hasRes && diag && String(diag.reservorioOperativo || '').trim().toLowerCase() === 'si';
+        const fuente = diag ? String(diag.fuenteAgua || '').trim().toLowerCase() : '';
+        const isRedPub = fuente.includes('red') || fuente.includes('publica');
+
+        if (isOp) {
+          resOpSi++;
+        } else if (!hasRes && isRedPub) {
+          resRedPub++;
+        } else {
+          resOpNo++;
+        }
 
         // 8. Tiene Cisterna
         const hasCis = diag && String(diag.cisterna || '').trim().toLowerCase() === 'si';
@@ -1448,9 +1467,48 @@ export const Home: React.FC = () => {
         if (diag && String(diag.cisternaOperativa || '').trim().toLowerCase() === 'si') cisOpSi++;
         else cisOpNo++;
 
-        // 10. Tratamiento de Agua
-        if (diag && String(diag.tratamientoAgua || '').trim().toLowerCase() === 'si') tratSi++;
-        else tratNo++;
+        // 10. Tratamiento de Agua (3 categorías: Con Tratamiento (Sí), No requiere tratamiento, Sin Tratamiento (No))
+        const hasTrat = diag && String(diag.tratamientoAgua || '').trim().toLowerCase() === 'si';
+        if (hasTrat) {
+          tratSi++;
+        } else {
+          const uMonits = findMatchingMonits(u);
+          const recordsToEval = uMonits.filter(m => {
+            const rawDate = m.fecha || m.fechaRegistro;
+            if (!rawDate) return false;
+            const dStr = String(rawDate).split('T')[0];
+            if (dateFrom && dStr < dateFrom) return false;
+            if (dateTo && dStr > dateTo) return false;
+            return true;
+          });
+          const targetMonits = recordsToEval.length > 0 ? recordsToEval : uMonits;
+
+          const monthlyStats: Record<string, { total: number; compliant: number }> = {};
+          targetMonits.forEach(m => {
+            const rawDate = m.fecha || m.fechaRegistro;
+            if (!rawDate) return;
+            const dt = new Date(rawDate);
+            if (isNaN(dt.getTime())) return;
+            const mKey = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+            if (!monthlyStats[mKey]) monthlyStats[mKey] = { total: 0, compliant: 0 };
+
+            const rawCloro = m.cloro !== undefined && m.cloro !== null && m.cloro !== '' ? m.cloro : (m as any).cloroResidual;
+            const cVal = parseFloat(String(rawCloro ?? ''));
+            if (!isNaN(cVal)) {
+              monthlyStats[mKey].total++;
+              if (cVal >= 0.5 && cVal <= 2.0) {
+                monthlyStats[mKey].compliant++;
+              }
+            }
+          });
+
+          const evaluatedMonths = Object.values(monthlyStats).filter(st => st.total > 0);
+          if (evaluatedMonths.length > 0 && evaluatedMonths.every(st => (st.compliant / st.total) >= 0.70)) {
+            tratNoRequiere++;
+          } else {
+            tratNo++;
+          }
+        }
       });
 
       // Fuente de Agua
@@ -1513,9 +1571,10 @@ export const Home: React.FC = () => {
             countHeader: countHeaderTitle,
             categories: [
               { name: 'Con Tratamiento (Sí)', count: tratSi },
+              { name: 'No requiere tratamiento', count: tratNoRequiere },
               { name: 'Sin Tratamiento (No)', count: tratNo }
             ],
-            sliceColors: ['10B981', 'EF4444']
+            sliceColors: ['10B981', '3B82F6', 'EF4444']
           }
         ],
         // Par 2: Tiene Reservorio y Reservorio Operativo
@@ -1536,9 +1595,10 @@ export const Home: React.FC = () => {
             countHeader: countHeaderTitle,
             categories: [
               { name: 'Operativo', count: resOpSi },
+              { name: 'Se abastece de Red Pública', count: resRedPub },
               { name: 'No Operativo', count: resOpNo }
             ],
-            sliceColors: ['10B981', 'EF4444']
+            sliceColors: ['10B981', '3B82F6', 'EF4444']
           }
         ],
         // Par 3: Tipo Reservorio y Reservorio Elevado
